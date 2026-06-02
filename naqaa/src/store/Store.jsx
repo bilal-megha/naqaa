@@ -1,602 +1,971 @@
 /**
- * Store.jsx — واجهة المتجر للزبائن
- * تستخدم Supabase عبر db.js
+ * Store.jsx — واجهة متجر نقاء
+ * تصميم مستوحى من تطبيق Esmmar مع تحسينات وألوان جديدة
  */
 import { useState, useEffect, useRef } from 'react'
 import CryptoJS from 'crypto-js'
-import { cache, loadAll, dbInsert, dbUpdate, getSetting } from '../lib/db.js'
+import { cache, loadAll } from '../lib/db.js'
 import { supabase } from '../lib/supabase.js'
 
-// ==================== Toast ====================
-function useToast() {
-  return (msg, isError = false) => {
-    const t = document.createElement('div')
-    t.className = 'toast' + (isError ? ' toast-error' : '')
-    t.innerHTML = msg
-    document.body.appendChild(t)
-    setTimeout(() => t.remove(), 3000)
-  }
-}
+/* ─────────── CSS ─────────── */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Tajawal',sans-serif;background:#F7F3EF;direction:rtl}
+body.dark{background:#100800;color:#F0E8E0}
 
-// ==================== Modal ====================
-function Modal({ show, onClose, title, children, width = 500 }) {
-  if (!show) return null
-  return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content" style={{ maxWidth: width }}>
-        <div className="flex-between" style={{ marginBottom: 16 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#ef4444' }}>×</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
+.sh{background:linear-gradient(160deg,#FF6B35,#E8430E 65%,#C02E00);padding:12px 16px 14px;
+  position:sticky;top:0;z-index:300;box-shadow:0 4px 24px rgba(255,107,53,.4)}
+.sh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.sh-icon{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(255,255,255,.2);color:white;font-size:17px;display:flex;
+  align-items:center;justify-content:center;transition:.2s}
+.sh-icon:active{transform:scale(.9)}
+.sh-logo{font-size:21px;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,.2)}
+.sh-contact{background:white;color:#FF6B35;border:none;padding:7px 15px;border-radius:30px;
+  font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;transition:.2s;
+  box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.sh-contact:active{transform:scale(.95)}
+.sh-search{background:white;border-radius:30px;display:flex;align-items:center;
+  gap:8px;padding:9px 16px;box-shadow:0 2px 12px rgba(0,0,0,.12)}
+body.dark .sh-search{background:#2a1400}
+.sh-search input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;
+  background:transparent;color:#333}
+body.dark .sh-search input{color:#f0e8e0}
+.sh-search i{color:#bbb;font-size:15px}
 
-// ==================== CSS متجر ====================
-const STORE_CSS = `
-  .store-header { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 15px 20px; border-radius: 0 0 20px 20px; margin-bottom: 20px; position: sticky; top: 0; z-index: 200; }
-  .brands-section { background: white; border-radius: 16px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  body.dark .brands-section { background: #1e293b; }
-  .brand-item { text-align: center; cursor: pointer; transition: 0.2s; min-width: 80px; }
-  .brand-item:hover { transform: translateY(-5px); }
-  .brand-icon { width: 70px; height: 70px; background: #fef2f2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 28px; color: #dc2626; }
-  .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .section-title h3 { font-size: 20px; font-weight: bold; color: #333; }
-  body.dark .section-title h3 { color: white; }
-  .slider-container { position: relative; overflow: hidden; }
-  .slider-track { display: flex; gap: 16px; overflow-x: auto; scroll-behavior: smooth; padding-bottom: 8px; }
-  .slider-track::-webkit-scrollbar { display: none; }
-  .slider-btn { position: absolute; top: 50%; transform: translateY(-50%); background: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10; border: none; transition: 0.2s; }
-  .slider-btn.left { left: 0; }
-  .slider-btn.right { right: 0; }
-  .slider-btn:hover { background: #dc2626; color: white; }
-  .product-card { background: white; border-radius: 16px; padding: 14px; transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; border: 1px solid #eee; }
-  body.dark .product-card { background: #1e293b; }
-  .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
-  .product-card img { width: 100%; height: 160px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; }
-  .product-price { font-size: 18px; font-weight: bold; color: #dc2626; margin: 6px 0; }
-  .carton-price { font-size: 12px; color: #64748b; }
-  .limited-stock { font-size: 12px; color: #ef4444; margin-top: 4px; }
-  .new-badge { position: absolute; top: 8px; right: 8px; background: #10b981; color: white; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 30px; }
-  .promo-badge { position: absolute; top: 8px; right: 8px; background: #dc2626; color: white; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 30px; }
-  .filter-section { background: white; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  body.dark .filter-section { background: #1e293b; }
-  .customer-bar { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-  #scrollTopBtn { position: fixed; bottom: 80px; left: 20px; background: #dc2626; color: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: none; font-size: 18px; z-index: 500; transition: 0.2s; }
-  #scrollTopBtn:hover { transform: scale(1.1); }
+.banner-wrap{margin:14px 14px 0;border-radius:20px;overflow:hidden;position:relative;
+  box-shadow:0 8px 28px rgba(255,107,53,.22)}
+.banner-track{display:flex;transition:transform .45s cubic-bezier(.4,0,.2,1)}
+.banner-slide{min-width:100%;height:175px;object-fit:cover;display:block}
+.banner-fall{min-width:100%;height:175px;
+  background:linear-gradient(135deg,#FF6B35,#7C3AED);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.bdots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.bdot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);
+  border:none;cursor:pointer;transition:.3s;padding:0}
+.bdot.on{background:white;width:18px;border-radius:10px}
+
+.sec{padding:0 14px;margin-bottom:18px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;
+  padding-top:16px;margin-bottom:13px}
+.sec-title{font-size:17px;font-weight:900;color:#1A0A00}
+body.dark .sec-title{color:#F0E8E0}
+.sec-more{color:#FF6B35;font-size:13px;font-weight:700;border:none;
+  background:none;cursor:pointer;font-family:inherit;padding:0}
+
+.brands-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.brand-card{background:white;border-radius:16px;overflow:hidden;cursor:pointer;
+  transition:.2s;box-shadow:0 2px 10px rgba(0,0,0,.07);aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  border:2.5px solid transparent}
+body.dark .brand-card{background:#1e1208}
+.brand-card:active{transform:scale(.95)}
+.brand-card.sel{border-color:#FF6B35;box-shadow:0 4px 16px rgba(255,107,53,.3)}
+.brand-card img{width:100%;height:100%;object-fit:cover;border-radius:13px}
+.brand-no-logo{font-weight:900;font-size:13px;color:#1A0A00;text-align:center;padding:8px}
+body.dark .brand-no-logo{color:#F0E8E0}
+.brand-all{border-radius:16px;aspect-ratio:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:pointer;transition:.2s;
+  background:linear-gradient(135deg,#FF6B35,#7C3AED);
+  box-shadow:0 4px 16px rgba(255,107,53,.3)}
+.brand-all:active{transform:scale(.95)}
+.brand-all i{font-size:24px;color:white;margin-bottom:5px}
+.brand-all span{font-size:12px;font-weight:800;color:white}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:white;border:1.5px solid #E8DDD5;border-radius:30px;
+  padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;
+  white-space:nowrap;transition:.2s;font-family:inherit;color:#7A6A5A;flex-shrink:0}
+body.dark .chip{background:#1e1208;border-color:#3d2a1a;color:#C0A898}
+.chip.sel{background:#FF6B35;color:white;border-color:#FF6B35;
+  box-shadow:0 4px 12px rgba(255,107,53,.3)}
+.chip:active{transform:scale(.96)}
+
+.pc{background:white;border-radius:18px;padding:11px;transition:.2s;
+  box-shadow:0 2px 14px rgba(0,0,0,.07);cursor:pointer;
+  border:1.5px solid rgba(0,0,0,.04);width:160px;flex-shrink:0}
+body.dark .pc{background:#1e1208;border-color:rgba(255,255,255,.05)}
+.pc:active{transform:scale(.97)}
+.pc-img{position:relative;border-radius:13px;overflow:hidden;margin-bottom:9px;
+  background:#F8F4F0;aspect-ratio:1}
+.pc-img img{width:100%;height:100%;object-fit:cover}
+.pc-noimg{width:100%;height:100%;display:flex;align-items:center;
+  justify-content:center;font-size:34px}
+.badge{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:20px;
+  font-size:10px;font-weight:800;color:white}
+.b-new{background:#10b981}.b-hot{background:#f59e0b}.b-promo{background:#FF6B35}
+.fav-b{position:absolute;top:6px;left:6px;width:28px;height:28px;border-radius:50%;
+  background:white;border:none;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);transition:.2s}
+.fav-b:active{transform:scale(.88)}
+.cmp-b{position:absolute;bottom:6px;left:6px;width:26px;height:26px;border-radius:50%;
+  background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.pc-name{font-size:12px;font-weight:700;color:#1A0A00;margin-bottom:4px;
+  line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+body.dark .pc-name{color:#F0E8E0}
+.pc-price{font-size:15px;font-weight:900;color:#FF6B35}
+.pc-carton{font-size:10px;color:#7A6A5A;margin-top:1px}
+.pc-stock{font-size:10px;color:#ef4444;margin-top:2px}
+.add-b{width:100%;margin-top:8px;padding:7px 4px;border-radius:30px;
+  background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;
+  border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;
+  transition:.2s;display:flex;align-items:center;justify-content:center;gap:4px}
+.add-b:active{opacity:.88;transform:scale(.97)}
+
+.prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.prod-grid .pc{width:100%}
+.hscroll{display:flex;gap:11px;overflow-x:auto;padding:2px 0 10px}
+.hscroll::-webkit-scrollbar{display:none}
+
+.cart-bar{background:linear-gradient(135deg,#FF6B35,#7C3AED);
+  margin:14px;border-radius:16px;padding:12px 16px;
+  display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;box-shadow:0 6px 20px rgba(255,107,53,.3);transition:.2s}
+.cart-bar:active{transform:scale(.98)}
+.cart-bar span{color:white;font-weight:700;font-size:14px}
+.cart-bar .amt{color:white;font-weight:900;font-size:16px}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:white;
+  display:flex;justify-content:space-around;align-items:center;
+  padding:10px 0 16px;z-index:300;
+  box-shadow:0 -4px 20px rgba(0,0,0,.08);border-radius:20px 20px 0 0}
+body.dark .bnav{background:#1e1208}
+.bnav-b{display:flex;flex-direction:column;align-items:center;gap:3px;
+  border:none;background:none;cursor:pointer;font-family:inherit;
+  color:#AAA099;font-size:10px;font-weight:700;transition:.2s;
+  padding:0 10px;position:relative;min-width:48px}
+.bnav-b:active{transform:scale(.9)}
+.bnav-b.on{color:#FF6B35}
+.bnav-b i{font-size:22px;transition:.2s}
+.bnav-b.on i{transform:scale(1.1)}
+.nbadge{position:absolute;top:-1px;right:6px;background:#FF6B35;
+  color:white;border-radius:50%;width:16px;height:16px;font-size:9px;
+  display:flex;align-items:center;justify-content:center;font-weight:800;
+  border:2px solid white}
+body.dark .nbadge{border-color:#1e1208}
+
+.wa{position:fixed;bottom:80px;left:14px;width:50px;height:50px;
+  background:#25D366;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);
+  cursor:pointer;z-index:280;border:none;
+  animation:wap 2.5s ease-in-out infinite}
+.wa:active{transform:scale(.92)}
+@keyframes wap{0%,100%{box-shadow:0 4px 16px rgba(37,211,102,.45)}
+  50%{box-shadow:0 4px 28px rgba(37,211,102,.7)}}
+.scrtop{position:fixed;bottom:80px;right:14px;width:44px;height:44px;
+  background:#FF6B35;color:white;border-radius:50%;border:none;
+  cursor:pointer;font-size:18px;display:flex;align-items:center;
+  justify-content:center;box-shadow:0 4px 16px rgba(255,107,53,.4);z-index:280}
+
+.moverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);
+  backdrop-filter:blur(5px);z-index:1000;display:flex;
+  align-items:flex-end;justify-content:center}
+.msheet{background:white;border-radius:24px 24px 0 0;width:100%;
+  max-height:92vh;overflow-y:auto;padding-bottom:30px;
+  animation:slideUp .3s cubic-bezier(.4,0,.2,1)}
+body.dark .msheet{background:#1e1208}
+.msheet.center{border-radius:24px;max-width:460px;margin:20px auto;
+  animation:zoomIn .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes zoomIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.mhandle{width:38px;height:4px;background:#E8DDD5;border-radius:10px;margin:12px auto 2px}
+body.dark .mhandle{background:#3d2a1a}
+.mhead{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid #F7F3EF;position:sticky;top:0;background:white;z-index:2}
+body.dark .mhead{background:#1e1208;border-color:#2d1a0a}
+.mhead h3{font-size:17px;font-weight:900;color:#1A0A00}
+body.dark .mhead h3{color:#F0E8E0}
+.mclose{width:32px;height:32px;border-radius:50%;background:#F7F3EF;
+  border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;
+  justify-content:center;transition:.2s}
+body.dark .mclose{background:#2d1a0a;color:#F0E8E0}
+.mclose:active{transform:scale(.9)}
+.mbody{padding:16px 18px}
+
+.ci{display:flex;gap:12px;padding:12px 0;
+  border-bottom:1px solid #F7F3EF;align-items:center}
+body.dark .ci{border-color:#2d1a0a}
+.ci-img{width:58px;height:58px;border-radius:12px;object-fit:cover;
+  background:#F7F3EF;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:24px}
+.ci-name{font-weight:700;font-size:14px;color:#1A0A00}
+body.dark .ci-name{color:#F0E8E0}
+.ci-price{color:#FF6B35;font-weight:900;font-size:15px;margin-top:2px}
+.qty-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.qty-b{width:28px;height:28px;border-radius:50%;border:2px solid #FF6B35;
+  color:#FF6B35;background:none;cursor:pointer;font-size:15px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;transition:.2s;line-height:1}
+.qty-b:active{background:#FF6B35;color:white}
+.qty-n{font-weight:800;font-size:15px;min-width:22px;text-align:center;color:#1A0A00}
+body.dark .qty-n{color:#F0E8E0}
+.del-b{margin-right:auto;border:none;background:none;color:#ef4444;
+  cursor:pointer;font-size:18px;padding:4px}
+
+.fi{background:#F7F3EF;border:1.5px solid #E8DDD5;border-radius:14px;
+  padding:12px 16px;width:100%;font-family:inherit;font-size:14px;
+  color:#1A0A00;transition:.2s;outline:none;margin-bottom:12px}
+body.dark .fi{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
+.fi:focus{border-color:#FF6B35;box-shadow:0 0 0 3px rgba(255,107,53,.1)}
+.fi-label{font-size:13px;font-weight:700;color:#7A6A5A;margin-bottom:6px;display:block}
+
+.abtn{width:100%;padding:15px;border-radius:30px;
+  background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;
+  border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:900;
+  transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:10px}
+.abtn:active{transform:scale(.98);opacity:.9}
+.abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:#1A0A00;color:white;padding:10px 22px;border-radius:30px;
+  z-index:5000;font-size:13px;font-weight:700;animation:tin .3s ease;
+  white-space:nowrap;max-width:85vw;text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast.err{background:#ef4444}
+@keyframes tin{from{opacity:0;transform:translateX(-50%) translateY(16px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.empty{text-align:center;padding:40px 16px;color:#7A6A5A}
+.empty i{font-size:52px;margin-bottom:12px;display:block;opacity:.25}
+.empty p{font-size:15px;font-weight:600}
+
+.trstep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;
+  border-bottom:1px solid #F7F3EF}
+body.dark .trstep{border-color:#2d1a0a}
+.trdot{width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px}
+.trdot.done{background:linear-gradient(135deg,#FF6B35,#7C3AED);color:white}
+.trdot.wait{background:#F7F3EF;color:#AAA099}
+body.dark .trdot.wait{background:#2d1a0a}
+
+.page{padding-bottom:80px}
 `
 
-// ==================== المكوّن الرئيسي ====================
+/* ─────────── TOAST ─────────── */
+function toast(msg, isErr = false) {
+  document.querySelectorAll('.toast').forEach(t => t.remove())
+  const t = document.createElement('div')
+  t.className = 'toast' + (isErr ? ' err' : '')
+  t.textContent = msg
+  document.body.appendChild(t)
+  setTimeout(() => t.remove(), 2800)
+}
+
+const hashPwd = p => { try { return CryptoJS.SHA256(p).toString() } catch { return p } }
+
+/* ─────────── COMPONENT ─────────── */
 export default function Store() {
-  const toast = useToast()
 
-  // ---- حالة التطبيق ----
-  const [customer,    setCustomer]    = useState(() => { try { return JSON.parse(localStorage.getItem('currentCustomer') || 'null') } catch { return null } })
-  const [cart,        setCart]        = useState(() => { try { return JSON.parse(localStorage.getItem('store_front_cart') || '[]') } catch { return [] } })
-  const [wishlist,    setWishlist]    = useState(() => { try { return JSON.parse(localStorage.getItem('store_front_wishlist') || '[]') } catch { return [] } })
-  const [compareList, setCompareList] = useState([])
-  const [search,      setSearch]      = useState('')
-  const [brandFilter, setBrandFilter] = useState('all')
-  const [page,        setPage]        = useState(1)
-  const [, forceRender]               = useState(0)
-  const refresh = () => forceRender(n => n + 1)
+  const [customer, setCustomer] = useState(() => { try { return JSON.parse(localStorage.getItem('nq_customer') || 'null') } catch { return null } })
+  const [cart,     setCart]     = useState(() => { try { return JSON.parse(localStorage.getItem('nq_cart')     || '[]')   } catch { return [] } })
+  const [wishlist, setWishlist] = useState(() => { try { return JSON.parse(localStorage.getItem('nq_wish')     || '[]')   } catch { return [] } })
 
-  // ---- نوافذ ----
-  const [modal, setModal] = useState(null) // 'login'|'register'|'cart'|'checkout'|'detail'|'wishlist'|'tracking'|'compare'|'thankyou'
-  const [detailProduct,   setDetailProduct]   = useState(null)
-  const [thankYouOrderId, setThankYouOrderId] = useState(null)
+  const [tab,        setTab]        = useState('home')
+  const [modal,      setModal]      = useState(null)
+  const [detailP,    setDetailP]    = useState(null)
+  const [search,     setSearch]     = useState('')
+  const [brandSel,   setBrandSel]   = useState('all')
+  const [catSel,     setCatSel]     = useState('all')
+  const [sortSel,    setSortSel]    = useState('newest')
+  const [page,       setPage]       = useState(1)
+  const [compareList,setCompareList]= useState([])
+  const [showScr,    setShowScr]    = useState(false)
+  const [bannerIdx,  setBannerIdx]  = useState(0)
+  const [thankId,    setThankId]    = useState(null)
+  const [loginF,     setLoginF]     = useState({ email: '', pass: '' })
+  const [regF,       setRegF]       = useState({ name:'',email:'',phone:'',address:'',pass:'',pass2:'' })
+  const [coF,        setCoF]        = useState({ name:'',phone:'',address:'' })
+  const [trackNum,   setTrackNum]   = useState('')
+  const [trackRes,   setTrackRes]   = useState(null)
 
-  // ---- إعدادات ----
-  const [settings, setSettings] = useState({ store_name:'نقاء', store_currency:'دج', free_shipping_threshold:'500', whatsapp_number:'' })
+  const S        = cache.settings || {}
+  const SNAME    = S['store_name']                 || 'نقاء'
+  const CUR      = S['store_currency']             || 'دج'
+  const WA       = S['whatsapp_number']            || ''
+  const FREESHIP = parseFloat(S['free_shipping_threshold'] || '500')
 
-  // ---- فلتر ----
-  const [filterMin,  setFilterMin]  = useState('')
-  const [filterMax,  setFilterMax]  = useState('')
-  const [filterSort, setFilterSort] = useState('newest')
-  const [filterBrand,setFilterBrand]= useState('all')
-
-  // ---- سكرول للأعلى ----
-  const [showScrollTop, setShowScrollTop] = useState(false)
-
+  /* inject CSS */
   useEffect(() => {
-    // حقن CSS
-    if (!document.getElementById('store-css')) {
+    if (!document.getElementById('nq-css')) {
       const s = document.createElement('style')
-      s.id = 'store-css'
-      s.textContent = STORE_CSS
+      s.id = 'nq-css'; s.textContent = CSS
       document.head.appendChild(s)
     }
-    // تحميل الإعدادات
-    const s = cache.settings
-    setSettings({ store_name: s['store_name']||'نقاء', store_currency: s['store_currency']||'دج', free_shipping_threshold: s['free_shipping_threshold']||'500', whatsapp_number: s['whatsapp_number']||'' })
-    // سكرول
-    const onScroll = () => setShowScrollTop(window.scrollY > 300)
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
+    if (localStorage.getItem('nqDark') === '1') document.body.classList.add('dark')
+    const fn = () => setShowScr(window.scrollY > 300)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
   }, [])
 
-  // ---- حفظ السلة والمفضلة ----
-  useEffect(() => { localStorage.setItem('store_front_cart', JSON.stringify(cart)) }, [cart])
-  useEffect(() => { localStorage.setItem('store_front_wishlist', JSON.stringify(wishlist)) }, [wishlist])
+  /* banner auto-rotate */
+  const banners = cache.products.filter(p => p.isPromo && p.image).slice(0, 5)
+  useEffect(() => {
+    if (banners.length < 2) return
+    const t = setInterval(() => setBannerIdx(i => (i + 1) % banners.length), 3500)
+    return () => clearInterval(t)
+  }, [banners.length])
 
-  // ==================== منتجات ====================
-  const allProducts = cache.products.filter(p => !p.disabled)
+  /* persist */
+  useEffect(() => { localStorage.setItem('nq_cart', JSON.stringify(cart)) }, [cart])
+  useEffect(() => { localStorage.setItem('nq_wish', JSON.stringify(wishlist)) }, [wishlist])
 
-  const applyFilters = (prods) => {
-    let f = [...prods]
+  /* derived */
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0)
+  const sevenAgo  = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7)
+
+  const all     = cache.products.filter(p => !p.disabled)
+  const promos  = all.filter(p => p.isPromo)
+  const news    = all.filter(p => new Date(p.createdAt) >= sevenAgo)
+  const scCount = {}; cache.orders.forEach(o => (o.items||[]).forEach(i => (scCount[i.name] = (scCount[i.name]||0) + i.quantity)))
+  const best    = [...all].sort((a, b) => (scCount[b.name]||0) - (scCount[a.name]||0))
+
+  const filtered = (() => {
+    let f = all
     if (search)          f = f.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-    if (brandFilter !== 'all') f = f.filter(p => p.brandId == brandFilter)
-    if (filterMin)       f = f.filter(p => p.price >= parseFloat(filterMin))
-    if (filterMax)       f = f.filter(p => p.price <= parseFloat(filterMax))
-    if (filterBrand !== 'all') f = f.filter(p => p.brandId == filterBrand)
-    if (filterSort === 'newest')     f.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
-    else if (filterSort === 'price_asc')  f.sort((a,b) => a.price - b.price)
-    else if (filterSort === 'price_desc') f.sort((a,b) => b.price - a.price)
-    else if (filterSort === 'popular') {
-      const sc = {}; cache.orders.forEach(o=>(o.items||[]).forEach(i=>(sc[i.name]=(sc[i.name]||0)+i.quantity)))
-      f.sort((a,b)=>(sc[b.name]||0)-(sc[a.name]||0))
-    }
+    if (brandSel!=='all') f = f.filter(p => p.brandId == brandSel)
+    if (catSel!=='all')   f = f.filter(p => p.categoryId == catSel)
+    if (sortSel==='newest')      f = [...f].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt))
+    else if (sortSel==='price_asc')  f = [...f].sort((a,b) => a.price-b.price)
+    else if (sortSel==='price_desc') f = [...f].sort((a,b) => b.price-a.price)
+    else if (sortSel==='popular')    f = [...f].sort((a,b) => (scCount[b.name]||0)-(scCount[a.name]||0))
     return f
+  })()
+  const PER   = 12
+  const PAGES = Math.ceil(filtered.length / PER)
+  const paged = filtered.slice((page-1)*PER, page*PER)
+
+  /* cart ops */
+  const addToCart = (p, qty=1) => {
+    if (!p||p.disabled) { toast('المنتج غير متوفر', true); return }
+    setCart(prev => {
+      if (prev.find(i=>i.id===p.id)) { toast(`⚠️ موجود في السلة`, true); return prev }
+      toast(`✅ تمت الإضافة`)
+      return [...prev, { id:p.id, name:p.name, price:p.price, qty, image:p.image }]
+    })
+  }
+  const changeQty = (id, d) => setCart(prev => prev.map(i => i.id===id ? {...i, qty:Math.max(1, i.qty+d)} : i))
+  const removeFromCart = id => setCart(prev => prev.filter(i=>i.id!==id))
+
+  /* wishlist */
+  const toggleWish = id => {
+    setWishlist(prev => {
+      if (prev.includes(id)) { toast('تم الإزالة'); return prev.filter(x=>x!==id) }
+      toast('❤️ تمت الإضافة'); return [...prev, id]
+    })
   }
 
-  const PER_PAGE = 12
-  const filtered   = applyFilters(allProducts)
-  const totalPages = Math.ceil(filtered.length / PER_PAGE)
-  const paginated  = filtered.slice((page-1)*PER_PAGE, page*PER_PAGE)
-
-  const promoProducts  = allProducts.filter(p => p.isPromo).slice(0,10)
-  const sevenDaysAgo   = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7)
-  const newProducts    = allProducts.filter(p => new Date(p.createdAt) >= sevenDaysAgo).slice(0,10)
-  const sc             = {}; cache.orders.forEach(o=>(o.items||[]).forEach(i=>(sc[i.name]=(sc[i.name]||0)+i.quantity)))
-  const bestSelling    = [...allProducts].sort((a,b)=>(sc[b.name]||0)-(sc[a.name]||0)).slice(0,10)
-
-  // ==================== السلة ====================
-  const cartTotal    = cart.reduce((s,i)=>s+i.price*i.quantity, 0)
-  const cartCount    = cart.reduce((s,i)=>s+i.quantity, 0)
-  const freeShipping = parseFloat(settings.free_shipping_threshold) || 500
-
-  const addToCart = (productId, qty=1) => {
-    const p = cache.products.find(x=>x.id==productId)
-    if (!p||p.disabled) { toast('المنتج غير متوفر',true); return }
-    if (cart.find(i=>i.id==productId)) { toast(`⚠️ ${p.name} موجود بالفعل في السلة`,true); return }
-    if ((p.stock||0) < qty) { toast('الكمية غير متوفرة',true); return }
-    setCart(prev=>[...prev,{ id:p.id, name:p.name, price:p.price, quantity:qty, image:p.image }])
-    toast(`✅ تم إضافة ${p.name} إلى السلة`)
+  /* compare */
+  const toggleCmp = id => {
+    setCompareList(prev => {
+      if (prev.includes(id)) { toast('تم الإزالة'); return prev.filter(x=>x!==id) }
+      if (prev.length>=4)    { toast('4 منتجات كحد أقصى', true); return prev }
+      toast('تمت الإضافة للمقارنة'); return [...prev, id]
+    })
   }
 
-  const removeFromCart = (id) => setCart(prev=>prev.filter(i=>i.id!=id))
-
-  // ==================== المفضلة ====================
-  const toggleWishlist = (id) => {
-    if (wishlist.includes(id)) { setWishlist(prev=>prev.filter(x=>x!=id)); toast('تم الإزالة من المفضلة') }
-    else { setWishlist(prev=>[...prev,id]); toast('تم الإضافة إلى المفضلة') }
-    refresh()
-  }
-
-  // ==================== المقارنة ====================
-  const addToCompare = (id) => {
-    if (compareList.includes(id)) { setCompareList(prev=>prev.filter(x=>x!=id)); toast('تم الإزالة') }
-    else if (compareList.length>=4) { toast('يمكنك مقارنة 4 منتجات كحد أقصى',true); return }
-    else { setCompareList(prev=>[...prev,id]); toast('تم الإضافة للمقارنة') }
-  }
-
-  // ==================== تسجيل الدخول ====================
-  const hashPwd = p => { return CryptoJS.SHA256(p).toString() }
-
-  const [loginForm,    setLoginForm]    = useState({ email:'', password:'' })
-  const [registerForm, setRegisterForm] = useState({ name:'', email:'', phone:'', address:'', password:'', confirm:'' })
-
+  /* auth */
   const doLogin = async () => {
-    const { email, password } = loginForm
-    const { data } = await supabase.from('customers').select('*').or(`email.eq.${email},phone.eq.${email}`).eq('password', hashPwd(password)).maybeSingle()
+    if (!loginF.email||!loginF.pass) { toast('أدخل البيانات', true); return }
+    const { data } = await supabase.from('customers').select('*')
+      .or(`email.eq.${loginF.email},phone.eq.${loginF.email}`)
+      .eq('password', hashPwd(loginF.pass)).maybeSingle()
     if (data) {
-      setCustomer(data); localStorage.setItem('currentCustomer', JSON.stringify(data))
-      setModal(null); toast(`مرحباً ${data.name}`)
-    } else {
-      toast('البريد أو كلمة المرور غير صحيحة',true)
-    }
+      setCustomer(data); localStorage.setItem('nq_customer', JSON.stringify(data))
+      setModal(null); toast(`مرحباً ${data.name} 👋`)
+    } else { toast('البيانات غير صحيحة', true) }
   }
 
   const doRegister = async () => {
-    const { name, email, phone, address, password, confirm } = registerForm
-    if (!name||!email||!phone||!password) { toast('جميع الحقول مطلوبة',true); return }
-    if (password!==confirm) { toast('كلمة المرور غير متطابقة',true); return }
-    const { data: existing } = await supabase.from('customers').select('id').eq('email',email).maybeSingle()
-    if (existing) { toast('البريد مسجل بالفعل',true); return }
-    const newCust = { id:Date.now(), name, email, phone, address, password:hashPwd(password), points:0, created_at:new Date().toISOString() }
-    await supabase.from('customers').insert(newCust)
-    toast('تم التسجيل، يمكنك الدخول الآن'); setModal('login')
+    const { name, email, phone, pass, pass2 } = regF
+    if (!name||!email||!phone||!pass) { toast('أكمل البيانات', true); return }
+    if (pass!==pass2) { toast('كلمتا المرور غير متطابقتان', true); return }
+    const { data: ex } = await supabase.from('customers').select('id').eq('email', email).maybeSingle()
+    if (ex) { toast('البريد مسجّل مسبقاً', true); return }
+    await supabase.from('customers').insert({ id:Date.now(), name, email, phone, address:regF.address, password:hashPwd(pass), points:0, created_at:new Date().toISOString() })
+    toast('✅ تم التسجيل، ادخل الآن'); setModal('login')
   }
-
-  const doLogout = () => {
-    setCustomer(null); localStorage.removeItem('currentCustomer')
-    setCart([]); toast('تم تسجيل الخروج')
-  }
-
-  // ==================== إتمام الطلب ====================
-  const [checkoutForm, setCheckoutForm] = useState({ name:'', phone:'', address:'' })
 
   const submitOrder = async () => {
-    if (!checkoutForm.name||!checkoutForm.phone) { toast('الاسم والهاتف مطلوبان',true); return }
-    const order = {
-      id: Date.now(),
-      customer_name: checkoutForm.name,
-      customer_phone: checkoutForm.phone,
-      customer_address: checkoutForm.address,
-      date: new Date().toLocaleString('ar-DZ'),
-      items: cart.map(i=>({ id:i.id, name:i.name, quantity:i.quantity, price:i.price })),
-      total: cartTotal,
-      status: 'pending',
-    }
+    if (!coF.name||!coF.phone) { toast('الاسم والهاتف مطلوبان', true); return }
+    const order = { id:Date.now(), customer_name:coF.name, customer_phone:coF.phone, customer_address:coF.address, date:new Date().toLocaleString('ar-DZ'), items:cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price})), total:cartTotal, status:'pending' }
     const { error } = await supabase.from('orders').insert(order)
-    if (error) { toast('خطأ في إرسال الطلب',true); console.error(error); return }
-    // تحديث المخزون
+    if (error) { toast('خطأ في الإرسال', true); return }
     for (const item of cart) {
-      const p = cache.products.find(x=>x.id==item.id)
-      if (p) await supabase.from('products').update({ stock: Math.max(0,(p.stock||0)-item.quantity) }).eq('id',p.id)
+      const p = cache.products.find(x=>x.id===item.id)
+      if (p) await supabase.from('products').update({ stock:Math.max(0,(p.stock||0)-item.qty) }).eq('id',p.id)
     }
-    await loadAll()
-    setCart([]); setModal('thankyou'); setThankYouOrderId(order.id)
-    toast('✅ تم استلام طلبك')
-    if (settings.whatsapp_number) {
-      const phone = checkoutForm.phone.replace(/^0/,'')
-      window.open(`https://wa.me/${phone}?text=مرحباً ${checkoutForm.name}، تم استلام طلبك رقم ${order.id} بنجاح. شكراً لتسوقك مع ${settings.store_name}`,'_blank')
-    }
+    await loadAll(); setCart([]); setModal('thankyou'); setThankId(order.id)
+    if (WA) window.open(`https://wa.me/${coF.phone.replace(/^0/,'')}?text=مرحباً ${coF.name}، تم استلام طلبك رقم ${order.id}. شكراً!`, '_blank')
   }
-
-  // ==================== تتبع الطلب ====================
-  const [trackingNum, setTrackingNum] = useState('')
-  const [trackingResult, setTrackingResult] = useState(null)
 
   const trackOrder = async () => {
-    const { data } = await supabase.from('orders').select('*').eq('id', trackingNum).maybeSingle()
-    setTrackingResult(data || null)
+    if (!trackNum) return
+    const { data } = await supabase.from('orders').select('*').eq('id', trackNum).maybeSingle()
+    setTrackRes(data || false)
   }
 
-  // ==================== ProductCard ====================
-  const ProductCard = ({ p, mini=false }) => (
-    <div className="product-card" style={{ minWidth: mini?220:undefined }} onClick={()=>{ setDetailProduct(p); setModal('detail') }}>
-      <div style={{ position:'relative' }}>
-        {p.image ? <img src={p.image} alt={p.name} style={{ height:mini?140:160 }} /> :
-          <div style={{ width:'100%', height:mini?140:160, background:'#f1f5f9', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, marginBottom:10 }}>📷</div>}
-        {p.isPromo && <span className="promo-badge">⚡ عرض</span>}
-        {new Date(p.createdAt) >= sevenDaysAgo && !p.isPromo && <span className="new-badge">جديد</span>}
-        <button onClick={e=>{e.stopPropagation();addToCart(p.id)}} style={{ position:'absolute', bottom:8, left:8, background:'#dc2626', color:'white', border:'none', borderRadius:'50%', width:34, height:34, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <i className="fas fa-cart-plus" style={{fontSize:13}}></i>
-        </button>
-        <button onClick={e=>{e.stopPropagation();toggleWishlist(p.id)}} style={{ position:'absolute', top:8, left:8, background:'white', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.1)' }}>
-          <i className={`fas fa-heart`} style={{ color: wishlist.includes(p.id)?'#dc2626':'#cbd5e1', fontSize:13 }}></i>
-        </button>
-        <button onClick={e=>{e.stopPropagation();addToCompare(p.id)}} style={{ position:'absolute', top:8, right:8, background:'white', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.1)' }}>
-          <i className="fas fa-chart-line" style={{ color: compareList.includes(p.id)?'#dc2626':'#cbd5e1', fontSize:11 }}></i>
+  /* ── ProductCard ── */
+  const PC = ({ p }) => {
+    const isW = wishlist.includes(p.id)
+    const isC = compareList.includes(p.id)
+    const isN = new Date(p.createdAt) >= sevenAgo
+    return (
+      <div className="pc" onClick={()=>{setDetailP(p);setModal('detail')}}>
+        <div className="pc-img">
+          {p.image ? <img src={p.image} alt={p.name} loading="lazy"/> : <div className="pc-noimg">🛍️</div>}
+          {p.isPromo && <span className="badge b-promo">عرض</span>}
+          {isN && !p.isPromo && <span className="badge b-new">جديد</span>}
+          {(scCount[p.name]||0)>10 && !p.isPromo && !isN && <span className="badge b-hot">🔥</span>}
+          <button className="fav-b" onClick={e=>{e.stopPropagation();toggleWish(p.id)}}>
+            <i className="fas fa-heart" style={{color:isW?'#FF6B35':'#CBD5E1'}}></i>
+          </button>
+          <button className="cmp-b" onClick={e=>{e.stopPropagation();toggleCmp(p.id)}}>
+            <i className="fas fa-balance-scale" style={{color:isC?'#7C3AED':'#CBD5E1'}}></i>
+          </button>
+        </div>
+        <div className="pc-name">{p.name}</div>
+        <div className="pc-price">{p.price} {CUR}</div>
+        {p.cartonPrice && <div className="pc-carton">كرتون: {p.cartonPrice} {CUR}</div>}
+        {(p.stock||0)<10 && (p.stock||0)>0 && <div className="pc-stock">⚠️ متبقي {p.stock} فقط</div>}
+        <button className="add-b" onClick={e=>{e.stopPropagation();addToCart(p)}}>
+          <i className="fas fa-cart-plus"></i> أضف للسلة
         </button>
       </div>
-      <div style={{ fontWeight:700, fontSize:15, marginTop:6 }}>{p.name}</div>
-      <div className="product-price">{p.price} {settings.store_currency}</div>
-      {p.cartonPrice && <div className="carton-price">كرتون: {p.cartonPrice} {settings.store_currency}</div>}
-      {(p.stock||0) < 10 && <div className="limited-stock">⚠️ متبقي {p.stock||0} فقط!</div>}
+    )
+  }
+
+  /* ── HOME ── */
+  const Home = () => (
+    <>
+      {/* BANNER */}
+      <div className="banner-wrap">
+        <div className="banner-track" style={{transform:`translateX(${bannerIdx*100}%)`}}>
+          {banners.length>0 ? banners.map((p,i)=><img key={i} src={p.image} className="banner-slide" alt=""/>) :
+            <div className="banner-fall">
+              <span style={{fontSize:40}}>🛍️</span>
+              <span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span>
+              <span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span>
+            </div>}
+        </div>
+        {banners.length>1 && (
+          <div className="bdots">
+            {banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}
+          </div>
+        )}
+      </div>
+
+      {/* BRANDS */}
+      <div className="sec">
+        <div className="sec-head">
+          <span className="sec-title">أفضل الماركات</span>
+          <button className="sec-more" onClick={()=>{setBrandSel('all');setTab('cats')}}>عرض الكل</button>
+        </div>
+        <div className="brands-grid">
+          <div className="brand-all" onClick={()=>{setBrandSel('all');setTab('search')}}>
+            <i className="fas fa-th"></i><span>عرض الكل</span>
+          </div>
+          {cache.brands.slice(0,5).map(b=>(
+            <div key={b.id} className={`brand-card${brandSel==b.id?' sel':''}`}
+              onClick={()=>{setBrandSel(b.id);setTab('search')}}>
+              {b.image ? <img src={b.image} alt={b.name}/> : <div className="brand-no-logo">{b.name}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* PROMO */}
+      {promos.length>0 && (
+        <div className="sec">
+          <div className="sec-head">
+            <span className="sec-title">⚡ عروض خاصة</span>
+            <button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button>
+          </div>
+          <div className="hscroll">{promos.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
+        </div>
+      )}
+
+      {/* NEW */}
+      {news.length>0 && (
+        <div className="sec">
+          <div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
+          <div className="hscroll">{news.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
+        </div>
+      )}
+
+      {/* BEST */}
+      {best.length>0 && (
+        <div className="sec">
+          <div className="sec-head"><span className="sec-title">🔥 الأكثر طلباً</span></div>
+          <div className="hscroll">{best.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
+        </div>
+      )}
+
+      {cartCount>0 && (
+        <div className="cart-bar" onClick={()=>setModal('cart')}>
+          <span>🛒 {cartCount} منتج في السلة</span>
+          <span className="amt">{cartTotal.toFixed(0)} {CUR}</span>
+        </div>
+      )}
+    </>
+  )
+
+  /* ── SEARCH TAB ── */
+  const Search = () => (
+    <div className="sec" style={{marginTop:14}}>
+      <div className="chips" style={{marginBottom:10}}>
+        <button className={`chip${catSel==='all'?' sel':''}`} onClick={()=>{setCatSel('all');setPage(1)}}>الكل</button>
+        {cache.categories.map(c=>(
+          <button key={c.id} className={`chip${catSel==c.id?' sel':''}`} onClick={()=>{setCatSel(c.id);setPage(1)}}>{c.name}</button>
+        ))}
+      </div>
+      <div className="chips" style={{marginBottom:14}}>
+        {[['newest','الأحدث'],['price_asc','السعر ↑'],['price_desc','السعر ↓'],['popular','الأكثر']].map(([v,l])=>(
+          <button key={v} className={`chip${sortSel===v?' sel':''}`} onClick={()=>{setSortSel(v);setPage(1)}}>{l}</button>
+        ))}
+      </div>
+      {paged.length===0
+        ? <div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div>
+        : <div className="prod-grid">{paged.map(p=><PC key={p.id} p={p}/>)}</div>}
+      {PAGES>1 && (
+        <div style={{display:'flex',justifyContent:'center',gap:8,marginTop:18,flexWrap:'wrap'}}>
+          {page>1 && <button className="chip" onClick={()=>setPage(p=>p-1)}>‹ السابق</button>}
+          {Array.from({length:Math.min(PAGES,5)},(_,i)=>i+1).map(n=>(
+            <button key={n} className={`chip${page===n?' sel':''}`} onClick={()=>setPage(n)}>{n}</button>
+          ))}
+          {page<PAGES && <button className="chip" onClick={()=>setPage(p=>p+1)}>التالي ›</button>}
+        </div>
+      )}
     </div>
   )
 
-  // ==================== Slider ====================
-  const Slider = ({ id, items, title, link }) => {
-    const ref = useRef(null)
-    if (items.length===0) return null
-    return (
-      <div style={{ marginBottom:32 }}>
-        <div className="section-title">
-          <h3><span style={{color:'#dc2626',marginLeft:8}}>●</span>{title}</h3>
-          {link && <a href="#" onClick={e=>{e.preventDefault();link()}} style={{ color:'#dc2626', fontSize:14 }}>عرض الكل ←</a>}
+  /* ── CATS TAB ── */
+  const Cats = () => (
+    <div className="sec" style={{marginTop:14}}>
+      <div className="brands-grid">
+        <div className="brand-all" onClick={()=>{setBrandSel('all');setCatSel('all');setTab('search')}}>
+          <i className="fas fa-th"></i><span>كل الماركات</span>
         </div>
-        <div className="slider-container">
-          <div ref={ref} className="slider-track" id={id}>
-            {items.map(p=><ProductCard key={p.id} p={p} mini />)}
+        {cache.brands.map(b=>(
+          <div key={b.id} className="brand-card" onClick={()=>{setBrandSel(b.id);setTab('search')}}>
+            {b.image ? <img src={b.image} alt={b.name}/> : <div className="brand-no-logo">{b.name}</div>}
           </div>
-          <button className="slider-btn left" onClick={()=>ref.current?.scrollBy({left:-260,behavior:'smooth'})}>❮</button>
-          <button className="slider-btn right" onClick={()=>ref.current?.scrollBy({left:260,behavior:'smooth'})}>❯</button>
+        ))}
+      </div>
+      {cache.categories.length>0 && (
+        <div style={{marginTop:20}}>
+          <div className="sec-head"><span className="sec-title">الفئات</span></div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
+            {cache.categories.map(c=>(
+              <div key={c.id} onClick={()=>{setCatSel(c.id);setTab('search')}}
+                style={{background:'white',borderRadius:16,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,.07)',transition:'.2s'}}>
+                {c.image ? <img src={c.image} style={{width:44,height:44,borderRadius:10,objectFit:'cover'}}/> :
+                  <div style={{width:44,height:44,borderRadius:10,background:'#FFF0EB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📦</div>}
+                <span style={{fontWeight:700,fontSize:14,color:'#1A0A00'}}>{c.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  /* ── WISH TAB ── */
+  const Wish = () => {
+    const wp = cache.products.filter(p=>wishlist.includes(p.id))
+    return (
+      <div className="sec" style={{marginTop:14}}>
+        {wp.length===0
+          ? <div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة</p></div>
+          : <div className="prod-grid">{wp.map(p=><PC key={p.id} p={p}/>)}</div>}
+      </div>
+    )
+  }
+
+  /* ── DETAIL MODAL ── */
+  const Detail = () => {
+    const p = detailP; if (!p) return null
+    const rel = cache.products.filter(r=>(r.categoryId===p.categoryId||r.brandId===p.brandId)&&r.id!==p.id&&!r.disabled).slice(0,6)
+    return (
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+        <div className="msheet">
+          <div className="mhandle"></div>
+          {p.image ? <img src={p.image} style={{width:'100%',height:260,objectFit:'cover'}} alt={p.name}/> :
+            <div style={{width:'100%',height:200,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56}}>🛍️</div>}
+          <div className="mhead">
+            <h3 style={{flex:1,fontSize:16}}>{p.name}</h3>
+            <button className="mclose" onClick={()=>setModal(null)}>×</button>
+          </div>
+          <div className="mbody">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <span style={{fontSize:24,fontWeight:900,color:'#FF6B35'}}>{p.price} {CUR}</span>
+              <button onClick={()=>toggleWish(p.id)}
+                style={{width:40,height:40,borderRadius:'50%',background:wishlist.includes(p.id)?'#FFF0EB':'#F7F3EF',border:'none',cursor:'pointer',fontSize:20}}>
+                <i className="fas fa-heart" style={{color:wishlist.includes(p.id)?'#FF6B35':'#CBD5E1'}}></i>
+              </button>
+            </div>
+            {p.cartonPrice && <p style={{color:'#7A6A5A',fontSize:13,marginBottom:8}}>الكرتون ({p.units||12} حبة): <strong>{p.cartonPrice} {CUR}</strong></p>}
+            <p style={{fontSize:13,color:'#7A6A5A',marginBottom:8}}>
+              المخزون: <strong style={{color:(p.stock||0)<10?'#ef4444':'#10b981'}}>{p.stock||0}</strong>
+            </p>
+            {(p.stock||0)<10 && <p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:12}}>⚠️ متبقي {p.stock||0} قطعة فقط!</p>}
+            <button className="abtn" onClick={()=>{addToCart(p);setModal(null)}}>
+              <i className="fas fa-cart-plus"></i> أضف للسلة
+            </button>
+            {rel.length>0 && (
+              <div style={{marginTop:16}}>
+                <div style={{fontWeight:800,fontSize:15,marginBottom:10}}>قد يعجبك أيضاً</div>
+                <div className="hscroll">
+                  {rel.map(r=>(
+                    <div key={r.id} onClick={()=>setDetailP(r)} style={{minWidth:95,cursor:'pointer',textAlign:'center',flexShrink:0}}>
+                      {r.image ? <img src={r.image} style={{width:80,height:80,borderRadius:12,objectFit:'cover'}}/> :
+                        <div style={{width:80,height:80,borderRadius:12,background:'#F7F3EF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>🛍️</div>}
+                      <div style={{fontSize:11,fontWeight:700,marginTop:4}}>{r.name}</div>
+                      <div style={{fontSize:12,color:'#FF6B35',fontWeight:800}}>{r.price} {CUR}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
   }
 
-  // ==================== JSX ====================
-  return (
-    <div dir="rtl">
-      {/* شريط العميل أو الزائر */}
-      {customer ? (
-        <div className="customer-bar">
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <i className="fas fa-store text-xl"></i>
-            <strong style={{ fontSize:18 }}>{settings.store_name}</strong>
-          </div>
-          <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-            <span style={{ background:'white', color:'#dc2626', padding:'4px 14px', borderRadius:20, fontSize:14 }}>مرحباً، {customer.name}</span>
-            <button onClick={doLogout} style={{ padding:'4px 14px', borderRadius:20, background:'rgba(255,255,255,0.2)', color:'white', border:'1px solid rgba(255,255,255,0.5)', cursor:'pointer', fontSize:13 }}>خروج</button>
-          </div>
-        </div>
-      ) : (
-        <div className="store-header">
-          <div className="flex-between" style={{ flexWrap:'wrap', gap:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <i className="fas fa-store" style={{ fontSize:22 }}></i>
-              <strong style={{ fontSize:20 }}>{settings.store_name}</strong>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-              <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="🔍 بحث..." style={{ padding:'8px 16px', borderRadius:30, border:'none', color:'#1f2937', width:220 }} />
-              <div style={{ position:'relative', cursor:'pointer' }} onClick={()=>setModal('cart')}>
-                <i className="fas fa-shopping-cart" style={{ fontSize:20 }}></i>
-                {cartCount>0 && <span style={{ position:'absolute', top:-8, right:-8, background:'#fbbf24', color:'#dc2626', borderRadius:'50%', width:18, height:18, fontSize:10, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700 }}>{cartCount}</span>}
-              </div>
-              <div style={{ position:'relative', cursor:'pointer' }} onClick={()=>setModal('wishlist')}>
-                <i className="fas fa-heart" style={{ fontSize:20 }}></i>
-                {wishlist.length>0 && <span style={{ position:'absolute', top:-8, right:-8, background:'#ef4444', color:'white', borderRadius:'50%', width:18, height:18, fontSize:10, display:'flex', alignItems:'center', justifyContent:'center' }}>{wishlist.length}</span>}
-              </div>
-              <i className="fas fa-truck" style={{ fontSize:20, cursor:'pointer' }} onClick={()=>setModal('tracking')}></i>
-              <i className="fas fa-user" style={{ fontSize:20, cursor:'pointer' }} onClick={()=>setModal('login')}></i>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div style={{ padding:'0 16px 32px' }}>
-
-        {/* فلتر */}
-        <div className="filter-section">
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
-            <div><label style={{ fontSize:12 }}>الحد الأدنى</label><input type="number" value={filterMin} onChange={e=>setFilterMin(e.target.value)} placeholder="0" /></div>
-            <div><label style={{ fontSize:12 }}>الحد الأقصى</label><input type="number" value={filterMax} onChange={e=>setFilterMax(e.target.value)} placeholder="10000" /></div>
-            <div>
-              <label style={{ fontSize:12 }}>العلامة</label>
-              <select value={filterBrand} onChange={e=>{setFilterBrand(e.target.value);setPage(1)}}>
-                <option value="all">الكل</option>
-                {cache.brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize:12 }}>الترتيب</label>
-              <select value={filterSort} onChange={e=>{setFilterSort(e.target.value);setPage(1)}}>
-                <option value="newest">الأحدث</option>
-                <option value="price_asc">السعر ↑</option>
-                <option value="price_desc">السعر ↓</option>
-                <option value="popular">الأكثر مبيعاً</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* الماركات */}
-        {cache.brands.length > 0 && (
-          <div className="brands-section">
-            <div className="section-title"><h3>⭐ أفضل الماركات</h3></div>
-            <div style={{ display:'flex', gap:16, overflowX:'auto', paddingBottom:8 }}>
-              <div className="brand-item" onClick={()=>{setBrandFilter('all');setPage(1)}}>
-                <div className="brand-icon" style={{ background:brandFilter==='all'?'#dc2626':undefined, color:brandFilter==='all'?'white':undefined }}><i className="fas fa-th-large"></i></div>
-                <div style={{ fontSize:12, fontWeight:700 }}>الكل</div>
-              </div>
-              {cache.brands.map(b=>(
-                <div key={b.id} className="brand-item" onClick={()=>{setBrandFilter(b.id);setPage(1)}}>
-                  <div className="brand-icon" style={{ background:brandFilter==b.id?'#dc2626':undefined, color:brandFilter==b.id?'white':undefined }}>
-                    {b.image?<img src={b.image} style={{width:'100%',height:'100%',borderRadius:'50%',objectFit:'cover'}}/>:<i className="fas fa-building"></i>}
+  /* ── CART MODAL ── */
+  const Cart = () => (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+      <div className="msheet">
+        <div className="mhandle"></div>
+        <div className="mhead"><h3>🛒 السلة</h3><button className="mclose" onClick={()=>setModal(null)}>×</button></div>
+        <div className="mbody">
+          {cart.length===0
+            ? <div className="empty"><i className="fas fa-shopping-cart"></i><p>السلة فارغة</p></div>
+            : <>
+              {cart.map(i=>(
+                <div key={i.id} className="ci">
+                  {i.image ? <img src={i.image} className="ci-img" alt=""/> : <div className="ci-img">🛍️</div>}
+                  <div style={{flex:1}}>
+                    <div className="ci-name">{i.name}</div>
+                    <div className="ci-price">{(i.price*i.qty).toFixed(0)} {CUR}</div>
+                    <div className="qty-row">
+                      <button className="qty-b" onClick={()=>changeQty(i.id,-1)}>−</button>
+                      <span className="qty-n">{i.qty}</span>
+                      <button className="qty-b" onClick={()=>changeQty(i.id,1)}>+</button>
+                    </div>
                   </div>
-                  <div style={{ fontSize:12, fontWeight:700 }}>{b.name}</div>
+                  <button className="del-b" onClick={()=>removeFromCart(i.id)}>🗑️</button>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* سلايدرات */}
-        <Slider id="promo"  items={promoProducts} title="⚡ عروض خاصة" link={()=>{setFilterSort('newest');setFilterBrand('all');setBrandFilter('all')}} />
-        <Slider id="new"    items={newProducts}   title="🎁 منتجات جديدة" />
-        <Slider id="best"   items={bestSelling}   title="🔥 الأكثر مبيعاً" />
-
-        {/* جميع المنتجات */}
-        <div>
-          <div className="flex-between" style={{ marginBottom:16 }}>
-            <h3 style={{ fontSize:20, fontWeight:700 }}>📦 جميع المنتجات</h3>
-            {compareList.length>0 && (
-              <button onClick={()=>setModal('compare')} style={{ padding:'8px 18px', borderRadius:30, background:'#3b82f6', color:'white', border:'none', cursor:'pointer', fontSize:13 }}>
-                🔄 مقارنة ({compareList.length})
+              <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 14px',margin:'14px 0'}}>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:13,fontWeight:700}}>
+                  <span>{cartTotal>=FREESHIP?'🎉 توصيل مجاني!': `أضف ${(FREESHIP-cartTotal).toFixed(0)} ${CUR} للتوصيل المجاني`}</span>
+                  <span style={{color:'#FF6B35'}}>{Math.min(100,(cartTotal/FREESHIP*100)).toFixed(0)}%</span>
+                </div>
+                <div style={{background:'#E8DDD5',borderRadius:30,height:6,marginTop:8,overflow:'hidden'}}>
+                  <div style={{height:'100%',background:'linear-gradient(90deg,#FF6B35,#7C3AED)',borderRadius:30,width:`${Math.min(100,cartTotal/FREESHIP*100)}%`,transition:'width .5s'}}></div>
+                </div>
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',fontWeight:900,fontSize:18,marginBottom:16}}>
+                <span>الإجمالي</span>
+                <span style={{color:'#FF6B35'}}>{cartTotal.toFixed(0)} {CUR}</span>
+              </div>
+              <button className="abtn" onClick={()=>{setCoF({name:customer?.name||'',phone:customer?.phone||'',address:customer?.address||''});setModal('checkout')}}>
+                <i className="fas fa-credit-card"></i> إتمام الشراء
               </button>
-            )}
+            </>}
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── CHECKOUT ── */
+  const Checkout = () => (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal('cart')}>
+      <div className="msheet">
+        <div className="mhandle"></div>
+        <div className="mhead"><h3>📋 تأكيد الطلب</h3><button className="mclose" onClick={()=>setModal('cart')}>×</button></div>
+        <div className="mbody">
+          <label className="fi-label">الاسم الكامل *</label>
+          <input className="fi" value={coF.name} onChange={e=>setCoF(f=>({...f,name:e.target.value}))} placeholder="أدخل اسمك الكامل"/>
+          <label className="fi-label">رقم الهاتف *</label>
+          <input className="fi" value={coF.phone} onChange={e=>setCoF(f=>({...f,phone:e.target.value}))} placeholder="0555 XXX XXX" inputMode="numeric"/>
+          <label className="fi-label">العنوان</label>
+          <textarea className="fi" rows="2" value={coF.address} onChange={e=>setCoF(f=>({...f,address:e.target.value}))} placeholder="الولاية / البلدية / الشارع" style={{resize:'none'}}></textarea>
+          <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontWeight:700}}>إجمالي الطلب</span>
+            <span style={{fontWeight:900,color:'#FF6B35',fontSize:18}}>{cartTotal.toFixed(0)} {CUR}</span>
           </div>
-          {paginated.length===0 ? <p style={{ textAlign:'center', color:'#64748b', padding:40 }}>لا توجد منتجات</p> :
-            <div className="grid-cards">{paginated.map(p=><ProductCard key={p.id} p={p} />)}</div>}
-          {totalPages>1 && (
-            <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:24, flexWrap:'wrap' }}>
-              <button onClick={()=>setPage(p=>Math.max(1,p-1))} style={{ padding:'6px 14px', borderRadius:20, background: page===1?'#e2e8f0':'#dc2626', color:page===1?'inherit':'white', border:'none', cursor:'pointer' }}>السابق</button>
-              {Array.from({length:Math.min(totalPages,7)},(_,i)=>i+1).map(n=>(
-                <button key={n} onClick={()=>setPage(n)} style={{ padding:'6px 12px', borderRadius:20, background:page===n?'#dc2626':'#e2e8f0', color:page===n?'white':'inherit', border:'none', cursor:'pointer', fontWeight:page===n?700:400 }}>{n}</button>
-              ))}
-              <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} style={{ padding:'6px 14px', borderRadius:20, background:page===totalPages?'#e2e8f0':'#dc2626', color:page===totalPages?'inherit':'white', border:'none', cursor:'pointer' }}>التالي</button>
-            </div>
+          <button className="abtn" onClick={submitOrder}><i className="fas fa-check-circle"></i> تأكيد الطلب</button>
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── THANK YOU ── */
+  const Thankyou = () => (
+    <div className="moverlay">
+      <div className="msheet center">
+        <div className="mbody" style={{textAlign:'center',padding:'32px 24px'}}>
+          <div style={{fontSize:64,marginBottom:16}}>🎉</div>
+          <h2 style={{fontSize:22,fontWeight:900,marginBottom:8}}>شكراً لطلبك!</h2>
+          <p style={{color:'#7A6A5A',marginBottom:6}}>تم استلام طلبك بنجاح</p>
+          <p style={{color:'#FF6B35',fontWeight:800,fontSize:18,marginBottom:24}}>رقم الطلب: {thankId}</p>
+          <button className="abtn" onClick={()=>{setModal(null);setTab('home')}}>
+            <i className="fas fa-home"></i> العودة للمتجر
+          </button>
+          {WA && (
+            <button className="abtn purple" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
+              <i className="fab fa-whatsapp"></i> تواصل معنا
+            </button>
           )}
         </div>
+      </div>
+    </div>
+  )
 
-        <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:'32px 0 8px', borderTop:'1px solid #e2e8f0', marginTop:32 }}>
-          © 2025 {settings.store_name} — جميع الحقوق محفوظة
+  /* ── LOGIN ── */
+  const Login = () => (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+      <div className="msheet center">
+        <div className="mhead"><h3>🔐 تسجيل الدخول</h3><button className="mclose" onClick={()=>setModal(null)}>×</button></div>
+        <div className="mbody">
+          <label className="fi-label">البريد أو الهاتف</label>
+          <input className="fi" value={loginF.email} onChange={e=>setLoginF(f=>({...f,email:e.target.value}))}/>
+          <label className="fi-label">كلمة المرور</label>
+          <input className="fi" type="password" value={loginF.pass} onChange={e=>setLoginF(f=>({...f,pass:e.target.value}))}/>
+          <button className="abtn" onClick={doLogin}><i className="fas fa-sign-in-alt"></i> دخول</button>
+          <button className="abtn purple" onClick={()=>setModal('register')}><i className="fas fa-user-plus"></i> حساب جديد</button>
+          <div style={{textAlign:'center',marginTop:12}}>
+            <button onClick={()=>setModal(null)} style={{background:'none',border:'none',color:'#7A6A5A',cursor:'pointer',fontSize:14,fontFamily:'inherit'}}>متابعة كزائر</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── REGISTER ── */
+  const Register = () => (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal('login')}>
+      <div className="msheet center">
+        <div className="mhead"><h3>📝 حساب جديد</h3><button className="mclose" onClick={()=>setModal('login')}>×</button></div>
+        <div className="mbody">
+          {[['name','الاسم الكامل'],['email','البريد'],['phone','الهاتف'],['address','العنوان']].map(([k,l])=>(
+            <div key={k}><label className="fi-label">{l}</label>
+              <input className="fi" value={regF[k]} onChange={e=>setRegF(f=>({...f,[k]:e.target.value}))}/></div>
+          ))}
+          <label className="fi-label">كلمة المرور</label>
+          <input className="fi" type="password" value={regF.pass} onChange={e=>setRegF(f=>({...f,pass:e.target.value}))}/>
+          <label className="fi-label">تأكيد كلمة المرور</label>
+          <input className="fi" type="password" value={regF.pass2} onChange={e=>setRegF(f=>({...f,pass2:e.target.value}))}/>
+          <button className="abtn" onClick={doRegister}><i className="fas fa-user-check"></i> تسجيل</button>
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── TRACKING ── */
+  const Tracking = () => {
+    const steps = ['pending','processing','shipped','delivered']
+    const labels = {pending:'تم استلام الطلب',processing:'قيد التجهيز',shipped:'في الطريق إليك',delivered:'تم التسليم'}
+    const curIdx = trackRes ? steps.indexOf(trackRes.status) : -1
+    return (
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+        <div className="msheet center">
+          <div className="mhead"><h3>🔍 تتبع الطلب</h3><button className="mclose" onClick={()=>setModal(null)}>×</button></div>
+          <div className="mbody">
+            <label className="fi-label">رقم الطلب</label>
+            <input className="fi" value={trackNum} onChange={e=>setTrackNum(e.target.value)} placeholder="أدخل رقم طلبك" inputMode="numeric"/>
+            <button className="abtn" onClick={trackOrder}><i className="fas fa-search"></i> تتبع الطلب</button>
+            {trackRes===false && <p style={{textAlign:'center',color:'#ef4444',marginTop:12}}>رقم الطلب غير صحيح</p>}
+            {trackRes && trackRes.id && (
+              <div style={{marginTop:16}}>
+                <div style={{background:'#FFF0EB',borderRadius:14,padding:14,marginBottom:16}}>
+                  <div style={{fontWeight:800}}>طلب رقم {trackRes.id}</div>
+                  <div style={{color:'#7A6A5A',fontSize:13,marginTop:4}}>العميل: {trackRes.customer_name}</div>
+                  <div style={{color:'#FF6B35',fontWeight:900,fontSize:18,marginTop:4}}>{Number(trackRes.total).toFixed(0)} {CUR}</div>
+                </div>
+                {steps.map((s,i)=>(
+                  <div key={s} className="trstep">
+                    <div className={`trdot ${i<=curIdx?'done':'wait'}`}>{i<=curIdx?'✓':i+1}</div>
+                    <div style={{paddingTop:8}}>
+                      <div style={{fontWeight:700,fontSize:14,color:i<=curIdx?'#FF6B35':'#7A6A5A'}}>{labels[s]}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── COMPARE ── */
+  const Compare = () => {
+    const cp = cache.products.filter(p=>compareList.includes(p.id))
+    return (
+      <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+        <div className="msheet">
+          <div className="mhandle"></div>
+          <div className="mhead"><h3>🔄 مقارنة المنتجات ({cp.length})</h3><button className="mclose" onClick={()=>setModal(null)}>×</button></div>
+          <div className="mbody">
+            {cp.length===0
+              ? <div className="empty"><i className="fas fa-balance-scale"></i><p>لم تختر منتجات للمقارنة</p></div>
+              : <div style={{display:'flex',gap:12,overflowX:'auto',paddingBottom:8}}>
+                {cp.map(p=>(
+                  <div key={p.id} style={{minWidth:140,background:'#F7F3EF',borderRadius:16,padding:12,textAlign:'center',flexShrink:0}}>
+                    {p.image ? <img src={p.image} style={{width:90,height:90,borderRadius:12,objectFit:'cover',marginBottom:8}}/> :
+                      <div style={{width:90,height:90,borderRadius:12,background:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,margin:'0 auto 8px'}}>🛍️</div>}
+                    <div style={{fontWeight:700,fontSize:13}}>{p.name}</div>
+                    <div style={{color:'#FF6B35',fontWeight:900,fontSize:15,margin:'4px 0'}}>{p.price} {CUR}</div>
+                    <div style={{fontSize:12,color:'#7A6A5A',marginBottom:8}}>مخزون: {p.stock||0}</div>
+                    <button onClick={()=>{addToCart(p);setModal(null)}} style={{width:'100%',padding:'7px',borderRadius:20,background:'#FF6B35',color:'white',border:'none',cursor:'pointer',fontSize:12,fontFamily:'inherit',fontWeight:700,marginBottom:5}}>أضف للسلة</button>
+                    <button onClick={()=>setCompareList(prev=>prev.filter(x=>x!==p.id))} style={{width:'100%',padding:'6px',borderRadius:20,background:'#FFF0EB',color:'#FF6B35',border:'none',cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>إزالة</button>
+                  </div>
+                ))}
+              </div>}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── CONTACT ── */
+  const Contact = () => (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+      <div className="msheet center">
+        <div className="mhead"><h3>📞 اتصل بنا</h3><button className="mclose" onClick={()=>setModal(null)}>×</button></div>
+        <div className="mbody">
+          <div style={{textAlign:'center',marginBottom:20}}>
+            <div style={{width:70,height:70,borderRadius:'50%',background:'linear-gradient(135deg,#FF6B35,#7C3AED)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px',fontSize:30}}>🛍️</div>
+            <div style={{fontWeight:900,fontSize:18}}>{SNAME}</div>
+            <div style={{color:'#7A6A5A',fontSize:13,marginTop:4}}>متجرك الموثوق</div>
+          </div>
+          {WA && (
+            <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer"
+              style={{display:'flex',alignItems:'center',gap:12,background:'#f0fdf4',borderRadius:14,padding:16,marginBottom:12,textDecoration:'none'}}>
+              <i className="fab fa-whatsapp" style={{fontSize:28,color:'#25D366'}}></i>
+              <div><div style={{fontWeight:800,color:'#1A0A00'}}>واتساب</div><div style={{fontSize:13,color:'#7A6A5A'}}>{WA}</div></div>
+            </a>
+          )}
+          <button className="abtn" onClick={()=>setModal('tracking')}><i className="fas fa-truck"></i> تتبع طلبي</button>
+          {!customer && <button className="abtn purple" onClick={()=>setModal('login')}><i className="fas fa-user"></i> تسجيل الدخول</button>}
+          {customer && <div style={{background:'#FFF0EB',borderRadius:14,padding:14,textAlign:'center'}}>
+            <div style={{fontWeight:800}}>مرحباً، {customer.name}</div>
+            <button onClick={()=>{setCustomer(null);localStorage.removeItem('nq_customer');setModal(null);toast('تم تسجيل الخروج')}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',marginTop:6,fontSize:13,fontFamily:'inherit',fontWeight:700}}>تسجيل الخروج</button>
+          </div>}
+        </div>
+      </div>
+    </div>
+  )
+
+  /* ── MODAL SWITCHER ── */
+  const ActiveModal = () => {
+    switch(modal) {
+      case 'detail':   return <Detail/>
+      case 'cart':     return <Cart/>
+      case 'checkout': return <Checkout/>
+      case 'thankyou': return <Thankyou/>
+      case 'login':    return <Login/>
+      case 'register': return <Register/>
+      case 'tracking': return <Tracking/>
+      case 'compare':  return <Compare/>
+      case 'contact':  return <Contact/>
+      default: return null
+    }
+  }
+
+  /* ── TAB SWITCHER ── */
+  const ActiveTab = () => {
+    switch(tab) {
+      case 'search': return <Search/>
+      case 'cats':   return <Cats/>
+      case 'wish':   return <Wish/>
+      default:       return <Home/>
+    }
+  }
+
+  /* ── RENDER ── */
+  return (
+    <div dir="rtl">
+      {/* HEADER */}
+      <div className="sh">
+        <div className="sh-top">
+          <button className="sh-icon" onClick={()=>setModal('contact')}><i className="fas fa-bars"></i></button>
+          <span className="sh-logo">{SNAME}</span>
+          <button className="sh-contact" onClick={()=>setModal('contact')}>إتصل بنا</button>
+        </div>
+        <div className="sh-search">
+          <i className="fas fa-search"></i>
+          <input value={search} onChange={e=>{setSearch(e.target.value);setTab('search');setPage(1)}} placeholder="بحث عن المنتجات..."/>
+          {search && <button onClick={()=>{setSearch('');setTab('home')}} style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:16}}>×</button>}
         </div>
       </div>
 
-      {/* زر للأعلى */}
-      {showScrollTop && <button id="scrollTopBtn" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}>↑</button>}
+      {/* DARK MODE TOGGLE */}
+      <button onClick={()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}}
+        style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <i className="fas fa-moon"></i>
+      </button>
 
-      {/* ==================== النوافذ ==================== */}
+      {/* NOTIFICATION BELL (header left side) */}
+      <button onClick={()=>toast('لا توجد إشعارات جديدة')}
+        style={{position:'fixed',top:78,left:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <i className="fas fa-bell"></i>
+      </button>
 
-      {/* تسجيل الدخول */}
-      <Modal show={modal==='login'} onClose={()=>setModal(null)} title="🔐 تسجيل الدخول">
-        <div style={{ marginBottom:12 }}><label>البريد / الهاتف</label><input value={loginForm.email} onChange={e=>setLoginForm(f=>({...f,email:e.target.value}))} /></div>
-        <div style={{ marginBottom:16 }}><label>كلمة المرور</label><input type="password" value={loginForm.password} onChange={e=>setLoginForm(f=>({...f,password:e.target.value}))} /></div>
-        <div style={{ display:'flex', gap:10 }}>
-          <button className="btn-primary" style={{ flex:1 }} onClick={doLogin}>دخول</button>
-          <button onClick={()=>setModal('register')} style={{ flex:1, padding:'10px', borderRadius:30, background:'#3b82f6', color:'white', border:'none', cursor:'pointer' }}>تسجيل جديد</button>
-        </div>
-        <div style={{ textAlign:'center', marginTop:12 }}>
-          <button onClick={()=>setModal(null)} style={{ background:'none', border:'none', color:'#dc2626', cursor:'pointer', fontSize:14 }}>متابعة كزائر</button>
-        </div>
-      </Modal>
+      {/* PAGE */}
+      <div className="page"><ActiveTab/></div>
 
-      {/* إنشاء حساب */}
-      <Modal show={modal==='register'} onClose={()=>setModal('login')} title="📝 إنشاء حساب">
-        {['name','email','phone','address'].map(k=>(
-          <div key={k} style={{ marginBottom:10 }}>
-            <label>{{name:'الاسم',email:'البريد',phone:'الهاتف',address:'العنوان'}[k]}</label>
-            <input value={registerForm[k]} onChange={e=>setRegisterForm(f=>({...f,[k]:e.target.value}))} />
-          </div>
+      {/* BOTTOM NAV */}
+      <div className="bnav">
+        {[
+          {id:'wish',   icon:'fas fa-heart',           label:'المفضلة',  badge:wishlist.length},
+          {id:'cart-m', icon:'fas fa-shopping-basket', label:'السلة',    badge:cartCount, action:()=>setModal('cart')},
+          {id:'search', icon:'fas fa-search',          label:'بحث'},
+          {id:'cats',   icon:'fas fa-th',              label:'الفئات'},
+          {id:'home',   icon:'fas fa-home',            label:'الرئيسية'},
+        ].map(b=>(
+          <button key={b.id} className={`bnav-b${tab===b.id||b.id==='cart-m'?'':''} ${(tab===b.id&&!b.action)?'on':''}`}
+            onClick={()=>{if(b.action)b.action();else setTab(b.id)}}>
+            <i className={b.icon}></i>
+            {b.badge>0 && <span className="nbadge">{b.badge}</span>}
+            <span>{b.label}</span>
+          </button>
         ))}
-        <div style={{ marginBottom:10 }}><label>كلمة المرور</label><input type="password" value={registerForm.password} onChange={e=>setRegisterForm(f=>({...f,password:e.target.value}))} /></div>
-        <div style={{ marginBottom:16 }}><label>تأكيد كلمة المرور</label><input type="password" value={registerForm.confirm} onChange={e=>setRegisterForm(f=>({...f,confirm:e.target.value}))} /></div>
-        <button className="btn-primary" style={{ width:'100%' }} onClick={doRegister}>تسجيل</button>
-      </Modal>
+      </div>
 
-      {/* السلة */}
-      <Modal show={modal==='cart'} onClose={()=>setModal(null)} title="🛒 سلة المشتريات">
-        {cart.length===0 ? <p style={{ textAlign:'center', color:'#64748b', padding:24 }}>السلة فارغة</p> :
-          cart.map(i=>(
-            <div key={i.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #f1f5f9' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                {i.image && <img src={i.image} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />}
-                <div><div style={{ fontWeight:600 }}>{i.name}</div><div style={{ fontSize:12, color:'#64748b' }}>x{i.quantity}</div></div>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ fontWeight:700, color:'#dc2626' }}>{(i.price*i.quantity).toFixed(0)} دج</span>
-                <button onClick={()=>removeFromCart(i.id)} style={{ background:'#fee2e2', border:'none', borderRadius:'50%', width:28, height:28, cursor:'pointer', color:'#dc2626' }}>×</button>
-              </div>
-            </div>
-          ))
-        }
-        {cart.length>0 && (
-          <>
-            <div style={{ margin:'16px 0', fontWeight:700, fontSize:18 }}>الإجمالي: {cartTotal.toFixed(0)} دج</div>
-            <div style={{ fontSize:13, color:'#10b981', marginBottom:12 }}>
-              {cartTotal >= freeShipping ? '🎉 توصيل مجاني!' : `✨ أضف ${(freeShipping-cartTotal).toFixed(0)} دج للتوصيل المجاني`}
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button className="btn-primary" style={{ flex:1 }} onClick={()=>{ setCheckoutForm({name:customer?.name||'',phone:customer?.phone||'',address:customer?.address||''}); setModal('checkout') }}>إتمام الشراء</button>
-              <button onClick={()=>setModal(null)} style={{ padding:'10px 20px', borderRadius:30, background:'#e2e8f0', border:'none', cursor:'pointer' }}>إغلاق</button>
-            </div>
-          </>
-        )}
-      </Modal>
+      {/* WHATSAPP */}
+      {WA && (
+        <button className="wa" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
+          <i className="fab fa-whatsapp" style={{fontSize:26,color:'white'}}></i>
+        </button>
+      )}
 
-      {/* إتمام الطلب */}
-      <Modal show={modal==='checkout'} onClose={()=>setModal('cart')} title="📋 إتمام الطلب">
-        <div style={{ marginBottom:10 }}><label>الاسم *</label><input value={checkoutForm.name} onChange={e=>setCheckoutForm(f=>({...f,name:e.target.value}))} /></div>
-        <div style={{ marginBottom:10 }}><label>الهاتف *</label><input value={checkoutForm.phone} onChange={e=>setCheckoutForm(f=>({...f,phone:e.target.value}))} /></div>
-        <div style={{ marginBottom:16 }}><label>العنوان</label><textarea value={checkoutForm.address} onChange={e=>setCheckoutForm(f=>({...f,address:e.target.value}))} rows="2"></textarea></div>
-        <div style={{ fontWeight:700, fontSize:18, marginBottom:16 }}>الإجمالي: {cartTotal.toFixed(0)} دج</div>
-        <div style={{ display:'flex', gap:10 }}>
-          <button className="btn-primary" style={{ flex:1 }} onClick={submitOrder}>✅ تأكيد الطلب</button>
-          <button onClick={()=>setModal('cart')} style={{ padding:'10px 20px', borderRadius:30, background:'#e2e8f0', border:'none', cursor:'pointer' }}>رجوع</button>
-        </div>
-      </Modal>
+      {/* SCROLL TOP */}
+      {showScr && (
+        <button className="scrtop" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}>
+          <i className="fas fa-chevron-up"></i>
+        </button>
+      )}
 
-      {/* شكراً */}
-      <Modal show={modal==='thankyou'} onClose={()=>setModal(null)} title="">
-        <div style={{ textAlign:'center', padding:'16px 0' }}>
-          <i className="fas fa-check-circle" style={{ fontSize:56, color:'#10b981', marginBottom:16 }}></i>
-          <h2 style={{ fontSize:22, fontWeight:700 }}>شكراً لتسوقك!</h2>
-          <p style={{ color:'#64748b', margin:'12px 0' }}>رقم طلبك: <strong style={{ color:'#dc2626' }}>{thankYouOrderId}</strong></p>
-          <button className="btn-primary" onClick={()=>setModal(null)}>موافق</button>
-        </div>
-      </Modal>
+      {/* COMPARE BUBBLE */}
+      {compareList.length>0 && (
+        <button onClick={()=>setModal('compare')}
+          style={{position:'fixed',bottom:90,right:showScr?70:14,background:'#7C3AED',color:'white',border:'none',borderRadius:30,padding:'8px 14px',cursor:'pointer',zIndex:279,fontSize:12,fontWeight:700,boxShadow:'0 4px 16px rgba(124,58,237,.4)',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit'}}>
+          <i className="fas fa-balance-scale"></i> مقارنة ({compareList.length})
+        </button>
+      )}
 
-      {/* تفاصيل المنتج */}
-      <Modal show={modal==='detail'&&!!detailProduct} onClose={()=>setModal(null)} title={detailProduct?.name||''} width={700}>
-        {detailProduct && (
-          <div style={{ display:'flex', flexWrap:'wrap', gap:16 }}>
-            <div style={{ flex:'1 1 260px' }}>
-              {detailProduct.image ? <img src={detailProduct.image} style={{ width:'100%', borderRadius:16, objectFit:'cover', maxHeight:280 }} /> :
-                <div style={{ width:'100%', height:220, background:'#f1f5f9', borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center', fontSize:48 }}>📷</div>}
-            </div>
-            <div style={{ flex:'1 1 220px' }}>
-              <div style={{ fontSize:26, fontWeight:700, color:'#dc2626' }}>{detailProduct.price} {settings.store_currency}</div>
-              {detailProduct.cartonPrice && <div style={{ fontSize:13, color:'#64748b', marginTop:4 }}>الكرتون ({detailProduct.units||12} حبة): {detailProduct.cartonPrice} دج</div>}
-              <div style={{ marginTop:8 }}>المخزون: <strong>{detailProduct.stock||0}</strong></div>
-              {(detailProduct.stock||0)<10 && <div style={{ color:'#ef4444', fontWeight:700, marginTop:4 }}>⚠️ متبقي {detailProduct.stock||0} فقط!</div>}
-              <div style={{ display:'flex', gap:10, marginTop:16, flexWrap:'wrap' }}>
-                <button className="btn-primary" style={{ flex:1 }} onClick={()=>{ addToCart(detailProduct.id); setModal(null) }}>
-                  <i className="fas fa-cart-plus"></i> أضف للسلة
-                </button>
-                <button onClick={()=>{ toggleWishlist(detailProduct.id); setModal(null) }} style={{ padding:'10px 16px', borderRadius:30, background:'#fce7f3', color:'#be185d', border:'none', cursor:'pointer' }}>
-                  <i className="fas fa-heart"></i>
-                </button>
-              </div>
-              {/* منتجات مشابهة */}
-              {cache.products.filter(r=>(r.categoryId===detailProduct.categoryId||r.brandId===detailProduct.brandId)&&r.id!==detailProduct.id&&!r.disabled).slice(0,3).length > 0 && (
-                <div style={{ marginTop:16 }}>
-                  <div style={{ fontWeight:700, marginBottom:8, fontSize:14 }}>🔄 قد يعجبك أيضاً</div>
-                  <div style={{ display:'flex', gap:8, overflowX:'auto' }}>
-                    {cache.products.filter(r=>(r.categoryId===detailProduct.categoryId||r.brandId===detailProduct.brandId)&&r.id!==detailProduct.id&&!r.disabled).slice(0,3).map(r=>(
-                      <div key={r.id} style={{ minWidth:100, cursor:'pointer', textAlign:'center' }} onClick={()=>setDetailProduct(r)}>
-                        {r.image?<img src={r.image} style={{width:80,height:60,objectFit:'cover',borderRadius:8}}/>:<span style={{fontSize:28}}>📷</span>}
-                        <div style={{fontSize:11,fontWeight:600,marginTop:4}}>{r.name}</div>
-                        <div style={{fontSize:12,color:'#dc2626'}}>{r.price} دج</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* المفضلة */}
-      <Modal show={modal==='wishlist'} onClose={()=>setModal(null)} title="❤️ المفضلة" width={700}>
-        {wishlist.length===0 ? <p style={{ textAlign:'center', color:'#64748b', padding:24 }}>لا توجد منتجات في المفضلة</p> :
-          <div className="grid-cards" style={{ gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))' }}>
-            {cache.products.filter(p=>wishlist.includes(p.id)).map(p=>(
-              <div key={p.id} className="product-card">
-                {p.image?<img src={p.image} />:<div style={{height:120,background:'#f1f5f9',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:8}}>📷</div>}
-                <div style={{fontWeight:600}}>{p.name}</div>
-                <div className="product-price">{p.price} دج</div>
-                <button className="btn-primary" style={{width:'100%',marginTop:8,padding:'8px'}} onClick={()=>{ addToCart(p.id); setModal(null) }}>أضف للسلة</button>
-                <button onClick={()=>toggleWishlist(p.id)} style={{width:'100%',marginTop:6,padding:'6px',borderRadius:30,background:'#fee2e2',color:'#dc2626',border:'none',cursor:'pointer',fontSize:13}}>إزالة</button>
-              </div>
-            ))}
-          </div>
-        }
-      </Modal>
-
-      {/* تتبع الطلب */}
-      <Modal show={modal==='tracking'} onClose={()=>setModal(null)} title="🔍 تتبع الطلب">
-        <div style={{ marginBottom:12 }}><label>رقم الطلب</label><input value={trackingNum} onChange={e=>setTrackingNum(e.target.value)} placeholder="أدخل رقم الطلب" /></div>
-        <button className="btn-primary" style={{ width:'100%', marginBottom:16 }} onClick={trackOrder}>تتبع</button>
-        {trackingResult===null && trackingNum && <p style={{ color:'#ef4444', textAlign:'center' }}>رقم الطلب غير صحيح</p>}
-        {trackingResult && (
-          <div style={{ background:'#f0fdf4', borderRadius:12, padding:16 }}>
-            <div style={{ fontWeight:700 }}>✅ الطلب رقم {trackingResult.id}</div>
-            <div style={{ marginTop:8, fontSize:14 }}>
-              <div>العميل: {trackingResult.customer_name}</div>
-              <div>التاريخ: {trackingResult.date}</div>
-              <div>الإجمالي: {Number(trackingResult.total).toFixed(0)} دج</div>
-              <div>الحالة: <strong>{{pending:'قيد الانتظار',processing:'تجهيز',shipped:'شُحن',delivered:'تسليم'}[trackingResult.status]||trackingResult.status}</strong></div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* مقارنة المنتجات */}
-      <Modal show={modal==='compare'} onClose={()=>setModal(null)} title="🔄 مقارنة المنتجات" width={800}>
-        {compareList.length===0 ? <p style={{ textAlign:'center', color:'#64748b', padding:24 }}>اختر منتجات للمقارنة</p> :
-          <div style={{ display:'flex', gap:16, overflowX:'auto', paddingBottom:8 }}>
-            {cache.products.filter(p=>compareList.includes(p.id)).map(p=>(
-              <div key={p.id} className="glass-card" style={{ minWidth:190, textAlign:'center', flex:'0 0 190px' }}>
-                {p.image?<img src={p.image} style={{width:'100%',height:120,objectFit:'cover',borderRadius:12,marginBottom:8}}/>:<div style={{height:100,background:'#f1f5f9',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,marginBottom:8}}>📷</div>}
-                <div style={{fontWeight:700}}>{p.name}</div>
-                <div className="product-price">{p.price} دج</div>
-                <div style={{fontSize:13,color:'#64748b'}}>المخزون: {p.stock||0}</div>
-                <button onClick={()=>{ addToCart(p.id); setModal(null) }} className="btn-primary" style={{width:'100%',marginTop:10,padding:'6px',fontSize:13}}>أضف للسلة</button>
-                <button onClick={()=>setCompareList(prev=>prev.filter(x=>x!==p.id))} style={{width:'100%',marginTop:6,padding:'5px',borderRadius:30,background:'#fee2e2',color:'#dc2626',border:'none',cursor:'pointer',fontSize:12}}>إزالة</button>
-              </div>
-            ))}
-          </div>
-        }
-      </Modal>
-
+      {/* MODALS */}
+      <ActiveModal/>
     </div>
   )
 }
