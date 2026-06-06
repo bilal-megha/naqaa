@@ -1534,6 +1534,185 @@ function ReturnPolicy({ showToast }) {
 }
 
 /* ══════════════════════════════════════════
+   🎨 إدارة واجهة المتجر
+══════════════════════════════════════════ */
+function StoreManager({ showToast }) {
+  const [banners, setBanners] = useState([])
+  const [form, setForm]       = useState({ title:'', subtitle:'', image:'' })
+  const [saving, setSaving]   = useState(false)
+  const [promoText, setPromoText] = useState('')
+  const [announceBar, setAnnounceBar] = useState('')
+
+  useEffect(() => {
+    supabase.from('settings').select('*')
+      .in('key', ['store_banners','promo_text','announce_bar'])
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}; data.forEach(r => (map[r.key] = r.value))
+        try { setBanners(JSON.parse(map['store_banners'] || '[]')) } catch {}
+        setPromoText(map['promo_text'] || '')
+        setAnnounceBar(map['announce_bar'] || '')
+      })
+  }, [])
+
+  const handleImg = e => {
+    const r = new FileReader()
+    r.onload = ev => setForm(f => ({ ...f, image: ev.target.result }))
+    r.readAsDataURL(e.target.files[0])
+  }
+
+  const addBanner = async () => {
+    if (!form.title && !form.image) { showToast('أضف صورة أو عنوان على الأقل', 'error'); return }
+    const updated = [...banners, { id: Date.now(), ...form }]
+    setSaving(true)
+    await supabase.from('settings').upsert({ key: 'store_banners', value: JSON.stringify(updated) })
+    setBanners(updated)
+    setForm({ title: '', subtitle: '', image: '' })
+    showToast('✅ تمت إضافة البانر')
+    setSaving(false)
+  }
+
+  const delBanner = async id => {
+    const updated = banners.filter(b => b.id !== id)
+    await supabase.from('settings').upsert({ key: 'store_banners', value: JSON.stringify(updated) })
+    setBanners(updated)
+    showToast('تم الحذف')
+  }
+
+  const saveSettings = async () => {
+    setSaving(true)
+    await Promise.all([
+      supabase.from('settings').upsert({ key: 'promo_text',    value: promoText }),
+      supabase.from('settings').upsert({ key: 'announce_bar',  value: announceBar }),
+    ])
+    showToast('✅ تم الحفظ')
+    setSaving(false)
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontSize:22, fontWeight:900, marginBottom:20 }}>🎨 إدارة واجهة المتجر</h1>
+
+      {/* شريط الإعلانات */}
+      <div style={S.card}>
+        <h3 style={{ fontWeight:800, marginBottom:14, color:'#dc2626' }}>📢 شريط الإعلانات (أعلى الصفحة)</h3>
+        <label style={S.label}>نص الإعلان</label>
+        <input style={S.input} value={announceBar}
+          onChange={e => setAnnounceBar(e.target.value)}
+          placeholder="مثال: 🎉 توصيل مجاني على الطلبات فوق 500 دج" />
+        <div style={{ marginTop:10 }}>
+          <label style={S.label}>نص ترويجي (يظهر تحت البانر)</label>
+          <input style={S.input} value={promoText}
+            onChange={e => setPromoText(e.target.value)}
+            placeholder="مثال: اشتري 3 خذ 4 مجاناً — عروض محدودة!" />
+        </div>
+        <button style={{ ...S.btn, marginTop:14 }} onClick={saveSettings} disabled={saving}>
+          {saving ? '⏳...' : '💾 حفظ النصوص'}
+        </button>
+      </div>
+
+      {/* البانرات */}
+      <div style={S.card}>
+        <h3 style={{ fontWeight:800, marginBottom:14, color:'#dc2626' }}>🖼️ البانرات المتحركة</h3>
+        <div style={S.grid2}>
+          <div>
+            <label style={S.label}>عنوان البانر</label>
+            <input style={S.input} value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="مثال: عروض الصيف" />
+          </div>
+          <div>
+            <label style={S.label}>نص فرعي</label>
+            <input style={S.input} value={form.subtitle}
+              onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))}
+              placeholder="مثال: خصومات تصل 50%" />
+          </div>
+          <div>
+            <label style={S.label}>صورة البانر</label>
+            <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
+          </div>
+          {form.image && (
+            <div style={{ display:'flex', alignItems:'center' }}>
+              <img src={form.image} style={{ width:'100%', height:80, objectFit:'cover', borderRadius:12 }} />
+            </div>
+          )}
+        </div>
+        <button style={{ ...S.btn, marginTop:14 }} onClick={addBanner} disabled={saving}>
+          {saving ? '⏳...' : '➕ إضافة بانر'}
+        </button>
+      </div>
+
+      {/* قائمة البانرات */}
+      {banners.length > 0 && (
+        <div style={S.card}>
+          <h3 style={{ fontWeight:800, marginBottom:14 }}>قائمة البانرات ({banners.length})</h3>
+          <div style={{ display:'grid', gap:12 }}>
+            {banners.map((b, i) => (
+              <div key={b.id} style={{ display:'flex', gap:14, alignItems:'center',
+                background:'#f8fafc', borderRadius:14, padding:14,
+                border:'1px solid #e2e8f0' }}>
+                <span style={{ fontWeight:700, color:'#94a3b8', fontSize:18 }}>#{i+1}</span>
+                {b.image && (
+                  <img src={b.image} style={{ width:80, height:50, objectFit:'cover',
+                    borderRadius:10, flexShrink:0 }} />
+                )}
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:15 }}>{b.title || '(بدون عنوان)'}</div>
+                  {b.subtitle && <div style={{ fontSize:13, color:'#64748b' }}>{b.subtitle}</div>}
+                </div>
+                <button style={{ ...S.btnSm, background:'#fee2e2', color:'#dc2626' }}
+                  onClick={() => delBanner(b.id)}>🗑️</button>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:14 }}>
+            <p style={{ fontSize:13, color:'#64748b' }}>
+              💡 ترتيب البانرات: الأول في القائمة يظهر أولاً في المتجر
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* معاينة */}
+      <div style={S.card}>
+        <h3 style={{ fontWeight:800, marginBottom:14 }}>👁️ معاينة الصفحة الرئيسية</h3>
+        <div style={{ background:'#f8fafc', borderRadius:16, overflow:'hidden', border:'1px solid #e2e8f0' }}>
+          {/* شريط الإعلان */}
+          {announceBar && (
+            <div style={{ background:'#FF6B35', color:'white', padding:'8px', textAlign:'center', fontSize:12, fontWeight:700 }}>
+              {announceBar}
+            </div>
+          )}
+          {/* header mock */}
+          <div style={{ background:'linear-gradient(135deg,#FF6B35,#E8430E)', padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ color:'white', fontWeight:900 }}>≡</span>
+            <span style={{ color:'white', fontWeight:900, fontSize:16 }}>نقاء</span>
+            <span style={{ background:'white', color:'#FF6B35', padding:'4px 10px', borderRadius:20, fontSize:11, fontWeight:800 }}>إتصل بنا</span>
+          </div>
+          {/* banner preview */}
+          {banners.length > 0 ? (
+            <img src={banners[0].image || ''} style={{ width:'100%', height:120, objectFit:'cover', display:'block' }}
+              onError={e => { e.target.style.display='none' }} />
+          ) : (
+            <div style={{ background:'linear-gradient(135deg,#FF6B35,#7C3AED)', height:120, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ color:'white', fontWeight:900, fontSize:18 }}>🛍️ {banners[0]?.title || 'نقاء'}</span>
+            </div>
+          )}
+          {promoText && (
+            <div style={{ background:'#FFF0EB', padding:10, textAlign:'center', fontSize:12, fontWeight:700, color:'#FF6B35' }}>
+              {promoText}
+            </div>
+          )}
+        </div>
+        <p style={{ fontSize:12, color:'#64748b', marginTop:10 }}>
+          ✅ التغييرات تظهر في المتجر فور الحفظ
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
    🏠 المكوّن الرئيسي
 ══════════════════════════════════════════ */
 export default function Admin() {
@@ -1571,6 +1750,7 @@ export default function Admin() {
     { id:'about',         icon:'🏢', label:'من نحن' },
     { id:'contact',       icon:'📞', label:'اتصل بنا' },
     { id:'returnPolicy',  icon:'🔄', label:'سياسة الاسترجاع' },
+    { id:'storeManager',  icon:'🎨', label:'إدارة واجهة المتجر' },
   ]
 
   const renderSection = () => {
@@ -1594,6 +1774,7 @@ export default function Admin() {
       case 'about':         return <AboutUs showToast={showToast} />
       case 'contact':       return <ContactUs showToast={showToast} />
       case 'returnPolicy':  return <ReturnPolicy showToast={showToast} />
+      case 'storeManager':  return <StoreManager showToast={showToast} />
       default:              return <Dashboard />
     }
   }
