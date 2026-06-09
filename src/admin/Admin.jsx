@@ -139,21 +139,56 @@ function LoginScreen({ onLogin }) {
   const [userData,setUserData]= useState(null)
   const [err,     setErr]     = useState('')
   const [loading, setLoading] = useState(false)
-  const [digits,  setDigits]  = useState(['','','',''])
-  const refs = [useState(null)[0],useState(null)[0],useState(null)[0],useState(null)[0]]
+  const [blocked, setBlocked] = useState(false)
+  const [blockLeft, setBlockLeft] = useState(0)
+
+  // تحقق من الحظر عند التحميل
+  useEffect(() => {
+    const check = () => {
+      const blockUntil = parseInt(localStorage.getItem('nq_block_until')||'0')
+      const now = Date.now()
+      if (blockUntil > now) {
+        setBlocked(true)
+        setBlockLeft(Math.ceil((blockUntil-now)/1000))
+      } else { setBlocked(false); setBlockLeft(0) }
+    }
+    check()
+    const t = setInterval(() => {
+      const blockUntil = parseInt(localStorage.getItem('nq_block_until')||'0')
+      if (blockUntil > Date.now()) {
+        setBlockLeft(Math.ceil((blockUntil-Date.now())/1000))
+      } else { setBlocked(false); setBlockLeft(0) }
+    }, 1000)
+    return () => clearInterval(t)
+  }, [])
 
   const step1 = async () => {
+    if (blocked) { setErr(`محظور — انتظر ${blockLeft} ثانية`); return }
     setErr(''); setLoading(true)
+    const attempts = parseInt(localStorage.getItem('nq_attempts')||'0')
     if (email.trim()===ADMIN_EMAIL && hashPwd(pass)===ADMIN_PASS_HASH) {
+      localStorage.removeItem('nq_attempts')
       setUserData({ name:'المدير', email:ADMIN_EMAIL, role:'admin' })
       setStep(2); setLoading(false); return
     }
     const { data } = await supabase.from('employees').select('*')
       .eq('username', email.trim()).maybeSingle()
     if (data && data.password===hashPwd(pass)) {
+      localStorage.removeItem('nq_attempts')
       setUserData({ name:data.name, email:data.email, role:data.role })
       setStep(2)
-    } else { setErr('البريد أو كلمة المرور غير صحيحة') }
+    } else {
+      const newAttempts = attempts + 1
+      localStorage.setItem('nq_attempts', newAttempts)
+      if (newAttempts >= 3) {
+        const until = Date.now() + 5*60*1000
+        localStorage.setItem('nq_block_until', until)
+        localStorage.removeItem('nq_attempts')
+        setBlocked(true); setErr('⛔ 3 محاولات فاشلة — محظور 5 دقائق')
+      } else {
+        setErr(`❌ بيانات غير صحيحة — تبقى ${3-newAttempts} محاولة`)
+      }
+    }
     setLoading(false)
   }
 
@@ -911,149 +946,344 @@ function Coupons() {
 ══════════════════════════════════════════ */
 function Purchases() {
   const [showToast,ToastUI]=useToast()
-  const [suppliers,setSuppliers]=useState([]); const [products,setProducts]=useState([])
-  const [purchases,setPurchases]=useState([]); const [items,setItems]=useState([])
-  const [suppId,setSuppId]=useState(''); const [date,setDate]=useState(new Date().toISOString().split('T')[0])
-  const [showModal,setShowModal]=useState(false)
-  const [modal,setModal]=useState({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0,sellPrice:0})
+  const [suppliers,setSuppliers]=useState([])
+  const [products,setProducts]=useState([])
+  const [purchases,setPurchases]=useState([])
+  const [items,setItems]=useState([])
+  const [suppId,setSuppId]=useState('')
+  const [date,setDate]=useState(new Date().toISOString().split('T')[0])
   const [saving,setSaving]=useState(false)
+  // نموذج إضافة صف جديد مباشرة في الجدول
+  const [row,setRow]=useState({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0})
+  // إضافة منتج جديد للقاعدة من داخل الفاتورة
+  const [showNewProd,setShowNewProd]=useState(false)
+  const [newProd,setNewProd]=useState({name:'',price:'',units:12})
+  const [prodSearch,setProdSearch]=useState('')
 
-  useEffect(()=>{
-    const load=async()=>{
-      const [{data:s},{data:p},{data:pur}]=await Promise.all([
-        supabase.from('suppliers').select('id,name').order('name'),
-        supabase.from('products').select('id,name,units,cost_price,price').order('name'),
-        supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20),
-      ])
-      setSuppliers(s||[]); setProducts(p||[]); setPurchases(pur||[])
-    }
-    load()
-  },[])
+  const loadData=async()=>{
+    const [{data:s},{data:p},{data:pur}]=await Promise.all([
+      supabase.from('suppliers').select('id,name').order('name'),
+      supabase.from('products').select('id,name,units,cost_price,price').order('name'),
+      supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20),
+    ])
+    setSuppliers(s||[]); setProducts(p||[]); setPurchases(pur||[])
+  }
+  useEffect(()=>{ loadData() },[])
 
   const total=items.reduce((s,i)=>s+i.totalPurchase,0)
 
-  const addItem=()=>{
-    const prod=products.find(p=>p.id==modal.productId)
-    if(!prod||!modal.cartons||!modal.purchasePrice){showToast('اختر منتجاً وأدخل البيانات','error');return}
-    const totalUnits=modal.cartons*modal.unitsPerCarton
-    setItems(prev=>[...prev,{id:Date.now(),productId:prod.id,productName:prod.name,cartons:modal.cartons,unitsPerCarton:modal.unitsPerCarton,totalUnits,purchasePrice:modal.purchasePrice,sellPrice:modal.sellPrice,totalPurchase:totalUnits*modal.purchasePrice}])
-    setShowModal(false); setModal({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0,sellPrice:0})
+  // سعر الكرتون تلقائياً
+  const cartonPrice = (price, units) => (price*units).toFixed(0)
+
+  const addRow=()=>{
+    const prod=products.find(p=>p.id==row.productId)
+    if(!prod||!row.purchasePrice){showToast('اختر منتجاً وأدخل سعر الشراء','error');return}
+    const totalUnits=row.cartons*row.unitsPerCarton
+    const cartonTotal=row.purchasePrice*row.unitsPerCarton
+    const totalPurchase=totalUnits*row.purchasePrice
+    setItems(prev=>[...prev,{
+      id:Date.now(), productId:prod.id, productName:prod.name,
+      cartons:row.cartons, unitsPerCarton:row.unitsPerCarton,
+      totalUnits, purchasePrice:row.purchasePrice,
+      cartonPriceCalc:cartonTotal, totalPurchase
+    }])
+    setRow({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0})
+    setProdSearch('')
+  }
+
+  const removeRow=(id)=>setItems(prev=>prev.filter(i=>i.id!==id))
+
+  // إضافة منتج جديد للقاعدة
+  const saveNewProduct=async()=>{
+    if(!newProd.name||!newProd.price){showToast('الاسم والسعر مطلوبان','error');return}
+    const id=Date.now()
+    const {error}=await supabase.from('products').insert({
+      id, name:newProd.name.trim(), price:parseFloat(newProd.price),
+      cost_price:0, units:parseInt(newProd.units)||12,
+      stock:0, disabled:false, created_at:new Date().toISOString()
+    })
+    if(error){showToast('خطأ: '+error.message,'error');return}
+    showToast('✅ تم إضافة المنتج')
+    await loadData()
+    setRow(r=>({...r,productId:id,unitsPerCarton:parseInt(newProd.units)||12}))
+    setShowNewProd(false)
+    setNewProd({name:'',price:'',units:12})
   }
 
   const save=async()=>{
     if(!suppId){showToast('اختر المورد','error');return}
-    if(items.length===0){showToast('أضف منتجاً','error');return}
+    if(items.length===0){showToast('أضف منتجاً على الأقل','error');return}
     setSaving(true)
     const supplier=suppliers.find(s=>s.id==suppId)
     const purchaseId=Date.now()
-    await supabase.from('purchases').insert({id:purchaseId,supplier_id:parseInt(suppId),supplier_name:supplier?.name,date,items:JSON.stringify(items),total})
+    await supabase.from('purchases').insert({
+      id:purchaseId, supplier_id:parseInt(suppId),
+      supplier_name:supplier?.name, date, items:JSON.stringify(items), total
+    })
     for(const item of items){
       const {data:p}=await supabase.from('products').select('stock').eq('id',item.productId).maybeSingle()
       if(p) await supabase.from('products').update({stock:(p.stock||0)+item.totalUnits}).eq('id',item.productId)
     }
-    // طباعة تلقائية A4
     printA4(`
-      <div class="header"><div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
-      <div style="text-align:left"><p>رقم: ${purchaseId}</p><p>التاريخ: ${date}</p><p>المورد: ${supplier?.name||'—'}</p></div></div>
-      <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>الحبات</th><th>السعر/حبة</th><th>الإجمالي</th></tr></thead>
-      <tbody>${items.map(i=>`<tr><td>${i.productName}</td><td>${i.cartons}</td><td>${i.totalUnits}</td><td>${i.purchasePrice} ${CUR}</td><td>${i.totalPurchase.toFixed(0)} ${CUR}</td></tr>`).join('')}
-      <tr class="total-row"><td colspan="4">الإجمالي</td><td>${total.toFixed(0)} ${CUR}</td></tr></tbody></table>
-      <div class="footer">نقاء — ${new Date().toLocaleDateString('ar-DZ')}</div>
+      <div class="header">
+        <div><h1>🛍️ نقاء</h1><p style="color:#64748b">فاتورة شراء</p></div>
+        <div style="text-align:left">
+          <p><strong>رقم:</strong> ${purchaseId}</p>
+          <p><strong>التاريخ:</strong> ${date}</p>
+          <p><strong>المورد:</strong> ${supplier?.name||'—'}</p>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>المنتج</th><th>الكرتونات</th><th>قطع/كرتون</th>
+          <th>إجمالي القطع</th><th>سعر القطعة</th><th>سعر الكرتون</th><th>الإجمالي</th>
+        </tr></thead>
+        <tbody>
+          ${items.map(i=>`<tr>
+            <td><strong>${i.productName}</strong></td>
+            <td style="text-align:center">${i.cartons}</td>
+            <td style="text-align:center">${i.unitsPerCarton}</td>
+            <td style="text-align:center">${i.totalUnits}</td>
+            <td>${i.purchasePrice} ${CUR}</td>
+            <td>${i.cartonPriceCalc} ${CUR}</td>
+            <td><strong>${i.totalPurchase.toFixed(0)} ${CUR}</strong></td>
+          </tr>`).join('')}
+          <tr class="total-row">
+            <td colspan="6">الإجمالي الكلي</td>
+            <td><strong>${total.toFixed(0)} ${CUR}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="footer">نقاء — شكراً لتعاملكم معنا</div>
     `)
-    showToast('✅ تم حفظ الفاتورة');setSuppId('');setItems([])
+    showToast('✅ تم حفظ الفاتورة وطباعتها')
+    setSuppId(''); setItems([])
     const {data:pur}=await supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20)
     setPurchases(pur||[]); setSaving(false)
   }
 
+  const filteredProds=products.filter(p=>p.name?.toLowerCase().includes(prodSearch.toLowerCase()))
+
   return (
     <div>{ToastUI}
       <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>🛒 المشتريات</h1>
+
+      {/* رأس الفاتورة */}
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>➕ فاتورة شراء جديدة</h3>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
-          <div><label style={S.label}>المورد *</label>
+        <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626',fontSize:16}}>📄 فاتورة شراء جديدة</h3>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:16}}>
+          <div>
+            <label style={S.label}>المورد *</label>
             <select style={S.input} value={suppId} onChange={e=>setSuppId(e.target.value)}>
               <option value="">-- اختر مورداً --</option>
               {suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-            </select></div>
-          <div><label style={S.label}>التاريخ</label>
-            <input style={S.input} type="date" value={date} onChange={e=>setDate(e.target.value)} /></div>
-        </div>
-        {items.map((item,i)=>(
-          <div key={item.id} style={{background:'#f8fafc',borderRadius:12,padding:12,marginBottom:8,borderRight:'3px solid #dc2626',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{fontSize:14}}><strong>{item.productName}</strong> — {item.cartons} كرتون × {item.unitsPerCarton} = {item.totalUnits} قطعة <span style={{color:'#dc2626',fontWeight:700}}>{item.totalPurchase.toFixed(0)} {CUR}</span></div>
-            <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>setItems(p=>p.filter((_,j)=>j!==i))}>حذف</button>
+            </select>
           </div>
-        ))}
-        <div style={{display:'flex',gap:10,marginTop:12,alignItems:'center',flexWrap:'wrap'}}>
-          <button onClick={()=>setShowModal(true)} style={{...S.btnGray,background:'#10b981',color:'white'}}>➕ إضافة منتج</button>
-          <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ + طباعة'}</button>
-          {items.length>0&&<span style={{fontWeight:900,color:'#dc2626',fontSize:18}}>💰 {total.toFixed(0)} {CUR}</span>}
+          <div>
+            <label style={S.label}>التاريخ</label>
+            <input style={S.input} type="date" value={date} onChange={e=>setDate(e.target.value)} />
+          </div>
+          <div style={{display:'flex',alignItems:'flex-end'}}>
+            {items.length>0&&<div style={{background:'linear-gradient(135deg,#dc2626,#7c3aed)',borderRadius:12,padding:'10px 16px',color:'white',fontWeight:900,fontSize:15,width:'100%',textAlign:'center'}}>
+              💰 {total.toFixed(0)} {CUR}
+            </div>}
+          </div>
+        </div>
+
+        {/* جدول الفاتورة */}
+        <div style={{border:'1px solid #e2e8f0',borderRadius:14,overflow:'hidden',marginBottom:14}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{background:'linear-gradient(135deg,#1e293b,#334155)'}}>
+                {['المنتج','الكرتونات','قطع/كرتون','إجمالي القطع','سعر القطعة','سعر الكرتون (تلقائي)','الإجمالي',''].map(h=>(
+                  <th key={h} style={{padding:'11px 10px',textAlign:'right',color:'white',fontSize:12,fontWeight:700}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item,idx)=>(
+                <tr key={item.id} style={{background:idx%2===0?'white':'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+                  <td style={{...S.td,fontWeight:700,color:'#1e293b'}}>{item.productName}</td>
+                  <td style={{...S.td,textAlign:'center',fontWeight:700,color:'#3b82f6'}}>{item.cartons}</td>
+                  <td style={{...S.td,textAlign:'center'}}>{item.unitsPerCarton}</td>
+                  <td style={{...S.td,textAlign:'center',fontWeight:700}}>{item.totalUnits}</td>
+                  <td style={S.td}>{item.purchasePrice} {CUR}</td>
+                  <td style={{...S.td,color:'#10b981',fontWeight:700}}>
+                    <span style={{background:'#d1fae5',padding:'2px 8px',borderRadius:20,fontSize:12}}>
+                      {item.cartonPriceCalc} {CUR}
+                    </span>
+                  </td>
+                  <td style={{...S.td,fontWeight:900,color:'#dc2626'}}>{item.totalPurchase.toFixed(0)} {CUR}</td>
+                  <td style={S.td}>
+                    <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>removeRow(item.id)}>🗑️</button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* صف الإدخال الجديد */}
+              <tr style={{background:'#fffbeb',borderTop:'2px dashed #f59e0b'}}>
+                <td style={{padding:'8px 10px'}}>
+                  <div style={{position:'relative'}}>
+                    <input style={{...S.input,marginBottom:0,fontSize:12}} placeholder="🔍 ابحث عن منتج..."
+                      value={prodSearch} onChange={e=>{setProdSearch(e.target.value)}} />
+                    {prodSearch&&filteredProds.length>0&&(
+                      <div style={{position:'absolute',top:'100%',right:0,left:0,background:'white',
+                        border:'1px solid #e2e8f0',borderRadius:10,zIndex:100,maxHeight:160,overflowY:'auto',
+                        boxShadow:'0 8px 24px rgba(0,0,0,.15)'}}>
+                        {filteredProds.slice(0,8).map(p=>(
+                          <div key={p.id} onClick={()=>{
+                            setRow(r=>({...r,productId:p.id,unitsPerCarton:p.units||12,purchasePrice:p.cost_price||0}))
+                            setProdSearch(p.name)
+                          }} style={{padding:'8px 12px',cursor:'pointer',fontSize:13,borderBottom:'1px solid #f1f5f9'}}
+                            onMouseEnter={e=>e.target.style.background='#fef9c3'}
+                            onMouseLeave={e=>e.target.style.background='white'}>
+                            {p.name}
+                          </div>
+                        ))}
+                        <div onClick={()=>{setShowNewProd(true);setProdSearch('')}}
+                          style={{padding:'8px 12px',cursor:'pointer',fontSize:13,color:'#dc2626',fontWeight:700,background:'#fef2f2'}}>
+                          ➕ إضافة "{prodSearch}" كمنتج جديد
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td style={{padding:'8px 6px'}}>
+                  <NumInput value={row.cartons} onChange={e=>setRow(r=>({...r,cartons:parseInt(e.target.value)||1}))} style={{textAlign:'center',marginBottom:0}} />
+                </td>
+                <td style={{padding:'8px 6px'}}>
+                  <NumInput value={row.unitsPerCarton} onChange={e=>setRow(r=>({...r,unitsPerCarton:parseInt(e.target.value)||12}))} style={{textAlign:'center',marginBottom:0}} />
+                </td>
+                <td style={{padding:'8px 6px',textAlign:'center',fontWeight:700,color:'#475569',fontSize:13}}>
+                  {row.cartons*row.unitsPerCarton} قطعة
+                </td>
+                <td style={{padding:'8px 6px'}}>
+                  <NumInput value={row.purchasePrice} onChange={e=>setRow(r=>({...r,purchasePrice:parseFloat(e.target.value)||0}))} style={{textAlign:'center',marginBottom:0}} />
+                </td>
+                <td style={{padding:'8px 6px',textAlign:'center'}}>
+                  <span style={{background:'#d1fae5',padding:'4px 10px',borderRadius:20,fontSize:12,fontWeight:700,color:'#059669'}}>
+                    {cartonPrice(row.purchasePrice,row.unitsPerCarton)} {CUR}
+                  </span>
+                </td>
+                <td style={{padding:'8px 6px',textAlign:'center',fontWeight:700,color:'#dc2626',fontSize:13}}>
+                  {(row.cartons*row.unitsPerCarton*row.purchasePrice).toFixed(0)} {CUR}
+                </td>
+                <td style={{padding:'8px 6px'}}>
+                  <button style={{...S.btn,padding:'6px 14px',fontSize:12}} onClick={addRow}>➕ إضافة</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* الإجمالي والأزرار */}
+        {items.length>0&&(
+          <div style={{background:'#fef2f2',borderRadius:12,padding:'12px 16px',marginBottom:14,display:'flex',justifyContent:'space-between',alignItems:'center',border:'1px solid #fecaca'}}>
+            <div>
+              <div style={{fontSize:13,color:'#64748b'}}>إجمالي الفاتورة</div>
+              <div style={{fontWeight:900,fontSize:22,color:'#dc2626'}}>{total.toFixed(0)} {CUR}</div>
+            </div>
+            <div style={{fontSize:13,color:'#64748b',textAlign:'center'}}>
+              <div style={{fontWeight:700,fontSize:15}}>{items.reduce((s,i)=>s+i.cartons,0)} كرتون</div>
+              <div>{items.reduce((s,i)=>s+i.totalUnits,0)} قطعة</div>
+            </div>
+          </div>
+        )}
+
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          <button style={S.btn} onClick={save} disabled={saving}>
+            {saving?'⏳ جاري الحفظ...':'💾 حفظ الفاتورة + طباعة A4'}
+          </button>
+          <button style={{...S.btnGray,background:'#7c3aed',color:'white'}} onClick={()=>{
+            if(items.length===0){showToast('أضف منتجاً أولاً','error');return}
+            const supplier=suppliers.find(s=>s.id==suppId)
+            printThermal(`
+              <div class="center bold big">نقاء</div>
+              <div class="center">فاتورة شراء</div><div class="line"></div>
+              <div class="row"><span>المورد:</span><span>${supplier?.name||'—'}</span></div>
+              <div class="row"><span>التاريخ:</span><span>${date}</span></div>
+              <div class="line"></div>
+              ${items.map(i=>`<div class="row"><span>${i.productName} (${i.cartons}ك)</span><span>${i.totalPurchase.toFixed(0)}</span></div>`).join('')}
+              <div class="line"></div>
+              <div class="row total"><span>الإجمالي:</span><span>${total.toFixed(0)} ${CUR}</span></div>
+            `)
+          }}>🖨️ طباعة حرارية</button>
+          {items.length>0&&<button style={{...S.btnGray}} onClick={()=>setItems([])}>🗑️ مسح الكل</button>}
         </div>
       </div>
-      {showModal&&(
+
+      {/* نافذة إضافة منتج جديد */}
+      {showNewProd&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:8000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'white',borderRadius:20,padding:28,width:480,maxWidth:'95vw',direction:'rtl'}}>
-            <h3 style={{fontWeight:800,marginBottom:16}}>➕ إضافة منتج للفاتورة</h3>
-            <div style={{display:'grid',gap:12}}>
-              <div><label style={S.label}>المنتج</label>
-                <select style={S.input} value={modal.productId} onChange={e=>{
-                  const p=products.find(x=>x.id==e.target.value)
-                  setModal(m=>({...m,productId:e.target.value,unitsPerCarton:p?.units||12,purchasePrice:p?.cost_price||0,sellPrice:p?.price||0}))
-                }}>
-                  <option value="">-- اختر منتجاً --</option>
-                  {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select></div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <div><label style={S.label}>الكرتونات</label><NumInput value={modal.cartons} onChange={e=>setModal(m=>({...m,cartons:parseInt(e.target.value)||1}))}/></div>
-                <div><label style={S.label}>قطع/كرتون</label><NumInput value={modal.unitsPerCarton} onChange={e=>setModal(m=>({...m,unitsPerCarton:parseInt(e.target.value)||12}))}/></div>
-                <div><label style={S.label}>سعر شراء القطعة</label><NumInput value={modal.purchasePrice} onChange={e=>setModal(m=>({...m,purchasePrice:parseFloat(e.target.value)||0}))}/></div>
-                <div><label style={S.label}>سعر بيع القطعة</label><NumInput value={modal.sellPrice} onChange={e=>setModal(m=>({...m,sellPrice:parseFloat(e.target.value)||0}))}/></div>
-              </div>
-              <div style={{background:'#f8fafc',borderRadius:10,padding:12,fontSize:14}}>
-                📦 <strong>{modal.cartons*modal.unitsPerCarton}</strong> قطعة — 💰 <strong>{(modal.cartons*modal.unitsPerCarton*modal.purchasePrice).toFixed(0)} {CUR}</strong>
-              </div>
+          <div style={{background:'white',borderRadius:20,padding:28,width:420,maxWidth:'95vw',direction:'rtl'}}>
+            <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>📦 إضافة منتج جديد للقاعدة</h3>
+            <div style={{marginBottom:12}}>
+              <label style={S.label}>اسم المنتج *</label>
+              <input style={S.input} value={newProd.name} onChange={e=>setNewProd(p=>({...p,name:e.target.value}))} />
             </div>
-            <div style={{display:'flex',gap:10,marginTop:16}}>
-              <button style={S.btn} onClick={addItem}>إضافة للفاتورة</button>
-              <button style={S.btnGray} onClick={()=>setShowModal(false)}>إلغاء</button>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+              <div><label style={S.label}>سعر البيع *</label><NumInput value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} /></div>
+              <div><label style={S.label}>قطع في الكرتون</label><NumInput value={newProd.units} onChange={e=>setNewProd(p=>({...p,units:e.target.value}))} /></div>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <button style={S.btn} onClick={saveNewProduct}>💾 إضافة للمنتجات</button>
+              <button style={S.btnGray} onClick={()=>setShowNewProd(false)}>إلغاء</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* سجل الفواتير */}
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14}}>سجل الفواتير</h3>
+        <h3 style={{fontWeight:800,marginBottom:14}}>📁 سجل الفواتير ({purchases.length})</h3>
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={S.th}>#</th><th style={S.th}>المورد</th><th style={S.th}>التاريخ</th><th style={S.th}>الإجمالي</th><th style={S.th}>طباعة</th></tr></thead>
-            <tbody>{purchases.map(p=>(
-              <tr key={p.id} style={{borderBottom:'1px solid #f8fafc'}}>
-                <td style={{...S.td,fontSize:11,color:'#94a3b8'}}>{p.id}</td>
-                <td style={{...S.td,fontWeight:700}}>{p.supplier_name}</td>
-                <td style={S.td}>{p.date}</td>
-                <td style={{...S.td,color:'#dc2626',fontWeight:700}}>{Number(p.total).toFixed(0)} {CUR}</td>
-                <td style={S.td}>
-                  <div style={{display:'flex',gap:4}}>
-                    <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>{
-                      const its=typeof p.items==='string'?JSON.parse(p.items):p.items
-                      printA4(`<div class="header"><div><h1>🛍️ نقاء</h1></div><div><p>رقم: ${p.id}</p><p>${p.date}</p><p>المورد: ${p.supplier_name}</p></div></div>
-                      <table><thead><tr><th>المنتج</th><th>الحبات</th><th>السعر</th><th>الإجمالي</th></tr></thead>
-                      <tbody>${its.map(i=>`<tr><td>${i.productName}</td><td>${i.totalUnits}</td><td>${i.purchasePrice}</td><td>${i.totalPurchase.toFixed(0)}</td></tr>`).join('')}
-                      <tr class="total-row"><td colspan="3">الإجمالي</td><td>${Number(p.total).toFixed(0)} ${CUR}</td></tr></tbody></table>`)
-                    }}>A4</button>
-                    <button style={{...S.btnSm,background:'#f0fdf4',color:'#059669'}} onClick={()=>{
-                      const its=typeof p.items==='string'?JSON.parse(p.items):p.items
-                      printThermal(`<div class="center bold big">نقاء</div><div class="line"></div>
-                      <div class="row"><span>المورد:</span><span>${p.supplier_name}</span></div>
-                      <div class="row"><span>التاريخ:</span><span>${p.date}</span></div><div class="line"></div>
-                      ${its.map(i=>`<div class="row"><span>${i.productName}</span><span>${i.totalPurchase.toFixed(0)}</span></div>`).join('')}
-                      <div class="line"></div><div class="row total"><span>الإجمالي:</span><span>${Number(p.total).toFixed(0)} ${CUR}</span></div>`)
-                    }}>🖨️</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {purchases.length===0&&<tr><td colSpan={5} style={{textAlign:'center',padding:24,color:'#94a3b8'}}>لا توجد فواتير</td></tr>}
+            <thead><tr>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>رقم</th>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>المورد</th>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>التاريخ</th>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>المنتجات</th>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>الإجمالي</th>
+              <th style={{...S.th,background:'#1e293b',color:'white'}}>طباعة</th>
+            </tr></thead>
+            <tbody>{purchases.map((p,idx)=>{
+              const its=typeof p.items==='string'?JSON.parse(p.items||'[]'):(p.items||[])
+              return (
+                <tr key={p.id} style={{background:idx%2===0?'white':'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+                  <td style={{...S.td,fontSize:11,color:'#94a3b8'}}>{p.id}</td>
+                  <td style={{...S.td,fontWeight:700}}>{p.supplier_name}</td>
+                  <td style={S.td}>{p.date}</td>
+                  <td style={{...S.td,fontSize:12,color:'#475569'}}>{its.length} منتج</td>
+                  <td style={{...S.td,color:'#dc2626',fontWeight:900,fontSize:15}}>{Number(p.total).toFixed(0)} {CUR}</td>
+                  <td style={S.td}>
+                    <div style={{display:'flex',gap:4}}>
+                      <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>{
+                        printA4(`
+                          <div class="header">
+                            <div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
+                            <div style="text-align:left"><p>رقم: ${p.id}</p><p>${p.date}</p><p>المورد: ${p.supplier_name}</p></div>
+                          </div>
+                          <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>القطع</th><th>سعر القطعة</th><th>سعر الكرتون</th><th>الإجمالي</th></tr></thead>
+                          <tbody>
+                            ${its.map(i=>`<tr><td>${i.productName}</td><td>${i.cartons}</td><td>${i.totalUnits}</td><td>${i.purchasePrice} ${CUR}</td><td>${i.cartonPriceCalc||'—'} ${CUR}</td><td>${i.totalPurchase.toFixed(0)} ${CUR}</td></tr>`).join('')}
+                            <tr class="total-row"><td colspan="5">الإجمالي</td><td>${Number(p.total).toFixed(0)} ${CUR}</td></tr>
+                          </tbody></table>
+                          <div class="footer">نقاء — شكراً لتعاملكم معنا</div>
+                        `)
+                      }}>🖨️ A4</button>
+                      <button style={{...S.btnSm,background:'#f0fdf4',color:'#059669'}} onClick={()=>{
+                        printThermal(`<div class="center bold big">نقاء</div><div class="line"></div>
+                        <div class="row"><span>المورد:</span><span>${p.supplier_name}</span></div>
+                        <div class="row"><span>التاريخ:</span><span>${p.date}</span></div><div class="line"></div>
+                        ${its.map(i=>`<div class="row"><span>${i.productName} (${i.cartons}ك)</span><span>${i.totalPurchase.toFixed(0)}</span></div>`).join('')}
+                        <div class="line"></div><div class="row total"><span>الإجمالي:</span><span>${Number(p.total).toFixed(0)} ${CUR}</span></div>`)
+                      }}>حراري</button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            {purchases.length===0&&<tr><td colSpan={6} style={{textAlign:'center',padding:30,color:'#94a3b8'}}>لا توجد فواتير</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1063,7 +1293,6 @@ function Purchases() {
 }
 
 /* ══════════════════════════════════════════
-   📦 المخزون + Excel
 ══════════════════════════════════════════ */
 function Inventory() {
   const [showToast,ToastUI]=useToast()
@@ -1563,9 +1792,203 @@ function PromotionsManager() {
 ══════════════════════════════════════════ */
 function Notifications() {
   const [showToast,ToastUI]=useToast()
-  const [items,setItems]=useState([]); const [title,setTitle]=useState(''); const [body,setBody]=useState(''); const [saving,setSaving]=useState(false)
-  const load=async()=>{ const {data}=await supabase.from('notifications').select('*').order('id',{ascending:false}); setItems(data||[]) }
-  useEffect(()=>{ load() },[])
+  const [items,    setItems]    = useState([])
+  const [customers,setCustomers]= useState([])
+  const [title,    setTitle]    = useState('')
+  const [body,     setBody]     = useState('')
+  const [saving,   setSaving]   = useState(false)
+  const [tab,      setTab]      = useState('send') // send | history
+  // استهداف
+  const [targetType, setTargetType] = useState('all') // all | m1 | m2 | m3 | city | individual
+  const [targetCity, setTargetCity] = useState('')
+  const [targetId,   setTargetId]   = useState('')
+  const [citySearch, setCitySearch] = useState('')
+
+  useEffect(()=>{
+    supabase.from('notifications').select('*').order('id',{ascending:false}).then(({data})=>setItems(data||[]))
+    supabase.from('customers').select('id,name,phone,email,tier,address').then(({data})=>setCustomers(data||[]))
+  },[])
+
+  // حساب المستقبلين
+  const getTargets = () => {
+    switch(targetType){
+      case 'all':        return customers
+      case 'm1':         return customers.filter(c=>(!c.tier||c.tier==='M1'))
+      case 'm2':         return customers.filter(c=>c.tier==='M2')
+      case 'm3':         return customers.filter(c=>c.tier==='M3')
+      case 'city':       return customers.filter(c=>c.address?.toLowerCase().includes(targetCity.toLowerCase()))
+      case 'individual': return customers.filter(c=>c.id==targetId)
+      default:           return customers
+    }
+  }
+  const targets = getTargets()
+
+  // المدن الفريدة
+  const cities = [...new Set(customers.map(c=>c.address?.split(',')[0]?.trim()).filter(Boolean))]
+  const filteredCities = cities.filter(c=>c.toLowerCase().includes(citySearch.toLowerCase()))
+
+  const send=async()=>{
+    if(!title||!body){showToast('العنوان والنص مطلوبان','error');return}
+    if(targets.length===0){showToast('لا يوجد عملاء مستهدفون','error');return}
+    setSaving(true)
+    const notifId=Date.now()
+    await supabase.from('notifications').insert({
+      id:notifId, title, body,
+      date:new Date().toLocaleString('ar-DZ'),
+      is_read:false,
+      target_type:targetType,
+      target_count:targets.length,
+    })
+    showToast(`✅ تم الإرسال لـ ${targets.length} عميل`)
+    setTitle('');setBody('')
+    const {data}=await supabase.from('notifications').select('*').order('id',{ascending:false})
+    setItems(data||[]); setSaving(false)
+  }
+
+  const tierColor=t=>({M1:'#e2e8f0',M2:'#dbeafe',M3:'#fef9c3'}[t]||'#e2e8f0')
+  const tierText =t=>({M1:'#475569',M2:'#1d4ed8',M3:'#92400e'}[t]||'#475569')
+
+  return (
+    <div>{ToastUI}
+      <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>🔔 الإشعارات</h1>
+
+      {/* تابز */}
+      <div style={{display:'flex',gap:10,marginBottom:20}}>
+        <button style={{...S.btnSm,padding:'10px 20px',fontSize:14,background:tab==='send'?'#dc2626':'#e2e8f0',color:tab==='send'?'white':'#475569'}}
+          onClick={()=>setTab('send')}>📤 إرسال إشعار</button>
+        <button style={{...S.btnSm,padding:'10px 20px',fontSize:14,background:tab==='history'?'#dc2626':'#e2e8f0',color:tab==='history'?'white':'#475569'}}
+          onClick={()=>setTab('history')}>📋 سجل الإشعارات ({items.length})</button>
+      </div>
+
+      {tab==='send'&&(
+        <>
+          <div style={S.card}>
+            <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>🎯 استهداف المستقبلين</h3>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+              {[
+                {v:'all',  l:`👥 الكل (${customers.length})`,         c:'#475569'},
+                {v:'m1',   l:`🥉 M1 (${customers.filter(c=>(!c.tier||c.tier==='M1')).length})`, c:'#475569'},
+                {v:'m2',   l:`🥈 M2 (${customers.filter(c=>c.tier==='M2').length})`,            c:'#1d4ed8'},
+                {v:'m3',   l:`🥇 M3 (${customers.filter(c=>c.tier==='M3').length})`,            c:'#92400e'},
+                {v:'city', l:'📍 بالعنوان',                           c:'#059669'},
+                {v:'individual',l:'👤 عميل محدد',                     c:'#7c3aed'},
+              ].map(({v,l,c})=>(
+                <button key={v}
+                  style={{...S.btnSm,padding:'8px 16px',
+                    background:targetType===v?'#1e293b':'#f1f5f9',
+                    color:targetType===v?'white':c,
+                    border:`1px solid ${targetType===v?'#1e293b':'#e2e8f0'}`}}
+                  onClick={()=>setTargetType(v)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {targetType==='city'&&(
+              <div style={{marginBottom:14}}>
+                <label style={S.label}>ابحث عن مدينة/ولاية</label>
+                <input style={S.input} value={citySearch} onChange={e=>setCitySearch(e.target.value)} placeholder="مثال: وهران" />
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}}>
+                  {filteredCities.slice(0,10).map(city=>(
+                    <button key={city} onClick={()=>setTargetCity(city)}
+                      style={{...S.btnSm,background:targetCity===city?'#dc2626':'#e2e8f0',color:targetCity===city?'white':'#475569'}}>
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {targetType==='individual'&&(
+              <div style={{marginBottom:14}}>
+                <label style={S.label}>اختر عميلاً</label>
+                <select style={S.input} value={targetId} onChange={e=>setTargetId(e.target.value)}>
+                  <option value="">-- اختر عميلاً --</option>
+                  {customers.map(c=><option key={c.id} value={c.id}>{c.name} — {c.phone||c.email}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* معاينة المستقبلين */}
+            <div style={{background:targets.length>0?'#d1fae5':'#fee2e2',borderRadius:12,padding:'10px 14px',marginBottom:16}}>
+              <div style={{fontWeight:700,fontSize:14,color:targets.length>0?'#059669':'#dc2626'}}>
+                {targets.length>0?`✅ سيُرسل إلى ${targets.length} عميل`:'⚠️ لا يوجد عملاء مطابقون'}
+              </div>
+              {targets.length>0&&targets.length<=5&&(
+                <div style={{fontSize:12,color:'#475569',marginTop:4,display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {targets.map(c=>(
+                    <span key={c.id} style={{background:'white',padding:'2px 8px',borderRadius:20,fontSize:11}}>
+                      {c.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* محتوى الإشعار */}
+          <div style={S.card}>
+            <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>📝 محتوى الإشعار</h3>
+            <div style={{marginBottom:12}}>
+              <label style={S.label}>العنوان</label>
+              <input style={S.input} value={title} onChange={e=>setTitle(e.target.value)}
+                placeholder="مثال: 🎉 عرض خاص لعملائنا المميزين!" />
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={S.label}>نص الإشعار</label>
+              <textarea style={{...S.input,minHeight:80,resize:'vertical'}} value={body}
+                onChange={e=>setBody(e.target.value)}
+                placeholder="مثال: احصل على خصم 20% على جميع المنتجات لمدة 24 ساعة فقط!" />
+            </div>
+
+            {/* معاينة الإشعار */}
+            {(title||body)&&(
+              <div style={{background:'#1e293b',borderRadius:14,padding:14,marginBottom:14}}>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>معاينة الإشعار</div>
+                <div style={{background:'white',borderRadius:10,padding:12}}>
+                  <div style={{fontWeight:800,fontSize:14,marginBottom:4}}>{title||'العنوان...'}</div>
+                  <div style={{fontSize:13,color:'#475569'}}>{body||'النص...'}</div>
+                </div>
+              </div>
+            )}
+
+            <button style={{...S.btn,padding:'14px'}} onClick={send} disabled={saving||targets.length===0}>
+              {saving?'⏳ جاري الإرسال...':`📢 إرسال لـ ${targets.length} عميل`}
+            </button>
+          </div>
+        </>
+      )}
+
+      {tab==='history'&&(
+        <div style={S.card}>
+          {items.length===0
+            ? <p style={{textAlign:'center',color:'#94a3b8',padding:30}}>لا توجد إشعارات</p>
+            : items.map(n=>(
+              <div key={n.id} style={{borderBottom:'1px solid #f8fafc',padding:'14px 0'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+                  <div>
+                    <strong style={{fontSize:15}}>{n.title}</strong>
+                    {n.target_count&&(
+                      <span style={{marginRight:10,background:'#dbeafe',color:'#1d4ed8',padding:'2px 8px',borderRadius:20,fontSize:11,fontWeight:700}}>
+                        {n.target_count} عميل
+                      </span>
+                    )}
+                  </div>
+                  <span style={{fontSize:11,color:'#94a3b8'}}>{n.date}</span>
+                </div>
+                <p style={{fontSize:13,color:'#475569',marginTop:6}}>{n.body}</p>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
+   📊 التقارير
+══════════════════════════════════════════ */
+
   const send=async()=>{
     if(!title||!body){showToast('العنوان والنص مطلوبان','error');return} setSaving(true)
     await supabase.from('notifications').insert({id:Date.now(),title,body,date:new Date().toLocaleString('ar-DZ'),is_read:false})
@@ -1807,75 +2230,371 @@ function Settings({ showToast }) {
    🎨 إدارة واجهة المتجر
 ══════════════════════════════════════════ */
 function StoreManager({ showToast }) {
-  const [banners,setBanners]=useState([]); const [form,setForm]=useState({title:'',subtitle:'',image:''})
-  const [promoText,setPromoText]=useState(''); const [announceBar,setAnnounceBar]=useState(''); const [saving,setSaving]=useState(false)
+  const [activeTab, setActiveTab] = useState('banners')
+  const [saving, setSaving]       = useState(false)
+  // بانرات
+  const [banners, setBanners]     = useState([])
+  const [bannerForm, setBannerForm] = useState({ title:'', subtitle:'', btnText:'', btnLink:'', image:'' })
+  // نصوص وإعلانات
+  const [announceBar, setAnnounceBar]   = useState('')
+  const [promoText,   setPromoText]     = useState('')
+  const [announceColor,setAnnounceColor]= useState('#FF6B35')
+  // ألوان
+  const [primaryColor, setPrimaryColor] = useState('#FF6B35')
+  const [secondColor,  setSecondColor]  = useState('#7C3AED')
+  // صفحة SEO
+  const [seoTitle,  setSeoTitle]  = useState('نقاء — متجر إلكتروني')
+  const [seoDesc,   setSeoDesc]   = useState('أفضل المنتجات بأفضل الأسعار')
+  const [seoKeys,   setSeoKeys]   = useState('متجر، منتجات، جزائر')
+  // منتجات مميزة
+  const [featuredIds, setFeaturedIds] = useState([])
+  const [allProducts, setAllProducts] = useState([])
+  const [prodSearch,  setProdSearch]  = useState('')
+
   useEffect(()=>{
-    supabase.from('settings').select('*').in('key',['store_banners','promo_text','announce_bar']).then(({data})=>{
-      if(!data) return; const map={}; data.forEach(r=>(map[r.key]=r.value))
-      try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
-      setPromoText(map['promo_text']||''); setAnnounceBar(map['announce_bar']||'')
+    supabase.from('settings').select('*').then(({data})=>{
+      if(!data) return
+      const m={}; data.forEach(r=>(m[r.key]=r.value))
+      try{setBanners(JSON.parse(m['store_banners']||'[]'))}catch{}
+      setAnnounceBar(m['announce_bar']||'')
+      setPromoText(m['promo_text']||'')
+      setAnnounceColor(m['announce_color']||'#FF6B35')
+      setPrimaryColor(m['primary_color']||'#FF6B35')
+      setSecondColor(m['second_color']||'#7C3AED')
+      setSeoTitle(m['seo_title']||'نقاء — متجر إلكتروني')
+      setSeoDesc(m['seo_desc']||'أفضل المنتجات بأفضل الأسعار')
+      setSeoKeys(m['seo_keys']||'متجر، منتجات، جزائر')
+      try{setFeaturedIds(JSON.parse(m['featured_products']||'[]'))}catch{}
     })
+    supabase.from('products').select('id,name,image,price').order('name').then(({data})=>setAllProducts(data||[]))
   },[])
-  const handleImg=e=>{const r=new FileReader();r.onload=ev=>setForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
-  const addBanner=async()=>{
-    if(!form.title&&!form.image){showToast('أضف صورة أو عنوان','error');return} setSaving(true)
-    const updated=[...banners,{id:Date.now(),...form}]
-    await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
-    setBanners(updated);setForm({title:'',subtitle:'',image:''});showToast('✅ تمت الإضافة');setSaving(false)
+
+  const save=async(pairs)=>{
+    setSaving(true)
+    await Promise.all(pairs.map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
+    showToast('✅ تم الحفظ'); setSaving(false)
   }
+
+  const handleBannerImg=e=>{const r=new FileReader();r.onload=ev=>setBannerForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
+
+  const addBanner=async()=>{
+    if(!bannerForm.title&&!bannerForm.image){showToast('أضف صورة أو عنوان','error');return}
+    const updated=[...banners,{id:Date.now(),...bannerForm}]
+    await save([['store_banners',JSON.stringify(updated)]])
+    setBanners(updated); setBannerForm({title:'',subtitle:'',btnText:'',btnLink:'',image:''})
+  }
+
   const delBanner=async id=>{
     const updated=banners.filter(b=>b.id!==id)
-    await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
-    setBanners(updated);showToast('تم الحذف')
+    await save([['store_banners',JSON.stringify(updated)]])
+    setBanners(updated)
   }
-  const saveTexts=async()=>{
-    setSaving(true)
-    await Promise.all([supabase.from('settings').upsert({key:'promo_text',value:promoText}),supabase.from('settings').upsert({key:'announce_bar',value:announceBar})])
-    showToast('✅ تم الحفظ');setSaving(false)
+
+  const moveBanner=(id,dir)=>{
+    const idx=banners.findIndex(b=>b.id===id); if(idx<0) return
+    const arr=[...banners]; const newIdx=idx+dir
+    if(newIdx<0||newIdx>=arr.length) return
+    ;[arr[idx],arr[newIdx]]=[arr[newIdx],arr[idx]]
+    setBanners(arr)
+    supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(arr)})
   }
+
+  const toggleFeatured=id=>setFeaturedIds(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])
+
+  const TABS=[
+    {id:'banners',  icon:'🖼️', label:'البانرات'},
+    {id:'announce', icon:'📢', label:'الإعلانات'},
+    {id:'theme',    icon:'🎨', label:'الألوان'},
+    {id:'featured', icon:'⭐', label:'منتجات مميزة'},
+    {id:'seo',      icon:'🔍', label:'SEO'},
+    {id:'sizes',    icon:'📐', label:'أحجام الصور'},
+  ]
+
   return (
     <div>
       <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>🎨 إدارة واجهة المتجر</h1>
-      <div style={{...S.card,background:'#f0f9ff',border:'1px solid #bfdbfe'}}>
-        <strong style={{color:'#1d4ed8'}}>📐 أحجام الصور:</strong>
-        <div style={{display:'flex',gap:16,marginTop:8,flexWrap:'wrap',fontSize:13}}>
-          <span>🖼️ بانر: <strong>1200×450px</strong></span>
-          <span>🏷️ ماركة: <strong>300×300px</strong></span>
-          <span>📂 فئة: <strong>400×300px</strong></span>
-          <span>📦 منتج: <strong>600×600px</strong></span>
-          <span>🎯 بانر عرض: <strong>1200×400px</strong></span>
-        </div>
+
+      {/* تابز */}
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:20,background:'white',
+        borderRadius:16,padding:8,boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setActiveTab(t.id)}
+            style={{...S.btnSm,padding:'9px 16px',fontSize:13,flex:1,minWidth:100,
+              background:activeTab===t.id?'linear-gradient(135deg,#dc2626,#7c3aed)':'transparent',
+              color:activeTab===t.id?'white':'#475569',borderRadius:10}}>
+            {t.icon} {t.label}
+          </button>
+        ))}
       </div>
-      <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>📢 النصوص الترويجية</h3>
-        <label style={S.label}>شريط الإعلانات (أعلى الصفحة)</label>
-        <input style={S.input} value={announceBar} onChange={e=>setAnnounceBar(e.target.value)} placeholder="🎉 توصيل مجاني على الطلبات فوق 500 دج" />
-        <div style={{marginTop:12}}>
-          <label style={S.label}>نص ترويجي (تحت البانر)</label>
-          <input style={S.input} value={promoText} onChange={e=>setPromoText(e.target.value)} placeholder="اشتري 3 خذ 4 مجاناً!" />
-        </div>
-        <button style={{...S.btn,marginTop:14}} onClick={saveTexts} disabled={saving}>{saving?'⏳...':'💾 حفظ النصوص'}</button>
-      </div>
-      <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🖼️ البانرات المتحركة</h3>
-        <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>📐 حجم البانر المثالي: <strong>1200×450 بكسل</strong></p>
-        <div style={S.grid2}>
-          <div><label style={S.label}>العنوان</label><input style={S.input} value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="عروض الصيف" /></div>
-          <div><label style={S.label}>نص فرعي</label><input style={S.input} value={form.subtitle} onChange={e=>setForm(f=>({...f,subtitle:e.target.value}))} /></div>
-          <div><label style={S.label}>صورة (1200×450)</label><input style={S.input} type="file" accept="image/*" onChange={handleImg} /></div>
-          {form.image&&<div><img src={form.image} style={{width:'100%',height:60,objectFit:'cover',borderRadius:10}}/></div>}
-        </div>
-        <button style={{...S.btn,marginTop:14}} onClick={addBanner} disabled={saving}>{saving?'⏳...':'➕ إضافة بانر'}</button>
-      </div>
-      {banners.length>0&&(
+
+      {/* ───── البانرات ───── */}
+      {activeTab==='banners'&&(
+        <>
+          <div style={S.card}>
+            <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>➕ إضافة بانر جديد</h3>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:14,background:'#f0f9ff',borderRadius:10,padding:'8px 12px'}}>
+              📐 الحجم المثالي: <strong>1200×450 بكسل</strong> — نسبة 16:6
+            </p>
+            <div style={S.grid2}>
+              <div><label style={S.label}>العنوان الرئيسي</label>
+                <input style={S.input} value={bannerForm.title} onChange={e=>setBannerForm(f=>({...f,title:e.target.value}))} placeholder="مثال: عروض نهاية الموسم" /></div>
+              <div><label style={S.label}>النص الفرعي</label>
+                <input style={S.input} value={bannerForm.subtitle} onChange={e=>setBannerForm(f=>({...f,subtitle:e.target.value}))} placeholder="خصومات تصل 50%" /></div>
+              <div><label style={S.label}>نص الزر</label>
+                <input style={S.input} value={bannerForm.btnText} onChange={e=>setBannerForm(f=>({...f,btnText:e.target.value}))} placeholder="اطلب الآن" /></div>
+              <div><label style={S.label}>صورة البانر (1200×450)</label>
+                <input style={S.input} type="file" accept="image/*" onChange={handleBannerImg} /></div>
+            </div>
+            {bannerForm.image&&(
+              <div style={{marginTop:10,borderRadius:14,overflow:'hidden',border:'2px dashed #dc2626'}}>
+                <img src={bannerForm.image} style={{width:'100%',height:120,objectFit:'cover',display:'block'}}/>
+                <div style={{background:'#1e293b',padding:'6px 12px',fontSize:11,color:'white',display:'flex',justifyContent:'space-between'}}>
+                  <span>معاينة البانر</span>
+                  {bannerForm.title&&<span style={{fontWeight:700}}>{bannerForm.title}</span>}
+                </div>
+              </div>
+            )}
+            <button style={{...S.btn,marginTop:14}} onClick={addBanner} disabled={saving}>
+              {saving?'⏳...':'➕ إضافة للمتجر'}
+            </button>
+          </div>
+
+          {/* قائمة البانرات */}
+          {banners.length>0&&(
+            <div style={S.card}>
+              <h3 style={{fontWeight:800,marginBottom:14}}>البانرات النشطة ({banners.length})</h3>
+              {banners.map((b,i)=>(
+                <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',
+                  background:'#f8fafc',borderRadius:14,padding:12,marginBottom:10,
+                  border:'1px solid #e2e8f0',position:'relative'}}>
+                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                    <button style={{...S.btnSm,padding:'3px 8px',background:'#dbeafe',color:'#1d4ed8'}}
+                      onClick={()=>moveBanner(b.id,-1)} disabled={i===0}>↑</button>
+                    <button style={{...S.btnSm,padding:'3px 8px',background:'#dbeafe',color:'#1d4ed8'}}
+                      onClick={()=>moveBanner(b.id,1)} disabled={i===banners.length-1}>↓</button>
+                  </div>
+                  {b.image?<img src={b.image} style={{width:90,height:54,objectFit:'cover',borderRadius:10,flexShrink:0}}/>:
+                    <div style={{width:90,height:54,borderRadius:10,background:'linear-gradient(135deg,#FF6B35,#7C3AED)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <span style={{color:'white',fontSize:11,fontWeight:700,textAlign:'center',padding:4}}>{b.title}</span>
+                    </div>}
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:14}}>{b.title||'(بدون عنوان)'}</div>
+                    {b.subtitle&&<div style={{fontSize:12,color:'#64748b',marginTop:2}}>{b.subtitle}</div>}
+                    {b.btnText&&<span style={{background:'#FF6B35',color:'white',fontSize:10,padding:'2px 8px',borderRadius:20,marginTop:4,display:'inline-block'}}>{b.btnText}</span>}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <span style={{background:'#d1fae5',color:'#059669',padding:'2px 8px',borderRadius:20,fontSize:11,fontWeight:700}}>
+                      #{i+1}
+                    </span>
+                    <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>delBanner(b.id)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ───── الإعلانات ───── */}
+      {activeTab==='announce'&&(
         <div style={S.card}>
-          <h3 style={{fontWeight:800,marginBottom:14}}>البانرات ({banners.length})</h3>
-          {banners.map((b,i)=>(
-            <div key={b.id} style={{display:'flex',gap:12,alignItems:'center',background:'#f8fafc',borderRadius:12,padding:12,marginBottom:8}}>
-              <span style={{fontWeight:700,color:'#94a3b8'}}>#{i+1}</span>
-              {b.image&&<img src={b.image} style={{width:80,height:45,objectFit:'cover',borderRadius:8,flexShrink:0}}/>}
-              <div style={{flex:1}}><div style={{fontWeight:700}}>{b.title||'(بدون عنوان)'}</div>{b.subtitle&&<div style={{fontSize:12,color:'#64748b'}}>{b.subtitle}</div>}</div>
-              <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>delBanner(b.id)}>🗑️</button>
+          <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>📢 إعدادات الإعلانات</h3>
+
+          <label style={S.label}>شريط الإعلانات (يمشي تلقائياً أعلى الصفحة)</label>
+          <input style={S.input} value={announceBar} onChange={e=>setAnnounceBar(e.target.value)}
+            placeholder="🎉 توصيل مجاني على الطلبات فوق 500 دج | ⚡ عروض يومية" />
+
+          <div style={{display:'flex',gap:12,alignItems:'center',marginTop:12,marginBottom:16}}>
+            <label style={S.label}>لون الشريط</label>
+            <input type="color" value={announceColor} onChange={e=>setAnnounceColor(e.target.value)}
+              style={{width:44,height:36,border:'none',borderRadius:8,cursor:'pointer'}} />
+            <div style={{background:announceColor,borderRadius:10,padding:'8px 16px',color:'white',fontSize:13,fontWeight:700}}>
+              {announceBar||'معاينة الشريط'}
+            </div>
+          </div>
+
+          <label style={S.label}>نص ترويجي (يظهر تحت البانر)</label>
+          <input style={S.input} value={promoText} onChange={e=>setPromoText(e.target.value)}
+            placeholder="🎁 اشتري 3 خذ 4 مجاناً | 🚚 توصيل لجميع الولايات" />
+
+          {/* معاينة */}
+          <div style={{marginTop:16,border:'2px dashed #e2e8f0',borderRadius:14,overflow:'hidden'}}>
+            <div style={{background:announceColor,padding:'6px',textAlign:'center',fontSize:12,color:'white',fontWeight:700}}>
+              {announceBar||'شريط الإعلانات'}
+            </div>
+            <div style={{background:'linear-gradient(160deg,#FF6B35,#E8430E)',padding:'8px',textAlign:'center',color:'white',fontSize:12}}>
+              هيدر المتجر
+            </div>
+            {promoText&&<div style={{background:'#FFF0EB',padding:'6px',textAlign:'center',fontSize:11,color:'#FF6B35',fontWeight:700}}>{promoText}</div>}
+          </div>
+
+          <button style={{...S.btn,marginTop:16}} onClick={()=>save([['announce_bar',announceBar],['promo_text',promoText],['announce_color',announceColor]])} disabled={saving}>
+            {saving?'⏳...':'💾 حفظ الإعلانات'}
+          </button>
+        </div>
+      )}
+
+      {/* ───── الألوان ───── */}
+      {activeTab==='theme'&&(
+        <div style={S.card}>
+          <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>🎨 ألوان المتجر</h3>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+            <div>
+              <label style={S.label}>اللون الرئيسي</label>
+              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                <input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)}
+                  style={{width:54,height:48,border:'none',borderRadius:12,cursor:'pointer'}} />
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{primaryColor}</div>
+                  <div style={{fontSize:12,color:'#64748b'}}>الهيدر، الأزرار</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label style={S.label}>اللون الثانوي</label>
+              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                <input type="color" value={secondColor} onChange={e=>setSecondColor(e.target.value)}
+                  style={{width:54,height:48,border:'none',borderRadius:12,cursor:'pointer'}} />
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{secondColor}</div>
+                  <div style={{fontSize:12,color:'#64748b'}}>التدرج، اللمسات</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* معاينة الهيدر */}
+          <div style={{borderRadius:16,overflow:'hidden',border:'2px dashed #e2e8f0',marginBottom:20}}>
+            <div style={{background:`linear-gradient(160deg,${primaryColor},${secondColor})`,padding:'14px 16px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <span style={{color:'rgba(255,255,255,.7)',fontSize:18}}>≡</span>
+                <span style={{color:'white',fontWeight:900,fontSize:18}}>نقاء</span>
+                <span style={{background:'white',color:primaryColor,padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:800}}>إتصل بنا</span>
+              </div>
+              <div style={{background:'white',borderRadius:24,padding:'8px 14px',display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:14}}>🔍</span>
+                <span style={{fontSize:13,color:'#94a3b8'}}>بحث عن المنتجات...</span>
+              </div>
+            </div>
+            <div style={{background:primaryColor,height:4}}></div>
+            <div style={{padding:'8px 14px',background:'#f8fafc',fontSize:11,color:'#64748b',textAlign:'center'}}>
+              معاينة الهيدر
+            </div>
+          </div>
+
+          {/* ألوان جاهزة */}
+          <div style={{marginBottom:16}}>
+            <label style={S.label}>ثيمات جاهزة</label>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              {[
+                {name:'أحمر-بنفسجي',p:'#FF6B35',s:'#7C3AED'},
+                {name:'أزرق-تركواز',p:'#2563EB',s:'#0891B2'},
+                {name:'أخضر-أصفر',p:'#059669',s:'#D97706'},
+                {name:'وردي-بنفسجي',p:'#EC4899',s:'#8B5CF6'},
+                {name:'أسود-ذهبي',p:'#1e293b',s:'#D97706'},
+              ].map(({name,p,s})=>(
+                <div key={name} onClick={()=>{setPrimaryColor(p);setSecondColor(s)}}
+                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',width:80,border:`2px solid ${primaryColor===p?p:'transparent'}`,transition:'.2s'}}>
+                  <div style={{height:28,background:`linear-gradient(135deg,${p},${s})`}}></div>
+                  <div style={{fontSize:9,textAlign:'center',padding:'3px',color:'#475569',fontWeight:600}}>{name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button style={{...S.btn}} onClick={()=>save([['primary_color',primaryColor],['second_color',secondColor]])} disabled={saving}>
+            {saving?'⏳...':'💾 حفظ الألوان'}
+          </button>
+        </div>
+      )}
+
+      {/* ───── المنتجات المميزة ───── */}
+      {activeTab==='featured'&&(
+        <div style={S.card}>
+          <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>⭐ المنتجات المميزة (تظهر أولاً في المتجر)</h3>
+          <input style={{...S.input,marginBottom:14}} value={prodSearch}
+            onChange={e=>setProdSearch(e.target.value)} placeholder="🔍 ابحث عن منتج..." />
+          <div style={{maxHeight:350,overflowY:'auto',border:'1px solid #e2e8f0',borderRadius:12,padding:8}}>
+            {allProducts.filter(p=>p.name.toLowerCase().includes(prodSearch.toLowerCase())).map(p=>(
+              <div key={p.id} onClick={()=>toggleFeatured(p.id)}
+                style={{display:'flex',alignItems:'center',gap:12,padding:'10px',cursor:'pointer',
+                  borderRadius:10,background:featuredIds.includes(p.id)?'#fef9c3':'transparent',
+                  marginBottom:4,transition:'.2s'}}>
+                {p.image?<img src={p.image} style={{width:40,height:40,borderRadius:8,objectFit:'cover'}}/>:
+                  <div style={{width:40,height:40,borderRadius:8,background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>📦</div>}
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13}}>{p.name}</div>
+                  <div style={{fontSize:12,color:'#64748b'}}>{p.price} دج</div>
+                </div>
+                <div style={{width:22,height:22,borderRadius:'50%',border:'2px solid',
+                  borderColor:featuredIds.includes(p.id)?'#f59e0b':'#e2e8f0',
+                  background:featuredIds.includes(p.id)?'#f59e0b':'transparent',
+                  display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'white',fontWeight:800}}>
+                  {featuredIds.includes(p.id)?'★':''}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:12,fontSize:13,color:'#64748b'}}>{featuredIds.length} منتج محدد</div>
+          <button style={{...S.btn,marginTop:12}} onClick={()=>save([['featured_products',JSON.stringify(featuredIds)]])} disabled={saving}>
+            {saving?'⏳...':'💾 حفظ المنتجات المميزة'}
+          </button>
+        </div>
+      )}
+
+      {/* ───── SEO ───── */}
+      {activeTab==='seo'&&(
+        <div style={S.card}>
+          <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>🔍 إعدادات SEO (محركات البحث)</h3>
+          <div style={{marginBottom:12}}>
+            <label style={S.label}>عنوان الصفحة (يظهر في تبويب المتصفح وGoogle)</label>
+            <input style={S.input} value={seoTitle} onChange={e=>setSeoTitle(e.target.value)} />
+            <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>مثالي: 50-60 حرف</div>
+          </div>
+          <div style={{marginBottom:12}}>
+            <label style={S.label}>وصف الصفحة (يظهر في نتائج Google)</label>
+            <textarea style={{...S.input,minHeight:70,resize:'none'}} value={seoDesc} onChange={e=>setSeoDesc(e.target.value)} />
+            <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>مثالي: 150-160 حرف</div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <label style={S.label}>الكلمات المفتاحية (مفصولة بفواصل)</label>
+            <input style={S.input} value={seoKeys} onChange={e=>setSeoKeys(e.target.value)}
+              placeholder="متجر، منتجات غذائية، جزائر، توصيل" />
+          </div>
+          {/* معاينة Google */}
+          <div style={{background:'#f8fafc',borderRadius:14,padding:16,marginBottom:16,border:'1px solid #e2e8f0'}}>
+            <div style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>معاينة نتيجة Google:</div>
+            <div style={{color:'#1a73e8',fontSize:16,fontWeight:700,marginBottom:2}}>{seoTitle}</div>
+            <div style={{color:'#202124',fontSize:12,marginBottom:2,color:'#19732b'}}>naqaa-tau.vercel.app</div>
+            <div style={{fontSize:13,color:'#4d5156'}}>{seoDesc}</div>
+          </div>
+          <button style={S.btn} onClick={()=>save([['seo_title',seoTitle],['seo_desc',seoDesc],['seo_keys',seoKeys]])} disabled={saving}>
+            {saving?'⏳...':'💾 حفظ SEO'}
+          </button>
+        </div>
+      )}
+
+      {/* ───── أحجام الصور ───── */}
+      {activeTab==='sizes'&&(
+        <div style={S.card}>
+          <h3 style={{fontWeight:800,marginBottom:16,color:'#dc2626'}}>📐 دليل أحجام الصور</h3>
+          {[
+            {icon:'🖼️',label:'بانر الصفحة الرئيسية',size:'1200 × 450 بكسل',ratio:'16:6',note:'ملف JPG أو PNG، حجم أقل من 500KB'},
+            {icon:'🎯',label:'بانر العرض الترويجي', size:'1200 × 400 بكسل',ratio:'3:1', note:'يجب أن يكون واضحاً على الهاتف'},
+            {icon:'📦',label:'صورة المنتج',          size:'600 × 600 بكسل', ratio:'1:1', note:'مربع — خلفية بيضاء أو شفافة'},
+            {icon:'🏷️',label:'شعار الماركة',          size:'300 × 300 بكسل', ratio:'1:1', note:'PNG مع خلفية شفافة مفضل'},
+            {icon:'📂',label:'صورة الفئة',            size:'400 × 300 بكسل', ratio:'4:3', note:'صورة واضحة تمثل الفئة'},
+          ].map(({icon,label,size,ratio,note})=>(
+            <div key={label} style={{display:'flex',gap:14,padding:'14px 0',borderBottom:'1px solid #f1f5f9',alignItems:'center'}}>
+              <div style={{fontSize:28,width:40,textAlign:'center'}}>{icon}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14}}>{label}</div>
+                <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{note}</div>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontWeight:900,color:'#dc2626',fontSize:15}}>{size}</div>
+                <div style={{background:'#f1f5f9',borderRadius:20,padding:'2px 10px',fontSize:11,marginTop:4,color:'#475569'}}>نسبة {ratio}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -1885,6 +2604,8 @@ function StoreManager({ showToast }) {
 }
 
 /* ══════════════════════════════════════════
+   💾 نسخ احتياطي
+══════════════════════════════════════════ */
    💾 نسخ احتياطي
 ══════════════════════════════════════════ */
 function DataBackup({ showToast }) {
@@ -2045,8 +2766,22 @@ export default function Admin() {
     if (saved) try { setUser(JSON.parse(saved)) } catch {}
   }, [])
 
-  const handleLogin  = u => { setUser(u); sessionStorage.setItem('nq_admin', JSON.stringify(u)) }
+  const handleLogin  = u => { setUser(u); sessionStorage.setItem('nq_admin', JSON.stringify(u)); sessionStorage.setItem('nq_last_act', Date.now()) }
   const handleLogout = () => { setUser(null); sessionStorage.removeItem('nq_admin') }
+
+  // انتهاء الجلسة تلقائياً بعد 15 دقيقة
+  useEffect(() => {
+    if (!user) return
+    const TIMEOUT = 15 * 60 * 1000
+    const check = setInterval(() => {
+      const last = parseInt(sessionStorage.getItem('nq_last_act')||'0')
+      if (Date.now() - last > TIMEOUT) { handleLogout(); alert('⏰ انتهت الجلسة — يرجى الدخول من جديد') }
+    }, 30000)
+    const refresh = () => sessionStorage.setItem('nq_last_act', Date.now())
+    window.addEventListener('click', refresh)
+    window.addEventListener('keydown', refresh)
+    return () => { clearInterval(check); window.removeEventListener('click', refresh); window.removeEventListener('keydown', refresh) }
+  }, [user])
 
   if (!user) return <LoginScreen onLogin={handleLogin} />
 
