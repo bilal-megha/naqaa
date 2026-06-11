@@ -1,5 +1,5 @@
 /**
- * Admin.jsx — نقاء v6 (نسخة احترافية شاملة)
+ * Admin.jsx — نقاء v5 (نسخة احترافية شاملة)
  * ✅ مصادقة ثنائية (6789)
  * ✅ تصنيف العملاء M1/M2/M3
  * ✅ إدارة العروض الكاملة
@@ -520,23 +520,14 @@ function Products() {
 ══════════════════════════════════════════ */
 function Categories() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [editId,setEditId]=useState(null)
-  const [name,setName]=useState(''); const [image,setImage]=useState('')
+  const [items,setItems]=useState([]); const [name,setName]=useState(''); const [image,setImage]=useState('')
   const load=async()=>{ const {data}=await supabase.from('categories').select('*').order('name'); setItems(data||[]) }
   useEffect(()=>{ load() },[])
-  const save=async()=>{
+  const add=async()=>{
     if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    if(editId){
-      await supabase.from('categories').update({name:name.trim(),image:image||null}).eq('id',editId)
-      showToast('✅ تم التعديل'); setEditId(null)
-    } else {
-      await supabase.from('categories').insert({id:Date.now(),name:name.trim(),image:image||null})
-      showToast('✅ تمت الإضافة')
-    }
-    setName(''); setImage(''); await load()
+    await supabase.from('categories').insert({id:Date.now(),name:name.trim(),image:image||null})
+    showToast('✅ تمت الإضافة');setName('');setImage('');await load()
   }
-  const startEdit=c=>{ setEditId(c.id); setName(c.name); setImage(c.image||'') }
-  const cancel=()=>{ setEditId(null); setName(''); setImage('') }
   const del=async id=>{
     if(!await askConfirm('حذف هذه الفئة؟'))return
     await supabase.from('categories').delete().eq('id',id);showToast('تم الحذف');await load()
@@ -545,31 +536,23 @@ function Categories() {
     <div>{ToastUI}{ConfirmUI}
       <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>📂 الفئات</h1>
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:10,color:'#dc2626'}}>{editId?'✏️ تعديل فئة':'➕ إضافة فئة'}</h3>
         <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>📐 حجم صورة الفئة المثالي: <strong>400×300 بكسل</strong></p>
         <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
           <div style={{flex:1,minWidth:160}}><label style={S.label}>اسم الفئة *</label>
             <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: مواد غذائية" /></div>
           <div style={{flex:1,minWidth:160}}><label style={S.label}>صورة (400×300)</label>
             <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/></div>
-          {image&&<img src={image} style={{width:60,height:45,borderRadius:8,objectFit:'cover'}}/>}
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:12}}>
-          <button style={S.btn} onClick={save}>{editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
-          {editId&&<button style={S.btnGray} onClick={cancel}>✖ إلغاء</button>}
+          <button style={S.btn} onClick={add}>➕ إضافة</button>
         </div>
       </div>
       <div style={S.card}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead><tr><th style={S.th}>الصورة</th><th style={S.th}>الاسم</th><th style={S.th}>إجراءات</th></tr></thead>
+          <thead><tr><th style={S.th}>الصورة</th><th style={S.th}>الاسم</th><th style={S.th}>حذف</th></tr></thead>
           <tbody>{items.map(c=>(
             <tr key={c.id} style={{borderBottom:'1px solid #f8fafc'}}>
-              <td style={S.td}>{c.image?<img src={c.image} style={{width:60,height:45,borderRadius:8,objectFit:'cover'}}/>:'📁'}</td>
+              <td style={S.td}>{c.image?<img src={c.image} style={{width:50,height:37,borderRadius:8,objectFit:'cover'}}/>:'📁'}</td>
               <td style={{...S.td,fontWeight:700}}>{c.name}</td>
-              <td style={{...S.td,display:'flex',gap:5}}>
-                <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>startEdit(c)}>✏️ تعديل</button>
-                <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>del(c.id)}>🗑️</button>
-              </td>
+              <td style={S.td}><button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>del(c.id)}>🗑️</button></td>
             </tr>
           ))}
           {items.length===0&&<tr><td colSpan={3} style={{textAlign:'center',padding:24,color:'#94a3b8'}}>لا توجد فئات</td></tr>}
@@ -585,56 +568,39 @@ function Categories() {
 ══════════════════════════════════════════ */
 function Brands() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [editId,setEditId]=useState(null)
-  const [name,setName]=useState(''); const [image,setImage]=useState('')
+  const [items,setItems]=useState([]); const [name,setName]=useState(''); const [image,setImage]=useState('')
   const load=async()=>{ const {data}=await supabase.from('brands').select('*').order('name'); setItems(data||[]) }
   useEffect(()=>{ load() },[])
-  const save=async()=>{
+  const add=async()=>{
     if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    if(editId){
-      await supabase.from('brands').update({name:name.trim(),image:image||null}).eq('id',editId)
-      showToast('✅ تم التعديل'); setEditId(null)
-    } else {
-      await supabase.from('brands').insert({id:Date.now(),name:name.trim(),image:image||null})
-      showToast('✅ تمت الإضافة')
-    }
-    setName(''); setImage(''); await load()
+    await supabase.from('brands').insert({id:Date.now(),name:name.trim(),image:image||null})
+    showToast('✅ تمت الإضافة');setName('');setImage('');await load()
   }
   const del=async id=>{
     if(!await askConfirm('حذف هذه العلامة؟'))return
     await supabase.from('brands').delete().eq('id',id);showToast('تم الحذف');await load()
   }
-  const startEdit=b=>{ setEditId(b.id); setName(b.name); setImage(b.image||'') }
-  const cancel=()=>{ setEditId(null); setName(''); setImage('') }
   return (
     <div>{ToastUI}{ConfirmUI}
       <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>🏷️ العلامات التجارية</h1>
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:10,color:'#dc2626'}}>{editId?'✏️ تعديل علامة':'➕ إضافة علامة'}</h3>
         <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>📐 حجم شعار الماركة المثالي: <strong>300×300 بكسل</strong> (مربع)</p>
         <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
           <div style={{flex:1,minWidth:160}}><label style={S.label}>اسم العلامة *</label>
             <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: Yema" /></div>
           <div style={{flex:1,minWidth:160}}><label style={S.label}>شعار (300×300)</label>
             <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/></div>
-          {image&&<img src={image} style={{width:50,height:50,borderRadius:'50%',objectFit:'cover'}}/>}
-        </div>
-        <div style={{display:'flex',gap:10,marginTop:12}}>
-          <button style={S.btn} onClick={save}>{editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
-          {editId&&<button style={S.btnGray} onClick={cancel}>✖ إلغاء</button>}
+          <button style={S.btn} onClick={add}>➕ إضافة</button>
         </div>
       </div>
       <div style={S.card}>
         <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead><tr><th style={S.th}>الشعار</th><th style={S.th}>الاسم</th><th style={S.th}>إجراءات</th></tr></thead>
+          <thead><tr><th style={S.th}>الشعار</th><th style={S.th}>الاسم</th><th style={S.th}>حذف</th></tr></thead>
           <tbody>{items.map(b=>(
             <tr key={b.id} style={{borderBottom:'1px solid #f8fafc'}}>
               <td style={S.td}>{b.image?<img src={b.image} style={{width:44,height:44,borderRadius:'50%',objectFit:'cover'}}/>:'🏷️'}</td>
               <td style={{...S.td,fontWeight:700}}>{b.name}</td>
-              <td style={{...S.td,display:'flex',gap:5}}>
-                <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>startEdit(b)}>✏️ تعديل</button>
-                <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>del(b.id)}>🗑️</button>
-              </td>
+              <td style={S.td}><button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>del(b.id)}>🗑️</button></td>
             </tr>
           ))}
           {items.length===0&&<tr><td colSpan={3} style={{textAlign:'center',padding:24,color:'#94a3b8'}}>لا توجد علامات</td></tr>}
@@ -949,24 +915,17 @@ function Purchases() {
   const [purchases,setPurchases]=useState([]); const [items,setItems]=useState([])
   const [suppId,setSuppId]=useState(''); const [date,setDate]=useState(new Date().toISOString().split('T')[0])
   const [showModal,setShowModal]=useState(false)
-  const [showNewProdModal,setShowNewProdModal]=useState(false)
   const [modal,setModal]=useState({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0,sellPrice:0})
-  const [newProd,setNewProd]=useState({name:'',price:'',units:12,brandId:''})
-  const [brands,setBrands]=useState([])
   const [saving,setSaving]=useState(false)
-
-  // سعر الكارتون = سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>parseFloat(price||0)*parseInt(units||12)
 
   useEffect(()=>{
     const load=async()=>{
-      const [{data:s},{data:p},{data:pur},{data:b}]=await Promise.all([
+      const [{data:s},{data:p},{data:pur}]=await Promise.all([
         supabase.from('suppliers').select('id,name').order('name'),
         supabase.from('products').select('id,name,units,cost_price,price').order('name'),
         supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20),
-        supabase.from('brands').select('id,name').order('name'),
       ])
-      setSuppliers(s||[]); setProducts(p||[]); setPurchases(pur||[]); setBrands(b||[])
+      setSuppliers(s||[]); setProducts(p||[]); setPurchases(pur||[])
     }
     load()
   },[])
@@ -976,33 +935,9 @@ function Purchases() {
   const addItem=()=>{
     const prod=products.find(p=>p.id==modal.productId)
     if(!prod||!modal.cartons||!modal.purchasePrice){showToast('اختر منتجاً وأدخل البيانات','error');return}
-    const totalUnits=parseInt(modal.cartons)*parseInt(modal.unitsPerCarton)
-    const cartonPrice=autoCarton(modal.purchasePrice,modal.unitsPerCarton)
-    setItems(prev=>[...prev,{
-      id:Date.now(),productId:prod.id,productName:prod.name,
-      cartons:parseInt(modal.cartons),unitsPerCarton:parseInt(modal.unitsPerCarton),
-      totalUnits,purchasePrice:parseFloat(modal.purchasePrice),
-      sellPrice:parseFloat(modal.sellPrice)||0,
-      cartonPrice,totalPurchase:parseInt(modal.cartons)*cartonPrice
-    }])
+    const totalUnits=modal.cartons*modal.unitsPerCarton
+    setItems(prev=>[...prev,{id:Date.now(),productId:prod.id,productName:prod.name,cartons:modal.cartons,unitsPerCarton:modal.unitsPerCarton,totalUnits,purchasePrice:modal.purchasePrice,sellPrice:modal.sellPrice,totalPurchase:totalUnits*modal.purchasePrice}])
     setShowModal(false); setModal({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0,sellPrice:0})
-  }
-
-  const saveNewProduct=async()=>{
-    if(!newProd.name||!newProd.price){showToast('الاسم والسعر مطلوبان','error');return}
-    const id=Date.now()
-    await supabase.from('products').insert({
-      id,name:newProd.name.trim(),price:parseFloat(newProd.price),
-      units:parseInt(newProd.units)||12,
-      brand_id:newProd.brandId?parseInt(newProd.brandId):null,
-      stock:0,disabled:false,created_at:new Date().toISOString()
-    })
-    const {data:p}=await supabase.from('products').select('id,name,units,cost_price,price').order('name')
-    setProducts(p||[])
-    setModal(m=>({...m,productId:String(id),unitsPerCarton:parseInt(newProd.units)||12}))
-    setNewProd({name:'',price:'',units:12,brandId:''})
-    setShowNewProdModal(false); setShowModal(true)
-    showToast('✅ تمت إضافة المنتج')
   }
 
   const save=async()=>{
@@ -1014,28 +949,18 @@ function Purchases() {
     await supabase.from('purchases').insert({id:purchaseId,supplier_id:parseInt(suppId),supplier_name:supplier?.name,date,items:JSON.stringify(items),total})
     for(const item of items){
       const {data:p}=await supabase.from('products').select('stock').eq('id',item.productId).maybeSingle()
-      if(p) await supabase.from('products').update({
-        stock:(p.stock||0)+item.cartons,
-        cost_price:item.purchasePrice,
-        carton_price:item.cartonPrice
-      }).eq('id',item.productId)
+      if(p) await supabase.from('products').update({stock:(p.stock||0)+item.totalUnits}).eq('id',item.productId)
     }
+    // طباعة تلقائية A4
     printA4(`
       <div class="header"><div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
-      <div style="text-align:left"><p><strong>رقم:</strong> ${purchaseId}</p><p><strong>التاريخ:</strong> ${date}</p><p><strong>المورد:</strong> ${supplier?.name||'—'}</p></div></div>
-      <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>قطع/كرتون</th><th>إجمالي قطع</th><th>سعر الشراء/قطعة</th><th>سعر الكرتون</th><th>الإجمالي</th></tr></thead>
-      <tbody>${items.map(i=>`<tr>
-        <td>${i.productName}</td><td style="text-align:center">${i.cartons}</td>
-        <td style="text-align:center">${i.unitsPerCarton}</td><td style="text-align:center">${i.totalUnits}</td>
-        <td style="text-align:center">${i.purchasePrice} ${CUR}</td>
-        <td style="text-align:center;font-weight:700;color:#7c3aed">${i.cartonPrice.toFixed(0)} ${CUR}</td>
-        <td style="text-align:center;font-weight:700;color:#dc2626">${i.totalPurchase.toFixed(0)} ${CUR}</td>
-      </tr>`).join('')}
-      <tr class="total-row"><td colspan="6">الإجمالي الكلي</td><td>${total.toFixed(0)} ${CUR}</td></tr>
-      </tbody></table>
+      <div style="text-align:left"><p>رقم: ${purchaseId}</p><p>التاريخ: ${date}</p><p>المورد: ${supplier?.name||'—'}</p></div></div>
+      <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>الحبات</th><th>السعر/حبة</th><th>الإجمالي</th></tr></thead>
+      <tbody>${items.map(i=>`<tr><td>${i.productName}</td><td>${i.cartons}</td><td>${i.totalUnits}</td><td>${i.purchasePrice} ${CUR}</td><td>${i.totalPurchase.toFixed(0)} ${CUR}</td></tr>`).join('')}
+      <tr class="total-row"><td colspan="4">الإجمالي</td><td>${total.toFixed(0)} ${CUR}</td></tr></tbody></table>
       <div class="footer">نقاء — ${new Date().toLocaleDateString('ar-DZ')}</div>
     `)
-    showToast('✅ تم حفظ الفاتورة وطباعتها');setSuppId('');setItems([])
+    showToast('✅ تم حفظ الفاتورة');setSuppId('');setItems([])
     const {data:pur}=await supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20)
     setPurchases(pur||[]); setSaving(false)
   }
@@ -1054,165 +979,81 @@ function Purchases() {
           <div><label style={S.label}>التاريخ</label>
             <input style={S.input} type="date" value={date} onChange={e=>setDate(e.target.value)} /></div>
         </div>
-
-        {/* جدول المنتجات */}
-        {items.length>0&&(
-          <div style={{overflowX:'auto',marginBottom:14}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-              <thead>
-                <tr style={{background:'linear-gradient(135deg,#dc2626,#7c3aed)'}}>
-                  {['المنتج','الكرتونات','قطع/كرتون','إجمالي قطع','سعر/قطعة','سعر الكرتون','الإجمالي',''].map((h,i)=>(
-                    <th key={i} style={{...S.th,color:'white',background:'transparent',padding:'10px 8px'}}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item,i)=>(
-                  <tr key={item.id} style={{borderBottom:'1px solid #f1f5f9',background:i%2===0?'white':'#fafafa'}}>
-                    <td style={{...S.td,fontWeight:700}}>{item.productName}</td>
-                    <td style={{...S.td,textAlign:'center',fontWeight:700}}>{item.cartons}</td>
-                    <td style={{...S.td,textAlign:'center'}}>{item.unitsPerCarton}</td>
-                    <td style={{...S.td,textAlign:'center',color:'#475569'}}>{item.totalUnits}</td>
-                    <td style={{...S.td,textAlign:'center'}}>{item.purchasePrice} {CUR}</td>
-                    <td style={{...S.td,textAlign:'center',fontWeight:700,color:'#7c3aed'}}>{item.cartonPrice.toFixed(0)} {CUR}</td>
-                    <td style={{...S.td,textAlign:'center',fontWeight:900,color:'#dc2626'}}>{item.totalPurchase.toFixed(0)} {CUR}</td>
-                    <td style={S.td}><button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>setItems(p=>p.filter((_,j)=>j!==i))}>🗑️</button></td>
-                  </tr>
-                ))}
-                <tr style={{background:'#fff7ed',fontWeight:900}}>
-                  <td colSpan={6} style={{...S.td,fontSize:15}}>💰 الإجمالي الكلي للفاتورة</td>
-                  <td style={{...S.td,fontSize:18,color:'#dc2626',fontWeight:900}}>{total.toFixed(0)} {CUR}</td>
-                  <td style={S.td}></td>
-                </tr>
-              </tbody>
-            </table>
+        {items.map((item,i)=>(
+          <div key={item.id} style={{background:'#f8fafc',borderRadius:12,padding:12,marginBottom:8,borderRight:'3px solid #dc2626',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontSize:14}}><strong>{item.productName}</strong> — {item.cartons} كرتون × {item.unitsPerCarton} = {item.totalUnits} قطعة <span style={{color:'#dc2626',fontWeight:700}}>{item.totalPurchase.toFixed(0)} {CUR}</span></div>
+            <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>setItems(p=>p.filter((_,j)=>j!==i))}>حذف</button>
           </div>
-        )}
-        {items.length===0&&(
-          <div style={{textAlign:'center',padding:'20px',color:'#94a3b8',border:'2px dashed #e2e8f0',borderRadius:12,marginBottom:14}}>
-            📦 لا توجد منتجات — ابدأ بإضافة منتج
-          </div>
-        )}
-
+        ))}
         <div style={{display:'flex',gap:10,marginTop:12,alignItems:'center',flexWrap:'wrap'}}>
           <button onClick={()=>setShowModal(true)} style={{...S.btnGray,background:'#10b981',color:'white'}}>➕ إضافة منتج</button>
           <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ + طباعة'}</button>
           {items.length>0&&<span style={{fontWeight:900,color:'#dc2626',fontSize:18}}>💰 {total.toFixed(0)} {CUR}</span>}
         </div>
       </div>
-
-      {/* مودال إضافة منتج */}
       {showModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:8000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'white',borderRadius:20,padding:28,width:520,maxWidth:'95vw',direction:'rtl',maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
-              <h3 style={{fontWeight:800,fontSize:18}}>➕ إضافة منتج للفاتورة</h3>
-              <button onClick={()=>setShowModal(false)} style={{background:'#f1f5f9',border:'none',borderRadius:'50%',width:32,height:32,cursor:'pointer',fontSize:16}}>✕</button>
-            </div>
+          <div style={{background:'white',borderRadius:20,padding:28,width:480,maxWidth:'95vw',direction:'rtl'}}>
+            <h3 style={{fontWeight:800,marginBottom:16}}>➕ إضافة منتج للفاتورة</h3>
             <div style={{display:'grid',gap:12}}>
-              <div>
-                <label style={S.label}>المنتج</label>
-                <div style={{display:'flex',gap:8}}>
-                  <select style={{...S.input,flex:1}} value={modal.productId} onChange={e=>{
-                    const p=products.find(x=>x.id==e.target.value)
-                    setModal(m=>({...m,productId:e.target.value,unitsPerCarton:p?.units||12,purchasePrice:p?.cost_price||0,sellPrice:p?.price||0}))
-                  }}>
-                    <option value="">-- اختر منتجاً --</option>
-                    {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <button onClick={()=>{setShowModal(false);setShowNewProdModal(true)}}
-                    style={{...S.btn,padding:'8px 14px',fontSize:12,whiteSpace:'nowrap'}}>
-                    + جديد
-                  </button>
-                </div>
-              </div>
+              <div><label style={S.label}>المنتج</label>
+                <select style={S.input} value={modal.productId} onChange={e=>{
+                  const p=products.find(x=>x.id==e.target.value)
+                  setModal(m=>({...m,productId:e.target.value,unitsPerCarton:p?.units||12,purchasePrice:p?.cost_price||0,sellPrice:p?.price||0}))
+                }}>
+                  <option value="">-- اختر منتجاً --</option>
+                  {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                </select></div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                 <div><label style={S.label}>الكرتونات</label><NumInput value={modal.cartons} onChange={e=>setModal(m=>({...m,cartons:parseInt(e.target.value)||1}))}/></div>
                 <div><label style={S.label}>قطع/كرتون</label><NumInput value={modal.unitsPerCarton} onChange={e=>setModal(m=>({...m,unitsPerCarton:parseInt(e.target.value)||12}))}/></div>
                 <div><label style={S.label}>سعر شراء القطعة</label><NumInput value={modal.purchasePrice} onChange={e=>setModal(m=>({...m,purchasePrice:parseFloat(e.target.value)||0}))}/></div>
                 <div><label style={S.label}>سعر بيع القطعة</label><NumInput value={modal.sellPrice} onChange={e=>setModal(m=>({...m,sellPrice:parseFloat(e.target.value)||0}))}/></div>
               </div>
-              {modal.purchasePrice>0&&modal.unitsPerCarton>0&&(
-                <div style={{background:'#f0fdf4',borderRadius:10,padding:12,fontSize:13}}>
-                  <div>📦 <strong>{modal.cartons*modal.unitsPerCarton}</strong> قطعة إجمالاً</div>
-                  <div style={{marginTop:4}}>💜 سعر الكرتون = {modal.purchasePrice} × {modal.unitsPerCarton} = <strong style={{color:'#7c3aed'}}>{autoCarton(modal.purchasePrice,modal.unitsPerCarton).toFixed(0)} {CUR}</strong></div>
-                  <div style={{marginTop:4}}>💰 الإجمالي = {modal.cartons} × {autoCarton(modal.purchasePrice,modal.unitsPerCarton).toFixed(0)} = <strong style={{color:'#dc2626',fontSize:16}}>{(modal.cartons*autoCarton(modal.purchasePrice,modal.unitsPerCarton)).toFixed(0)} {CUR}</strong></div>
-                </div>
-              )}
+              <div style={{background:'#f8fafc',borderRadius:10,padding:12,fontSize:14}}>
+                📦 <strong>{modal.cartons*modal.unitsPerCarton}</strong> قطعة — 💰 <strong>{(modal.cartons*modal.unitsPerCarton*modal.purchasePrice).toFixed(0)} {CUR}</strong>
+              </div>
             </div>
             <div style={{display:'flex',gap:10,marginTop:16}}>
-              <button style={S.btn} onClick={addItem}>✅ إضافة للفاتورة</button>
+              <button style={S.btn} onClick={addItem}>إضافة للفاتورة</button>
               <button style={S.btnGray} onClick={()=>setShowModal(false)}>إلغاء</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* مودال إضافة منتج جديد */}
-      {showNewProdModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <div style={{background:'white',borderRadius:20,padding:28,width:440,maxWidth:'95vw',direction:'rtl'}}>
-            <h3 style={{fontWeight:800,marginBottom:16,fontSize:18}}>🆕 إضافة منتج جديد</h3>
-            <div style={{display:'grid',gap:12}}>
-              <div><label style={S.label}>اسم المنتج *</label>
-                <input style={S.input} value={newProd.name} onChange={e=>setNewProd(f=>({...f,name:e.target.value}))} /></div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <div><label style={S.label}>سعر البيع *</label>
-                  <NumInput value={newProd.price} onChange={e=>setNewProd(f=>({...f,price:e.target.value}))} /></div>
-                <div><label style={S.label}>قطع/كرتون</label>
-                  <NumInput value={newProd.units} onChange={e=>setNewProd(f=>({...f,units:e.target.value}))} /></div>
-              </div>
-              <div><label style={S.label}>العلامة التجارية</label>
-                <select style={S.input} value={newProd.brandId} onChange={e=>setNewProd(f=>({...f,brandId:e.target.value}))}>
-                  <option value="">-- بدون --</option>
-                  {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-                </select></div>
-            </div>
-            <div style={{display:'flex',gap:10,marginTop:18}}>
-              <button style={S.btn} onClick={saveNewProduct}>💾 حفظ وإضافة للفاتورة</button>
-              <button style={S.btnGray} onClick={()=>{setShowNewProdModal(false);setShowModal(true)}}>رجوع</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14}}>سجل الفواتير</h3>
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={S.th}>#</th><th style={S.th}>المورد</th><th style={S.th}>التاريخ</th><th style={S.th}>المنتجات</th><th style={S.th}>الإجمالي</th><th style={S.th}>طباعة</th></tr></thead>
-            <tbody>{purchases.map(p=>{
-              const its=typeof p.items==='string'?JSON.parse(p.items||'[]'):(p.items||[])
-              return (
-                <tr key={p.id} style={{borderBottom:'1px solid #f8fafc'}}>
-                  <td style={{...S.td,fontSize:11,color:'#94a3b8'}}>{p.id}</td>
-                  <td style={{...S.td,fontWeight:700}}>{p.supplier_name}</td>
-                  <td style={S.td}>{p.date}</td>
-                  <td style={S.td}>{its.length} منتج</td>
-                  <td style={{...S.td,color:'#dc2626',fontWeight:700}}>{Number(p.total).toFixed(0)} {CUR}</td>
-                  <td style={S.td}>
-                    <div style={{display:'flex',gap:4}}>
-                      <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>{
-                        printA4(`<div class="header"><div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
-                        <div><p>رقم: ${p.id}</p><p>${p.date}</p><p>المورد: ${p.supplier_name}</p></div></div>
-                        <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>قطع/كرتون</th><th>سعر الكرتون</th><th>الإجمالي</th></tr></thead>
-                        <tbody>${its.map(i=>`<tr><td>${i.productName}</td><td>${i.cartons||'—'}</td><td>${i.unitsPerCarton||'—'}</td><td>${(i.cartonPrice||0).toFixed(0)}</td><td>${i.totalPurchase.toFixed(0)}</td></tr>`).join('')}
-                        <tr class="total-row"><td colspan="4">الإجمالي</td><td>${Number(p.total).toFixed(0)} ${CUR}</td></tr></tbody></table>`)
-                      }}>A4</button>
-                      <button style={{...S.btnSm,background:'#f0fdf4',color:'#059669'}} onClick={()=>{
-                        const its2=typeof p.items==='string'?JSON.parse(p.items):p.items
-                        printThermal(`<div class="center bold big">نقاء</div><div class="line"></div>
-                        <div class="row"><span>المورد:</span><span>${p.supplier_name}</span></div>
-                        <div class="row"><span>التاريخ:</span><span>${p.date}</span></div><div class="line"></div>
-                        ${its2.map(i=>`<div class="row"><span>${i.productName}</span><span>${i.totalPurchase.toFixed(0)}</span></div>`).join('')}
-                        <div class="line"></div><div class="row total"><span>الإجمالي:</span><span>${Number(p.total).toFixed(0)} ${CUR}</span></div>`)
-                      }}>🖨️</button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-            {purchases.length===0&&<tr><td colSpan={6} style={{textAlign:'center',padding:24,color:'#94a3b8'}}>لا توجد فواتير</td></tr>}
+            <thead><tr><th style={S.th}>#</th><th style={S.th}>المورد</th><th style={S.th}>التاريخ</th><th style={S.th}>الإجمالي</th><th style={S.th}>طباعة</th></tr></thead>
+            <tbody>{purchases.map(p=>(
+              <tr key={p.id} style={{borderBottom:'1px solid #f8fafc'}}>
+                <td style={{...S.td,fontSize:11,color:'#94a3b8'}}>{p.id}</td>
+                <td style={{...S.td,fontWeight:700}}>{p.supplier_name}</td>
+                <td style={S.td}>{p.date}</td>
+                <td style={{...S.td,color:'#dc2626',fontWeight:700}}>{Number(p.total).toFixed(0)} {CUR}</td>
+                <td style={S.td}>
+                  <div style={{display:'flex',gap:4}}>
+                    <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>{
+                      const its=typeof p.items==='string'?JSON.parse(p.items):p.items
+                      printA4(`<div class="header"><div><h1>🛍️ نقاء</h1></div><div><p>رقم: ${p.id}</p><p>${p.date}</p><p>المورد: ${p.supplier_name}</p></div></div>
+                      <table><thead><tr><th>المنتج</th><th>الحبات</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+                      <tbody>${its.map(i=>`<tr><td>${i.productName}</td><td>${i.totalUnits}</td><td>${i.purchasePrice}</td><td>${i.totalPurchase.toFixed(0)}</td></tr>`).join('')}
+                      <tr class="total-row"><td colspan="3">الإجمالي</td><td>${Number(p.total).toFixed(0)} ${CUR}</td></tr></tbody></table>`)
+                    }}>A4</button>
+                    <button style={{...S.btnSm,background:'#f0fdf4',color:'#059669'}} onClick={()=>{
+                      const its=typeof p.items==='string'?JSON.parse(p.items):p.items
+                      printThermal(`<div class="center bold big">نقاء</div><div class="line"></div>
+                      <div class="row"><span>المورد:</span><span>${p.supplier_name}</span></div>
+                      <div class="row"><span>التاريخ:</span><span>${p.date}</span></div><div class="line"></div>
+                      ${its.map(i=>`<div class="row"><span>${i.productName}</span><span>${i.totalPurchase.toFixed(0)}</span></div>`).join('')}
+                      <div class="line"></div><div class="row total"><span>الإجمالي:</span><span>${Number(p.total).toFixed(0)} ${CUR}</span></div>`)
+                    }}>🖨️</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {purchases.length===0&&<tr><td colSpan={5} style={{textAlign:'center',padding:24,color:'#94a3b8'}}>لا توجد فواتير</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1518,18 +1359,16 @@ function PromotionsManager() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [promos,setPromos]=useState([]); const [products,setProducts]=useState([])
   const [saving,setSaving]=useState(false)
-  const [prodSearch,setProdSearch]=useState('')
   const [form,setForm]=useState({
     id:'', name:'', type:'percent', active:true,
     buy_qty:3, get_qty:1, discount_value:0,
     product_ids:[], min_amount:0, description:'',
-    end_date:'', image:'',
-    tier_qty:1, tier_type:'percent', tier_value:0
+    end_date:'', image:''
   })
 
   const load=async()=>{
     const [{data:p},{data:pr}]=await Promise.all([
-      supabase.from('products').select('id,name,price,image').order('name'),
+      supabase.from('products').select('id,name,price').order('name'),
       supabase.from('promotions').select('*').order('id',{ascending:false}).catch(()=>({data:[]})),
     ])
     setProducts(p||[]); setPromos(pr||[])
@@ -1552,17 +1391,13 @@ function PromotionsManager() {
       min_amount:parseFloat(form.min_amount)||0,
       description:form.description, image:form.image||null,
       end_date:form.end_date?new Date(form.end_date).toISOString():null,
-      tier_qty:parseInt(form.tier_qty)||1,
-      tier_type:form.tier_type||'percent',
-      tier_value:parseFloat(form.tier_value)||0,
       created_at:form.id?undefined:new Date().toISOString()
     }
     if(!form.id) delete row.created_at
     const {error}=await supabase.from('promotions').upsert(row).catch(e=>({error:e}))
     if(error){showToast('⚠️ تأكد من تشغيل schema_v4.sql في Supabase','error');setSaving(false);return}
     showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:'',tier_qty:1,tier_type:'percent',tier_value:0})
-    setProdSearch('')
+    setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:''})
     await load(); setSaving(false)
   }
 
@@ -1570,8 +1405,7 @@ function PromotionsManager() {
     id:p.id, name:p.name, type:p.type, active:p.active,
     buy_qty:p.buy_qty||3, get_qty:p.get_qty||1, discount_value:p.discount_value||0,
     product_ids:typeof p.product_ids==='string'?JSON.parse(p.product_ids||'[]'):(p.product_ids||[]),
-    min_amount:p.min_amount||0, description:p.description||'', end_date:p.end_date?.split('T')[0]||'', image:p.image||'',
-    tier_qty:p.tier_qty||1, tier_type:p.tier_type||'percent', tier_value:p.tier_value||0
+    min_amount:p.min_amount||0, description:p.description||'', end_date:p.end_date?.split('T')[0]||'', image:p.image||''
   })
 
   const del=async id=>{
@@ -1585,7 +1419,7 @@ function PromotionsManager() {
     await load(); showToast(val?'✅ تم تفعيل العرض':'⏸️ تم إيقاف العرض')
   }
 
-  const typeLabel={percent:'خصم نسبة %',fixed:'خصم مبلغ ثابت',buy_x_get_y:'اشتري X خذ Y',tier_discount:'خصم حسب الرتبة',tier_buy:'اشتري X من نفس الشركة = خصم'}
+  const typeLabel={percent:'خصم نسبة %',fixed:'خصم مبلغ ثابت',buy_x_get_y:'اشتري X خذ Y',tier_discount:'خصم حسب الرتبة'}
 
   return (
     <div>{ToastUI}{ConfirmUI}
@@ -1602,7 +1436,6 @@ function PromotionsManager() {
               <option value="percent">خصم نسبة % على المنتجات</option>
               <option value="fixed">خصم مبلغ ثابت</option>
               <option value="buy_x_get_y">اشتري X خذ Y مجاناً</option>
-              <option value="tier_buy">📦 اشتري X من نفس الشركة = خصم</option>
             </select></div>
           <div><label style={S.label}>تاريخ الانتهاء</label>
             <input style={S.input} type="datetime-local" value={form.end_date} onChange={F('end_date')} /></div>
@@ -1648,55 +1481,26 @@ function PromotionsManager() {
           {form.image&&<img src={form.image} style={{width:'100%',height:80,objectFit:'cover',borderRadius:10,marginTop:6}}/>}
         </div>
 
-        {/* tier_buy خيارات */}
-        {form.type==='tier_buy'&&(
-          <div style={{background:'#f0f9ff',borderRadius:12,padding:14,marginTop:12}}>
-            <p style={{fontWeight:700,fontSize:14,marginBottom:10,color:'#1d4ed8'}}>📦 عند شراء X كرتون من نفس الشركة → خصم</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
-              <div><label style={S.label}>عدد الكراتين المطلوب</label><NumInput value={form.tier_qty} onChange={F('tier_qty')} /></div>
-              <div><label style={S.label}>نوع الخصم</label>
-                <select style={S.input} value={form.tier_type} onChange={F('tier_type')}>
-                  <option value="percent">نسبة %</option>
-                  <option value="fixed">مبلغ ثابت</option>
-                </select></div>
-              <div><label style={S.label}>قيمة الخصم</label><NumInput value={form.tier_value} onChange={F('tier_value')} /></div>
-            </div>
-            <p style={{fontSize:12,color:'#64748b',marginTop:8}}>مثال: اشتري {form.tier_qty} كرتون من نفس الشركة → {form.tier_value}{form.tier_type==='percent'?'%':' '+CUR} خصم</p>
-          </div>
-        )}
-
-        {/* اختيار المنتجات — بحث + checkbox */}
+        {/* اختيار المنتجات */}
         <div style={{marginTop:14}}>
           <label style={S.label}>
-            🔍 المنتجات المشمولة بالعرض
-            <span style={{fontWeight:400,color:'#94a3b8',marginRight:8,fontSize:12}}>(اتركها فارغة لتشمل جميع المنتجات)</span>
+            المنتجات المشمولة بالعرض
+            <span style={{fontWeight:400,color:'#94a3b8',marginRight:8}}>
+              (اتركها فارغة لتشمل جميع المنتجات)
+            </span>
           </label>
-          <input style={{...S.input,marginBottom:8}} placeholder="ابحث عن منتج..." value={prodSearch} onChange={e=>setProdSearch(e.target.value)} />
-          <div style={{maxHeight:220,overflowY:'auto',border:'1.5px solid #e2e8f0',borderRadius:12,padding:10}}>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:6}}>
-              {products.filter(p=>!prodSearch||p.name.toLowerCase().includes(prodSearch.toLowerCase())).map(p=>{
-                const sel=form.product_ids.includes(p.id)||form.product_ids.includes(String(p.id))
-                return (
-                  <label key={p.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 10px',
-                    borderRadius:10,cursor:'pointer',background:sel?'#fef2f2':'#f8fafc',
-                    border:`1.5px solid ${sel?'#dc2626':'transparent'}`,transition:'.15s'}}>
-                    <input type="checkbox" checked={sel} onChange={()=>toggleProduct(p.id)} style={{accentColor:'#dc2626'}}/>
-                    {p.image&&<img src={p.image} style={{width:28,height:28,borderRadius:6,objectFit:'cover',flexShrink:0}}/>}
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:12,fontWeight:700,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{p.name}</div>
-                      <div style={{fontSize:11,color:'#94a3b8'}}>{p.price} {CUR}</div>
-                    </div>
-                  </label>
-                )
-              })}
+          <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e2e8f0',borderRadius:12,padding:10,marginTop:6}}>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {products.map(p=>(
+                <button key={p.id} onClick={()=>toggleProduct(p.id)}
+                  style={{...S.btnSm,background:form.product_ids.includes(p.id)?'#dc2626':'#f1f5f9',
+                    color:form.product_ids.includes(p.id)?'white':'#475569',fontSize:11}}>
+                  {form.product_ids.includes(p.id)?'✓ ':''}{p.name} — {p.price} {CUR}
+                </button>
+              ))}
             </div>
           </div>
-          {form.product_ids.length>0&&(
-            <div style={{marginTop:6,display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:12,color:'#10b981',fontWeight:700}}>✓ {form.product_ids.length} منتج محدد</span>
-              <button onClick={()=>setForm(f=>({...f,product_ids:[]}))} style={{...S.btnSm,background:'#fee2e2',color:'#dc2626',fontSize:11}}>إلغاء الكل</button>
-            </div>
-          )}
+          {form.product_ids.length>0&&<p style={{fontSize:12,color:'#10b981',marginTop:6}}>✓ {form.product_ids.length} منتج محدد</p>}
         </div>
 
         {/* تفعيل العرض */}
@@ -1759,79 +1563,29 @@ function PromotionsManager() {
 ══════════════════════════════════════════ */
 function Notifications() {
   const [showToast,ToastUI]=useToast()
-  const [items,setItems]=useState([]); const [customers,setCustomers]=useState([])
-  const [title,setTitle]=useState(''); const [body,setBody]=useState('')
-  const [targetType,setTargetType]=useState('all')
-  const [addressFilter,setAddressFilter]=useState('')
-  const [saving,setSaving]=useState(false)
-  const load=async()=>{
-    const [{data:n},{data:c}]=await Promise.all([
-      supabase.from('notifications').select('*').order('id',{ascending:false}),
-      supabase.from('customers').select('id,name,tier,address').order('name'),
-    ])
-    setItems(n||[]); setCustomers(c||[])
-  }
+  const [items,setItems]=useState([]); const [title,setTitle]=useState(''); const [body,setBody]=useState(''); const [saving,setSaving]=useState(false)
+  const load=async()=>{ const {data}=await supabase.from('notifications').select('*').order('id',{ascending:false}); setItems(data||[]) }
   useEffect(()=>{ load() },[])
-  const targeted=customers.filter(c=>{
-    if(targetType==='all') return true
-    if(['M1','M2','M3'].includes(targetType)) return (c.tier||'M1')===targetType
-    if(targetType==='address') return addressFilter&&(c.address||'').includes(addressFilter)
-    return true
-  })
   const send=async()=>{
     if(!title||!body){showToast('العنوان والنص مطلوبان','error');return} setSaving(true)
-    await supabase.from('notifications').insert({
-      id:Date.now(),title,body,
-      target_type:targetType,target_count:targeted.length,
-      date:new Date().toLocaleString('ar-DZ'),is_read:false
-    })
-    showToast(`✅ تم الإرسال لـ ${targeted.length} عميل`);setTitle('');setBody('');await load();setSaving(false)
+    await supabase.from('notifications').insert({id:Date.now(),title,body,date:new Date().toLocaleString('ar-DZ'),is_read:false})
+    showToast('✅ تم الإرسال');setTitle('');setBody('');await load();setSaving(false)
   }
-  const tierLabels={all:'الكل',M1:'M1 عادي',M2:'M2 مميز',M3:'M3 VIP',address:'حسب العنوان'}
-  const tierColors={all:'#475569',M1:'#475569',M2:'#1d4ed8',M3:'#92400e',address:'#059669'}
   return (
     <div>{ToastUI}
       <h1 style={{fontSize:22,fontWeight:900,marginBottom:20}}>🔔 الإشعارات</h1>
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>📢 إرسال إشعار</h3>
-        <label style={S.label}>👥 أرسل إلى</label>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
-          {Object.entries(tierLabels).map(([k,v])=>(
-            <button key={k} onClick={()=>setTargetType(k)}
-              style={{...S.btnSm,background:targetType===k?tierColors[k]:'#f1f5f9',
-                color:targetType===k?'white':'#64748b',
-                border:`2px solid ${targetType===k?tierColors[k]:'transparent'}`,fontWeight:700}}>
-              {v}
-            </button>
-          ))}
-        </div>
-        {targetType==='address'&&(
-          <div style={{marginBottom:12}}>
-            <label style={S.label}>🗺️ فلتر العنوان (ولاية أو حي)</label>
-            <input style={S.input} value={addressFilter} onChange={e=>setAddressFilter(e.target.value)} placeholder="مثال: الجزائر العاصمة" />
-          </div>
-        )}
-        <div style={{background:'#f0fdf4',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,fontWeight:700,color:'#059669'}}>
-          👥 سيصل الإشعار إلى: <strong>{targeted.length}</strong> عميل
-        </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-          <div><label style={S.label}>العنوان *</label><input style={S.input} value={title} onChange={e=>setTitle(e.target.value)} /></div>
-          <div><label style={S.label}>النص *</label><input style={S.input} value={body} onChange={e=>setBody(e.target.value)} /></div>
+          <div><label style={S.label}>العنوان</label><input style={S.input} value={title} onChange={e=>setTitle(e.target.value)} /></div>
+          <div><label style={S.label}>النص</label><input style={S.input} value={body} onChange={e=>setBody(e.target.value)} /></div>
         </div>
-        <button style={S.btn} onClick={send} disabled={saving||targeted.length===0}>{saving?'⏳...':'📢 إرسال'}</button>
+        <button style={S.btn} onClick={send} disabled={saving}>{saving?'⏳...':'📢 إرسال'}</button>
       </div>
       <div style={S.card}>
         {items.length===0?<p style={{textAlign:'center',color:'#94a3b8',padding:24}}>لا توجد إشعارات</p>:
           items.map(n=>(
             <div key={n.id} style={{borderBottom:'1px solid #f8fafc',padding:'12px 0'}}>
-              <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:6}}>
-                <strong>{n.title}</strong>
-                <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                  {n.target_type&&n.target_type!=='all'&&<span style={{fontSize:11,background:'#f1f5f9',borderRadius:20,padding:'2px 8px'}}>{tierLabels[n.target_type]||n.target_type}</span>}
-                  {n.target_count>0&&<span style={{fontSize:11,color:'#10b981',fontWeight:700}}>{n.target_count} عميل</span>}
-                  <span style={{fontSize:12,color:'#94a3b8'}}>{n.date}</span>
-                </div>
-              </div>
+              <div style={{display:'flex',justifyContent:'space-between'}}><strong>{n.title}</strong><span style={{fontSize:12,color:'#94a3b8'}}>{n.date}</span></div>
               <p style={{fontSize:14,color:'#475569',marginTop:4}}>{n.body}</p>
             </div>
           ))}
@@ -2055,20 +1809,13 @@ function Settings({ showToast }) {
 function StoreManager({ showToast }) {
   const [banners,setBanners]=useState([]); const [form,setForm]=useState({title:'',subtitle:'',image:''})
   const [promoText,setPromoText]=useState(''); const [announceBar,setAnnounceBar]=useState(''); const [saving,setSaving]=useState(false)
-  const [primaryColor,setPrimaryColor]=useState('#dc2626')
-  const [storeLogo,setStoreLogo]=useState('')
-  const [storeName2,setStoreName2]=useState('')
   useEffect(()=>{
-    supabase.from('settings').select('*').then(({data})=>{
+    supabase.from('settings').select('*').in('key',['store_banners','promo_text','announce_bar']).then(({data})=>{
       if(!data) return; const map={}; data.forEach(r=>(map[r.key]=r.value))
       try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
       setPromoText(map['promo_text']||''); setAnnounceBar(map['announce_bar']||'')
-      setPrimaryColor(map['primary_color']||'#dc2626')
-      setStoreLogo(map['store_logo']||'')
-      setStoreName2(map['store_name']||'نقاء')
     })
   },[])
-  const handleLogo=e=>{const r=new FileReader();r.onload=ev=>setStoreLogo(ev.target.result);r.readAsDataURL(e.target.files[0])}
   const handleImg=e=>{const r=new FileReader();r.onload=ev=>setForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
   const addBanner=async()=>{
     if(!form.title&&!form.image){showToast('أضف صورة أو عنوان','error');return} setSaving(true)
@@ -2083,13 +1830,7 @@ function StoreManager({ showToast }) {
   }
   const saveTexts=async()=>{
     setSaving(true)
-    await Promise.all([
-      supabase.from('settings').upsert({key:'promo_text',value:promoText}),
-      supabase.from('settings').upsert({key:'announce_bar',value:announceBar}),
-      supabase.from('settings').upsert({key:'primary_color',value:primaryColor}),
-      supabase.from('settings').upsert({key:'store_logo',value:storeLogo}),
-      supabase.from('settings').upsert({key:'store_name',value:storeName2}),
-    ])
+    await Promise.all([supabase.from('settings').upsert({key:'promo_text',value:promoText}),supabase.from('settings').upsert({key:'announce_bar',value:announceBar})])
     showToast('✅ تم الحفظ');setSaving(false)
   }
   return (
@@ -2114,22 +1855,6 @@ function StoreManager({ showToast }) {
           <input style={S.input} value={promoText} onChange={e=>setPromoText(e.target.value)} placeholder="اشتري 3 خذ 4 مجاناً!" />
         </div>
         <button style={{...S.btn,marginTop:14}} onClick={saveTexts} disabled={saving}>{saving?'⏳...':'💾 حفظ النصوص'}</button>
-      </div>
-      <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🎨 الهوية البصرية للمتجر</h3>
-        <div style={S.grid2}>
-          <div><label style={S.label}>اسم المتجر</label>
-            <input style={S.input} value={storeName2} onChange={e=>setStoreName2(e.target.value)} /></div>
-          <div><label style={S.label}>اللون الأساسي</label>
-            <div style={{display:'flex',gap:8,alignItems:'center'}}>
-              <input type="color" value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)} style={{width:46,height:38,border:'none',borderRadius:8,cursor:'pointer'}}/>
-              <input style={{...S.input,width:120}} value={primaryColor} onChange={e=>setPrimaryColor(e.target.value)}/>
-            </div></div>
-          <div><label style={S.label}>شعار المتجر (Logo)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={handleLogo}/>
-            {storeLogo&&<img src={storeLogo} style={{height:50,marginTop:6,borderRadius:8}}/>}</div>
-        </div>
-        <button style={{...S.btn,marginTop:14}} onClick={saveTexts} disabled={saving}>{saving?'⏳...':'💾 حفظ الهوية'}</button>
       </div>
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🖼️ البانرات المتحركة</h3>
