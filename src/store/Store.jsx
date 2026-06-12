@@ -750,7 +750,6 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
 }function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, currency, products, sevenAgo, onShowProduct, promos }) {
   if (!product) return null
   const p = product
-  const disc = Number(p.discount)||0
   const finalPrice = disc>0 ? (p.price*(1-disc/100)).toFixed(0) : p.price
   const related = products.filter(r=>(r.category_id===p.category_id||r.brand_id===p.brand_id)&&r.id!==p.id&&!r.disabled).slice(0,6)
   const cartonPrice = p.price * (p.units || 12) // حساب سعر الكرتون تلقائياً
