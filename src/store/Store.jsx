@@ -1,14 +1,16 @@
 /**
- * Store.jsx — نقاء v6
+ * Store.jsx — نقاء v7
  * ✅ تسجيل دخول + تسجيل جديد مع OTP
  * ✅ عروض من قاعدة البيانات مع مؤقت
  * ✅ خصم تدريجي حسب الكمية
  * ✅ اشتري X خذ Y
  * ✅ زر واتساب بارز
  * ✅ الطلب بالكارتون فقط
- * ✅ حقول رقمية فقط
- * ✅ تأكيد الطلب بكود
- * ✅ صور متحركة للفئات والماركات
+ * ✅ نقاط الولاء
+ * ✅ الطلب السريع (Quick Order)
+ * ✅ الطلبات السابقة للعميل
+ * ✅ تصفية حسب السعر والخصم
+ * ✅ سياسة الاسترجاع - شروط وأحكام - FAQ
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -46,6 +48,10 @@ body.dark .sh-search input{color:#f0e8e0}
 .announce{background:#FF6B35;color:white;text-align:center;padding:7px 16px;
   font-size:12px;font-weight:700;letter-spacing:.3px}
 
+/* FREE SHIPPING NOTICE */
+.free-ship-notice{background:#dcfce7;color:#166534;text-align:center;padding:6px 16px;
+  font-size:11px;font-weight:700;border-bottom:1px solid #bbf7d0}
+
 /* BANNER */
 .banner-wrap{margin:14px 14px 0;border-radius:20px;overflow:hidden;position:relative;
   box-shadow:0 8px 28px rgba(255,107,53,.22)}
@@ -74,6 +80,14 @@ body.dark .sh-search input{color:#f0e8e0}
 body.dark .sec-title{color:#F0E8E0}
 .sec-more{color:#FF6B35;font-size:13px;font-weight:700;border:none;
   background:none;cursor:pointer;font-family:inherit}
+
+/* FILTER SECTION */
+.filter-section{background:white;border-radius:16px;padding:12px 16px;margin:0 14px 14px;
+  border:1px solid #E8DDD5}
+body.dark .filter-section{background:#1e1208;border-color:#3d2a1a}
+.filter-range{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.filter-range input{flex:1;min-width:100px}
+.filter-label{font-size:12px;font-weight:700;color:#7A6A5A;min-width:60px}
 
 /* ANIMATED BRANDS/CATS GRID */
 .anim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -129,11 +143,13 @@ body.dark .pc{background:#1e1208}
 .pc-img{position:relative;border-radius:13px;overflow:hidden;margin-bottom:9px;
   background:#F8F4F0;aspect-ratio:1}
 .pc-img img{width:100%;height:100%;object-fit:cover}
+.pc-img.out-of-stock{opacity:0.5;filter:grayscale(0.2)}
 .pc-noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px}
 .badge{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:20px;
   font-size:10px;font-weight:800;color:white}
 .b-new{background:#10b981}.b-hot{background:#f59e0b}
 .b-promo{background:#FF6B35}.b-flash{background:#dc2626}
+.b-outstock{background:#64748b}
 .fav-b{position:absolute;top:6px;left:6px;width:28px;height:28px;border-radius:50%;
   background:white;border:none;cursor:pointer;display:flex;align-items:center;
   justify-content:center;font-size:12px}
@@ -150,6 +166,7 @@ body.dark .pc-name{color:#F0E8E0}
   background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;
   border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;
   display:flex;align-items:center;justify-content:center;gap:4px}
+.add-b.disabled{opacity:0.5;cursor:not-allowed}
 
 /* GRID */
 .prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -168,6 +185,18 @@ body.dark .prog-bar-wrap{background:#2d1a0a}
 .prog-track{background:#E8DDD5;border-radius:30px;height:8px;margin-top:8px;overflow:hidden}
 .prog-fill{height:100%;border-radius:30px;
   background:linear-gradient(90deg,#FF6B35,#7C3AED);transition:width .5s ease}
+
+/* QUICK ORDER TABLE */
+.quick-order-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.quick-order-table th,.quick-order-table td{border:1px solid #E8DDD5;padding:10px;text-align:center}
+.quick-order-table th{background:#FF6B35;color:white;font-weight:700}
+.quick-order-table input{width:80px;padding:6px;border:1px solid #E8DDD5;border-radius:8px;text-align:center}
+
+/* LOYALTY BANNER */
+.loyalty-banner{background:linear-gradient(135deg,#fef9c3,#fde68a);border-radius:12px;
+  padding:12px 16px;margin:0 14px 14px;display:flex;justify-content:space-between;
+  align-items:center;cursor:pointer}
+.loyalty-points{background:#FF6B35;color:white;border-radius:20px;padding:4px 12px;font-weight:800}
 
 /* CART BAR */
 .cart-bar{background:linear-gradient(135deg,#FF6B35,#7C3AED);margin:14px;border-radius:16px;
@@ -195,7 +224,7 @@ body.dark .bnav{background:#1e1208}
   align-items:center;justify-content:center;font-weight:800;border:2px solid white}
 body.dark .nbadge{border-color:#1e1208}
 
-/* WHATSAPP - prominent like Esmmar */
+/* WHATSAPP FLOAT */
 .wa-float{position:fixed;bottom:90px;left:14px;z-index:400}
 .wa-btn{width:56px;height:56px;background:#25D366;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -266,6 +295,7 @@ body.dark .ci{border-color:#2d1a0a}
   display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
 .abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
 .abtn.green{background:linear-gradient(135deg,#10b981,#059669)}
+.abtn.disabled{opacity:0.5;cursor:not-allowed}
 
 /* OTP */
 .otp-inputs{display:flex;gap:10px;justify-content:center;margin:16px 0}
@@ -294,6 +324,23 @@ body.dark .trstep{border-color:#2d1a0a}
 .trdot.done{background:linear-gradient(135deg,#FF6B35,#7C3AED);color:white}
 .trdot.wait{background:#F7F3EF;color:#AAA099}
 body.dark .trdot.wait{background:#2d1a0a}
+
+/* ORDERS TABLE */
+.orders-table{width:100%;border-collapse:collapse}
+.orders-table th,.orders-table td{border:1px solid #E8DDD5;padding:8px 10px;text-align:center}
+.orders-table th{background:#FF6B35;color:white;font-weight:700}
+.orders-table .status-pending{color:#92400E;background:#FEF9C3}
+.orders-table .status-processing{color:#1D4ED8;background:#DBEAFE}
+.orders-table .status-shipped{color:#5B21B6;background:#E0E7FF}
+.orders-table .status-delivered{color:#059669;background:#D1FAE5}
+.orders-table .status-cancelled{color:#DC2626;background:#FEE2E2}
+
+/* FAQ */
+.faq-item{margin-bottom:12px;border:1px solid #E8DDD5;border-radius:12px;overflow:hidden}
+.faq-question{background:#F7F3EF;padding:14px 16px;font-weight:800;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center}
+.faq-answer{padding:0 16px;max-height:0;overflow:hidden;transition:max-height 0.3s ease}
+.faq-answer.open{max-height:200px;padding:14px 16px}
 
 .page{padding-bottom:80px}
 `
@@ -324,7 +371,6 @@ function useTimer(endTime) {
   }, [endTime])
   return tl
 }
-
 /* ── MODALS (outside main to prevent re-mount on re-render) ── */
 
 function LoginModal({ onClose, onLogin, onRegister }) {
@@ -413,10 +459,14 @@ function RegisterModal({ onClose, onSuccess }) {
     setLoading(true)
     const {error}=await supabase.from('customers').insert({
       id:Date.now(), name:form.name, email:form.email, phone:form.phone,
-      address:form.address, password:hashPwd(form.pass), points:0, tier:'M1',
+      address:form.address, password:hashPwd(form.pass), points:0, tier:'M1', total_purchases:0,
       created_at:new Date().toISOString()
     })
     if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
+    // إنشاء حساب نقاط ولاء للعميل الجديد
+    await supabase.from('loyalty_points').insert({
+      id:Date.now(), customer_id:Date.now(), points:0, total_earned:0, total_redeemed:0
+    }).catch(()=>{})
     showToast('✅ تم التسجيل بنجاح!'); onSuccess()
     setLoading(false)
   }
@@ -481,7 +531,7 @@ function RegisterModal({ onClose, onSuccess }) {
   )
 }
 
-function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, promos }) {
+function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, promos, customer, loyaltyPoints }) {
   const cartTotal  = cart.reduce((s,i)=>s+i.price*i.qty,0)
   const changeQty  = (id,d) => setCart(p=>p.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+d)}:i))
   const remove     = id => setCart(p=>p.filter(i=>i.id!==id))
@@ -512,7 +562,13 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   const nextTier    = volTiers.find(t=>cartTotal<t.min)
   const volDisc     = currentTier ? cartTotal*(currentTier.disc/100) : 0
 
-  const finalTotal  = cartTotal - buy3Disc - volDisc
+  // خصم نقاط الولاء (كل 10 نقاط = 50 دج)
+  const loyaltyDiscountValue = loyaltyPoints ? Math.floor(loyaltyPoints / 10) * 50 : 0
+  const [useLoyalty, setUseLoyalty] = useState(false)
+  const loyaltyDisc = useLoyalty ? Math.min(loyaltyDiscountValue, cartTotal - buy3Disc - volDisc) : 0
+  const pointsToUse = useLoyalty ? Math.min(Math.floor(loyaltyDiscountValue / 50) * 10, loyaltyPoints||0) : 0
+
+  const finalTotal  = cartTotal - buy3Disc - volDisc - loyaltyDisc
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -528,7 +584,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
             : <>
               {cart.map(i=>(
                 <div key={i.id} className="ci">
-                  {i.image?<img src={i.image} className="ci-img" alt=""/>:<div className="ci-img">🛍️</div>}
+                  <div className="ci-img">{i.image?<img src={i.image} style={{width:58,height:58,borderRadius:12,objectFit:'cover'}}/>:<>🛍️</>}</div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:700,fontSize:14,color:'#1A0A00'}}>{i.name}</div>
                     <div style={{color:'#FF6B35',fontWeight:900,fontSize:15,marginTop:2}}>
@@ -536,7 +592,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                     </div>
                     <div className="qty-row">
                       <button className="qty-b" onClick={()=>changeQty(i.id,-1)}>−</button>
-                      <span style={{fontWeight:800,fontSize:15,minWidth:22,textAlign:'center'}}>{i.qty} كرتون{i.unitsPerCarton?` (${i.qty*(i.unitsPerCarton||12)} قطعة)`:''}</span>
+                      <span style={{fontWeight:800,fontSize:15,minWidth:22,textAlign:'center'}}>{i.qty} كرتون</span>
                       <button className="qty-b" onClick={()=>changeQty(i.id,1)}>+</button>
                     </div>
                   </div>
@@ -572,17 +628,36 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               </div>
 
+              {/* نقاط الولاء */}
+              {customer && loyaltyPoints > 0 && loyaltyDiscountValue > 0 && (
+                <div style={{background:'#fef9c3',borderRadius:14,padding:12,margin:'10px 0',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}>
+                  <div>
+                    <span style={{fontWeight:800,color:'#92400E'}}>⭐ لديك {loyaltyPoints} نقطة</span>
+                    <span style={{fontSize:12,color:'#92400E',marginRight:8}}>(تساوي {loyaltyDiscountValue} {currency} خصم)</span>
+                  </div>
+                  <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+                    <input type="checkbox" checked={useLoyalty} onChange={e=>setUseLoyalty(e.target.checked)} />
+                    استخدم النقاط واحصل على خصم {Math.min(loyaltyDiscountValue, finalTotal + loyaltyDisc).toFixed(0)} {currency}
+                  </label>
+                </div>
+              )}
+
               {/* الإجمالي */}
-              {(buy3Disc>0||volDisc>0)&&(
+              {(buy3Disc>0||volDisc>0||loyaltyDisc>0)&&(
                 <div style={{fontSize:13,color:'#94a3b8',textDecoration:'line-through',textAlign:'left',marginBottom:4}}>
                   {cartTotal.toFixed(0)} {currency}
+                </div>
+              )}
+              {loyaltyDisc>0 && (
+                <div style={{fontSize:13,color:'#10b981',textAlign:'left',marginBottom:4}}>
+                  خصم النقاط: -{loyaltyDisc.toFixed(0)} {currency}
                 </div>
               )}
               <div style={{display:'flex',justifyContent:'space-between',fontWeight:900,fontSize:18,marginBottom:16}}>
                 <span>الإجمالي</span>
                 <span style={{color:'#FF6B35'}}>{finalTotal.toFixed(0)} {currency}</span>
               </div>
-              <button className="abtn" onClick={()=>onCheckout(finalTotal,buy3Disc+volDisc)}>
+              <button className="abtn" onClick={()=>onCheckout(finalTotal, buy3Disc+volDisc, loyaltyDisc, pointsToUse)}>
                 <i className="fas fa-credit-card"></i> إتمام الشراء
               </button>
             </>}
@@ -592,80 +667,63 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   )
 }
 
-function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
-  const [form, setForm] = useState({name:'',phone:'',address:''})
-  const [step, setStep] = useState(1) // 1=form, 2=otp-choice, 3=otp
-  const [otpMethod, setOtpMethod] = useState('whatsapp')
-  const [otp,  setOtp]  = useState('')
-  const [genOtp, setGenOtp] = useState('')
-  const [digits, setDigits] = useState(['','','',''])
-  const refs = [useRef(null),useRef(null),useRef(null),useRef(null)]
+function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName, customer, pointsToUse }) {
+  const [form, setForm] = useState({name: customer?.name || '', phone: customer?.phone || '', address: customer?.address || ''})
+  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+
   const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
 
-  const goToOtp = () => {
-    if (!form.name||!form.phone) { showToast('الاسم والهاتف مطلوبان',true); return }
-    const code = String(Math.floor(1000+Math.random()*9000))
-    setGenOtp(code); setStep(3)
-    showToast(`كود التأكيد: ${code}`)
-  }
-
-  const handleDigit = (i, v) => {
-    const nd=[...digits]; nd[i]=v.replace(/\D/,''); setDigits(nd)
-    if (nd[i]&&i<3) refs[i+1].current?.focus()
-    if (!nd[i]&&i>0) refs[i-1].current?.focus()
-    setOtp(nd.join(''))
-  }
-
   const confirmOrder = async () => {
-    if (otp!==genOtp) { showToast('الكود غير صحيح',true); return }
+    if (!form.name||!form.phone) { showToast('الاسم والهاتف مطلوبان',true); return }
     setLoading(true)
+    const orderId = Date.now()
     const order = {
-      id:Date.now(), customer_name:form.name, customer_phone:form.phone,
-      customer_address:form.address,
-      date:new Date().toLocaleString('ar-DZ'),
-      items:JSON.stringify(cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price}))),
-      total:finalTotal, status:'processing' // تأكيد مباشر بعد OTP
+      id: orderId, customer_name: form.name, customer_phone: form.phone,
+      customer_address: form.address, customer_id: customer?.id || null,
+      date: new Date().toLocaleString('ar-DZ'),
+      items: JSON.stringify(cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price,cartonPrice:i.cartonPrice}))),
+      total: finalTotal, status: 'pending',
+      loyalty_points_used: pointsToUse || 0
     }
     const {error}=await supabase.from('orders').insert(order)
     if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
+    
+    // تحديث المخزون
     for (const item of cart) {
       const {data:p}=await supabase.from('products').select('stock').eq('id',item.id).maybeSingle()
       if (p) await supabase.from('products').update({stock:Math.max(0,(p.stock||0)-item.qty)}).eq('id',item.id)
     }
-    if (waNum) {
-      const msg=`مرحباً ${form.name}، تم تأكيد طلبك رقم ${order.id} ✅\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً! — ${storeName}`
-      window.open(`https://wa.me/${form.phone.replace(/^0/,'213')}?text=${encodeURIComponent(msg)}`,'_blank')
+    
+    // تحديث نقاط الولاء
+    if (customer && finalTotal > 0) {
+      const loyaltyRate = 100 // كل 100 دج = 1 نقطة
+      const earnedPoints = Math.floor(finalTotal / loyaltyRate)
+      if (earnedPoints > 0) {
+        const {data:lp} = await supabase.from('loyalty_points').select('*').eq('customer_id',customer.id).maybeSingle()
+        if (lp) {
+          const newPoints = (lp.points || 0) - (pointsToUse || 0) + earnedPoints
+          await supabase.from('loyalty_points').update({points: newPoints, total_earned: (lp.total_earned||0) + earnedPoints}).eq('customer_id',customer.id)
+        } else {
+          await supabase.from('loyalty_points').insert({id:Date.now(), customer_id:customer.id, points: earnedPoints, total_earned: earnedPoints, total_redeemed:0})
+        }
+        await supabase.from('loyalty_transactions').insert({id:Date.now(), customer_id:customer.id, order_id:orderId, points: earnedPoints, type:'earned', description:'نقاط من الطلب'})
+        if (pointsToUse > 0) {
+          await supabase.from('loyalty_transactions').insert({id:Date.now()+1, customer_id:customer.id, order_id:orderId, points: -pointsToUse, type:'redeemed', description:'استبدال نقاط بخصم'})
+        }
+      }
     }
-    onSuccess(order.id)
+
+    // إرسال إشعار واتساب لصاحب المتجر
+    const adminPhone = localStorage.getItem('nq_admin_wa') || WA_NUM
+    const itemsList = cart.map(i => `${i.name} ×${i.qty} = ${(i.price*i.qty).toFixed(0)}`).join('%0A')
+    const msg = `🛍️ طلب جديد من متجر نقاء%0A%0A📋 رقم الطلب: ${orderId}%0A👤 العميل: ${form.name}%0A📱 الهاتف: ${form.phone}%0A📍 العنوان: ${form.address}%0A%0A🛒 المنتجات:%0A${itemsList}%0A%0A💰 الإجمالي: ${finalTotal.toFixed(0)} ${currency}%0A%0A✅ لتأكيد الطلب، اضغط على الرابط:%0Ahttps://naqaa-tau.vercel.app/admin?order=${orderId}&confirm=true`
+    window.open(`https://wa.me/${adminPhone.replace(/^0/,'213')}?text=${msg}`, '_blank')
+    
+    showToast('✅ تم إرسال طلبك! سيتم تأكيده عبر واتساب')
+    onSuccess(orderId)
     setLoading(false)
   }
-
-  if (step===3) return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center">
-        <div className="mhead"><h3>🔐 تأكيد الطلبية</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody" style={{textAlign:'center'}}>
-          <p style={{fontSize:14,color:'#7A6A5A',marginBottom:8}}>أدخل كود التأكيد المرسل إليك</p>
-          <p style={{fontWeight:700,color:'#FF6B35',marginBottom:16}}>{form.phone}</p>
-          <div className="otp-inputs">
-            {digits.map((d,i)=>(
-              <input key={i} ref={refs[i]} className="otp-input"
-                value={d} inputMode="numeric" maxLength={1}
-                onChange={e=>handleDigit(i,e.target.value)}
-                onKeyDown={e=>{if(e.key==='Backspace'&&!d&&i>0) refs[i-1].current?.focus()}} />
-            ))}
-          </div>
-          <div style={{background:'#fef9c3',borderRadius:12,padding:12,marginBottom:16,fontSize:13}}>
-            🔑 كودك: <strong style={{fontSize:20,color:'#dc2626'}}>{genOtp}</strong>
-          </div>
-          <button className="abtn green" onClick={confirmOrder} disabled={loading||otp.length<4}>
-            {loading?'⏳...':'✅ تأكيد الطلبية'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -675,42 +733,39 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
           <label className="fi-label">الاسم الكامل *</label>
           <input className="fi" value={form.name} onChange={F('name')} autoComplete="name" />
           <label className="fi-label">رقم الهاتف *</label>
-          <input className="fi" type="tel" value={form.phone} onChange={F('phone')}
-            inputMode="numeric" autoComplete="tel"
-            onKeyPress={e=>{if(!/[0-9+]/.test(e.key)) e.preventDefault()}} />
+          <input className="fi" type="tel" value={form.phone} onChange={F('phone')} inputMode="numeric" autoComplete="tel" />
           <label className="fi-label">العنوان</label>
-          <textarea className="fi" rows="2" value={form.address} onChange={F('address')}
-            style={{resize:'none'}} autoComplete="street-address"></textarea>
-          <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 16px',
-            marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <textarea className="fi" rows="2" value={form.address} onChange={F('address')} style={{resize:'none'}} />
+          <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontWeight:700}}>إجمالي الطلب</span>
             <span style={{fontWeight:900,color:'#FF6B35',fontSize:18}}>{finalTotal.toFixed(0)} {currency}</span>
           </div>
-          <button className="abtn" onClick={goToOtp}>
-            <i className="fas fa-shield-alt"></i> التالي — تأكيد بكود
+          <button className="abtn" onClick={confirmOrder} disabled={loading}>
+            {loading?'⏳ جاري...':'✅ تأكيد الطلب وإرسال للمتجر'}
           </button>
         </div>
       </div>
     </div>
   )
-}
-
-function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, currency, products, sevenAgo, onShowProduct, promos }) {
+}function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, currency, products, sevenAgo, onShowProduct, promos }) {
   if (!product) return null
   const p = product
   const disc = Number(p.discount)||0
   const finalPrice = disc>0 ? (p.price*(1-disc/100)).toFixed(0) : p.price
   const related = products.filter(r=>(r.category_id===p.category_id||r.brand_id===p.brand_id)&&r.id!==p.id&&!r.disabled).slice(0,6)
+  const cartonPrice = p.price * (p.units || 12) // حساب سعر الكرتون تلقائياً
 
-  // خصم الكميات
   const volTiers=[{qty:6,disc:5},{qty:12,disc:10},{qty:24,disc:15}]
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="msheet">
         <div className="mhandle"></div>
-        {p.image?<img src={p.image} style={{width:'100%',height:260,objectFit:'cover'}} alt={p.name}/>:
-          <div style={{width:'100%',height:200,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56}}>🛍️</div>}
+        <div className={`pc-img ${(p.stock||0)===0 ? 'out-of-stock' : ''}`}>
+          {p.image?<img src={p.image} style={{width:'100%',height:260,objectFit:'cover'}} alt={p.name}/>:
+            <div style={{width:'100%',height:200,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56}}>🛍️</div>}
+          {(p.stock||0)===0 && <span className="badge b-outstock">نفذ</span>}
+        </div>
         <div className="mhead">
           <h3 style={{flex:1,fontSize:15}}>{p.name}</h3>
           <button className="mclose" onClick={onClose}>×</button>
@@ -727,25 +782,34 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
               <i className="fas fa-heart" style={{color:wishlist.includes(p.id)?'#FF6B35':'#CBD5E1'}}></i>
             </button>
           </div>
-          {p.carton_price&&<p style={{color:'#7A6A5A',fontSize:13,marginBottom:8}}>الكرتون ({p.units||12} قطعة): {p.carton_price} {currency}</p>}
-          {(p.stock||0)>0&&(p.stock||0)<10&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
-          {(p.stock||0)===0&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>❌ نفذ من المخزون</p>}
-
-          {/* جدول خصم الكميات */}
+          <div style={{background:'#F0FDF4',borderRadius:12,padding:12,marginBottom:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontWeight:700}}>📦 سعر القطعة:</span>
+              <span>{p.price} {currency}</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <span style={{fontWeight:700}}>📦 سعر الكرتون ({p.units||12} قطعة):</span>
+              <span style={{color:'#10b981',fontWeight:800}}>{cartonPrice.toFixed(0)} {currency}</span>
+            </div>
+          </div>
+          {(p.stock||0)>0&&(p.stock||0)<10&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>⚠️ متبقي {p.stock} كرتون فقط!</p>}
+          
           <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',borderRadius:12,padding:12,marginBottom:12,border:'1px solid #10b981'}}>
             <div style={{fontWeight:800,color:'#059669',marginBottom:8,fontSize:13}}>📦 كلما اشتريت أكثر — وفّرت أكثر!</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
               {volTiers.map(({qty,disc})=>(
                 <div key={qty} style={{background:'white',borderRadius:10,padding:'7px 4px',textAlign:'center',border:'1px solid #10b981'}}>
-                  <div style={{fontWeight:800,fontSize:13}}>{qty}+ قطعة</div>
+                  <div style={{fontWeight:800,fontSize:13}}>{qty}+ كرتون</div>
                   <div style={{color:'#10b981',fontWeight:700,fontSize:12}}>{disc}% خصم</div>
-                  <div style={{fontSize:11,color:'#065f46'}}>{(p.price*(1-disc/100)).toFixed(0)} {currency}</div>
+                  <div style={{fontSize:11,color:'#065f46'}}>{(p.price*(1-disc/100)).toFixed(0)} {currency}/قطعة</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <button className="abtn" onClick={()=>{onAddCart(p);onClose()}} disabled={(p.stock||0)===0}>
+          <button className={`abtn ${(p.stock||0)===0 ? 'disabled' : ''}`} 
+            onClick={()=>{if((p.stock||0)!==0){onAddCart(p);onClose()}}} 
+            disabled={(p.stock||0)===0}>
             <i className="fas fa-cart-plus"></i>
             {(p.stock||0)===0?'نفذ من المخزون':'أضف للسلة'}
           </button>
@@ -757,8 +821,10 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
                 {related.map(r=>(
                   <div key={r.id} onClick={()=>onShowProduct(r)}
                     style={{minWidth:95,cursor:'pointer',textAlign:'center',flexShrink:0}}>
-                    {r.image?<img src={r.image} style={{width:80,height:80,borderRadius:12,objectFit:'cover'}}/>:
-                      <div style={{width:80,height:80,borderRadius:12,background:'#F7F3EF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>🛍️</div>}
+                    <div className={`pc-img ${(r.stock||0)===0 ? 'out-of-stock' : ''}`}>
+                      {r.image?<img src={r.image} style={{width:80,height:80,borderRadius:12,objectFit:'cover'}}/>:
+                        <div style={{width:80,height:80,borderRadius:12,background:'#F7F3EF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>🛍️</div>}
+                    </div>
                     <div style={{fontSize:11,fontWeight:700,marginTop:4}}>{r.name}</div>
                     <div style={{fontSize:12,color:'#FF6B35',fontWeight:800}}>{r.price} {currency}</div>
                   </div>
@@ -804,10 +870,7 @@ function TrackingModal({ onClose, currency }) {
         <div className="mhead"><h3>🔍 تتبع الطلب</h3><button className="mclose" onClick={onClose}>×</button></div>
         <div className="mbody">
           <label className="fi-label">رقم الطلب</label>
-          <input className="fi" value={num} onChange={e=>setNum(e.target.value)}
-            placeholder="أدخل رقم طلبك"
-            inputMode="numeric"
-            onKeyPress={e=>{if(!/[0-9]/.test(e.key)) e.preventDefault()}} />
+          <input className="fi" value={num} onChange={e=>setNum(e.target.value)} placeholder="أدخل رقم طلبك" inputMode="numeric" />
           <button className="abtn" onClick={track}><i className="fas fa-search"></i> تتبع</button>
           {res===false&&<p style={{textAlign:'center',color:'#ef4444',marginTop:12}}>الرقم غير موجود</p>}
           {res&&res.id&&(
@@ -865,10 +928,219 @@ function ContactModal({ settings, onClose }) {
   )
 }
 
-/* ═══════════════════════════════
-   MAIN STORE
-═══════════════════════════════ */
-/* Promo Countdown */
+// صفحة الطلبات السابقة للعميل المسجل
+function MyOrdersModal({ customer, onClose, currency }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!customer) return
+      const { data } = await supabase.from('orders').select('*').eq('customer_id', customer.id).order('id', {ascending: false})
+      setOrders(data || [])
+      setLoading(false)
+    }
+    loadOrders()
+  }, [customer])
+
+  const statusClass = (status) => {
+    switch(status) {
+      case 'pending': return 'status-pending'
+      case 'processing': return 'status-processing'
+      case 'shipped': return 'status-shipped'
+      case 'delivered': return 'status-delivered'
+      case 'cancelled': return 'status-cancelled'
+      default: return ''
+    }
+  }
+
+  const statusLabel = (status) => {
+    switch(status) {
+      case 'pending': return 'قيد الانتظار'
+      case 'processing': return 'قيد التجهيز'
+      case 'shipped': return 'تم الشحن'
+      case 'delivered': return 'تم التسليم'
+      case 'cancelled': return 'ملغي'
+      default: return status || 'قيد الانتظار'
+    }
+  }
+
+  return (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="msheet">
+        <div className="mhandle"></div>
+        <div className="mhead">
+          <h3>📋 طلباتي السابقة</h3>
+          <button className="mclose" onClick={onClose}>×</button>
+        </div>
+        <div className="mbody">
+          {loading ? <div className="empty">⏳ جاري التحميل...</div> : orders.length === 0 ? 
+            <div className="empty"><i className="fas fa-shopping-bag"></i><p>لا توجد طلبات سابقة</p></div> :
+            <div style={{overflowX:'auto'}}>
+              <table className="orders-table">
+                <thead>
+                  <tr><th>رقم الطلب</th><th>التاريخ</th><th>الإجمالي</th><th>الحالة</th><th>التفاصيل</th></tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => {
+                    const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || [])
+                    return (
+                      <tr key={o.id}>
+                        <td>{o.id}</td>
+                        <td>{o.date}</td>
+                        <td style={{color:'#FF6B35',fontWeight:800}}>{Number(o.total).toFixed(0)} {currency}</td>
+                        <td><span className={statusClass(o.status)} style={{padding:'3px 8px',borderRadius:20,fontSize:11}}>{statusLabel(o.status)}</span></td>
+                        <td>
+                          <button className="qty-b" style={{width:'auto',padding:'4px 12px'}} 
+                            onClick={() => showToast(items.map(i=>`${i.name} ×${i.quantity} = ${(i.price*i.quantity).toFixed(0)}`).join('\n'))}>
+                            📋
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// صفحة الطلب السريع (Quick Order)
+function QuickOrderModal({ products, onAddToCart, onClose, currency }) {
+  const [selectedProducts, setSelectedProducts] = useState([])
+
+  const addProduct = () => {
+    setSelectedProducts([...selectedProducts, {id: '', name: '', quantity: 1, price: 0}])
+  }
+
+  const updateProduct = (index, field, value) => {
+    const newProducts = [...selectedProducts]
+    newProducts[index][field] = value
+    if (field === 'id') {
+      const prod = products.find(p => p.id == value)
+      if (prod) {
+        newProducts[index].name = prod.name
+        newProducts[index].price = prod.price
+      }
+    }
+    setSelectedProducts(newProducts)
+  }
+
+  const removeProduct = (index) => {
+    setSelectedProducts(selectedProducts.filter((_, i) => i !== index))
+  }
+
+  const addAllToCart = () => {
+    let added = 0
+    selectedProducts.forEach(item => {
+      if (item.id && item.quantity > 0) {
+        const prod = products.find(p => p.id == item.id)
+        if (prod && (prod.stock || 0) > 0) {
+          onAddToCart(prod, item.quantity)
+          added++
+        }
+      }
+    })
+    showToast(`✅ تم إضافة ${added} منتج إلى السلة`)
+    onClose()
+  }
+
+  return (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="msheet">
+        <div className="mhandle"></div>
+        <div className="mhead">
+          <h3>⚡ طلب سريع</h3>
+          <button className="mclose" onClick={onClose}>×</button>
+        </div>
+        <div className="mbody">
+          <div style={{overflowX:'auto'}}>
+            <table className="quick-order-table">
+              <thead>
+                <tr><th>المنتج</th><th>الكمية (كرتون)</th><th>سعر الوحدة</th><th></th></tr>
+              </thead>
+              <tbody>
+                {selectedProducts.map((item, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <select value={item.id} onChange={e=>updateProduct(idx, 'id', e.target.value)} style={{width:'100%',padding:6,borderRadius:8,border:'1px solid #E8DDD5'}}>
+                        <option value="">اختر منتجاً</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id} disabled={(p.stock||0)===0}>{p.name} {(p.stock||0)===0?'(نفذ)':''}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td><input type="number" min="1" value={item.quantity} onChange={e=>updateProduct(idx, 'quantity', parseInt(e.target.value)||1)} style={{width:70,textAlign:'center'}}/></td>
+                    <td>{Number(item.price).toFixed(0)} {currency}</td>
+                    <td><button className="qty-b" onClick={()=>removeProduct(idx)} style={{background:'#fee2e2',color:'#dc2626'}}>🗑️</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:'flex',gap:10,marginBottom:16}}>
+            <button className="abtn" style={{background:'#64748b'}} onClick={addProduct}>➕ إضافة منتج</button>
+            <button className="abtn" onClick={addAllToCart}>🛒 إضافة الكل إلى السلة</button>
+          </div>
+          <p style={{fontSize:12,color:'#64748b',textAlign:'center'}}>💡 يمكنك إضافة عدة منتجات مرة واحدة وكميات مختلفة</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// صفحة سياسة الاسترجاع
+function ReturnPolicyModal({ onClose, content }) {
+  return (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="msheet center">
+        <div className="mhead"><h3>🔄 سياسة الاسترجاع</h3><button className="mclose" onClick={onClose}>×</button></div>
+        <div className="mbody">
+          <div style={{whiteSpace:'pre-wrap',lineHeight:1.8,color:'#1A0A00'}}>{content || 'يمكن للعميل استرجاع المنتج خلال 14 يوم من الاستلام بشرط أن يكون بحالته الأصلية.\n\nشروط الاسترجاع:\n• المنتج بدون استخدام\n• مع الفاتورة الأصلية\n• خلال 14 يوم'}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// صفحة الأسئلة الشائعة (FAQ)
+function FAQModal({ onClose, faqData }) {
+  const [openIndex, setOpenIndex] = useState(null)
+  const faq = Array.isArray(faqData) ? faqData : []
+
+  return (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="msheet center">
+        <div className="mhead"><h3>❓ الأسئلة الشائعة</h3><button className="mclose" onClick={onClose}>×</button></div>
+        <div className="mbody">
+          {faq.length === 0 ? (
+            <div className="empty">لا توجد أسئلة شائعة حالياً</div>
+          ) : (
+            faq.map((item, idx) => (
+              <div key={idx} className="faq-item">
+                <div className="faq-question" onClick={() => setOpenIndex(openIndex === idx ? null : idx)}>
+                  <span>{item.q}</span>
+                  <span>{openIndex === idx ? '▲' : '▼'}</span>
+                </div>
+                <div className={`faq-answer ${openIndex === idx ? 'open' : ''}`}>
+                  {item.a}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+/* ═══════════════════════════════════════════════════════════
+   MAIN STORE COMPONENT
+═══════════════════════════════════════════════════════════ */
+
 function PromoCountdown({ endDate }) {
   const [t, setT] = useState({h:'00',m:'00',s:'00'})
   useEffect(()=>{
@@ -906,12 +1178,21 @@ export default function Store() {
   const [settings,    setSettings]    = useState({})
   const [promos,      setPromos]      = useState([])
   const [banners,     setBanners]     = useState([])
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0)
   const [loading,     setLoading]     = useState(true)
+
+  // فلترة المنتجات
+  const [minPrice, setMinPrice] = useState(0)
+  const [maxPrice, setMaxPrice] = useState(5000)
+  const [minDiscount, setMinDiscount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
   const [modal,       setModal]       = useState(null)
   const [detailProd,  setDetailProd]  = useState(null)
   const [thankId,     setThankId]     = useState(null)
   const [checkoutTotal, setCheckoutTotal] = useState(0)
+  const [checkoutLoyaltyDisc, setCheckoutLoyaltyDisc] = useState(0)
+  const [checkoutPointsUsed, setCheckoutPointsUsed] = useState(0)
   const [tab,         setTab]         = useState('home')
   const [search,      setSearch]      = useState('')
   const [brandSel,    setBrandSel]    = useState('all')
@@ -930,12 +1211,15 @@ export default function Store() {
   const FREESHIP = parseFloat(settings['free_shipping_threshold']||'500')
   const ANNOUNCE = settings['announce_bar']    || ''
   const PROMO_TEXT= settings['promo_text']     || ''
+  const RETURN_POLICY = settings['return_policy'] || ''
+  const FAQ_DATA = (() => { try { return JSON.parse(settings['faq'] || '[]') } catch { return [] } })()
+  const TERMS = settings['terms_conditions'] || ''
 
   const cartTotal  = cart.reduce((s,i)=>s+i.price*i.qty,0)
   const cartCount  = cart.reduce((s,i)=>s+i.qty,0)
   const sevenAgo   = new Date(); sevenAgo.setDate(sevenAgo.getDate()-7)
 
-  /* load */
+  // تحميل البيانات
   useEffect(()=>{
     const load=async()=>{
       const [{data:p},{data:b},{data:c},{data:s},{data:pr}]=await Promise.all([
@@ -954,7 +1238,20 @@ export default function Store() {
     load()
   },[])
 
-  /* CSS */
+  // تحميل نقاط الولاء عند تسجيل الدخول
+  useEffect(()=>{
+    const loadLoyalty = async () => {
+      if (customer && customer.id) {
+        const { data } = await supabase.from('loyalty_points').select('points').eq('customer_id', customer.id).maybeSingle()
+        setLoyaltyPoints(data?.points || 0)
+      } else {
+        setLoyaltyPoints(0)
+      }
+    }
+    loadLoyalty()
+  }, [customer])
+
+  // CSS
   useEffect(()=>{
     if(!document.getElementById('nq-css')){
       const s=document.createElement('style');s.id='nq-css';s.textContent=CSS;document.head.appendChild(s)
@@ -964,23 +1261,24 @@ export default function Store() {
     window.addEventListener('scroll',fn); return()=>window.removeEventListener('scroll',fn)
   },[])
 
-  /* banner */
+  // banner
   useEffect(()=>{
     if(banners.length<2) return
     const t=setInterval(()=>setBannerIdx(i=>(i+1)%banners.length),3800)
     return()=>clearInterval(t)
   },[banners.length])
 
-  /* persist */
+  // persist
   useEffect(()=>{ localStorage.setItem('nq_cart',JSON.stringify(cart)) },[cart])
   useEffect(()=>{ localStorage.setItem('nq_wish',JSON.stringify(wishlist)) },[wishlist])
 
-  const addToCart=useCallback((p,qty=1)=>{
+  const addToCart=useCallback((p, qty=1)=>{
     if(!p||(p.stock||0)===0){showToast('المنتج غير متوفر',true);return}
     setCart(prev=>{
       if(prev.find(i=>i.id===p.id)){showToast('⚠️ موجود في السلة',true);return prev}
+      const cartonPrice = p.price * (p.units || 12)
       showToast('✅ تمت الإضافة')
-      return [...prev,{id:p.id,name:p.name,price:Number(p.price),qty,image:p.image}]
+      return [...prev,{id:p.id,name:p.name,price:Number(p.price),qty,cartonPrice,image:p.image,units:p.units||12}]
     })
   },[])
 
@@ -996,158 +1294,164 @@ export default function Store() {
     showToast(`مرحباً ${data.name} 👋`)
   }
 
-  /* products */
-  const allP    = products.filter(p=>!p.disabled)
-  const promoP  = allP.filter(p=>p.is_promo)
-  const newP    = allP.filter(p=>new Date(p.created_at)>=sevenAgo)
-  const flashP  = allP.filter(p=>Number(p.discount)>0).slice(0,10)
-  const dayDeal = allP.find(p=>Number(p.discount)>=20)||null
-
-  const filtered=(()=>{
-    let f=[...allP]
-    if(search) f=f.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()))
-    if(brandSel!=='all') f=f.filter(p=>p.brand_id==brandSel)
-    if(catSel!=='all') f=f.filter(p=>p.category_id==catSel)
-    if(sortSel==='newest') f=[...f].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
-    else if(sortSel==='price_asc') f=[...f].sort((a,b)=>a.price-b.price)
-    else if(sortSel==='price_desc') f=[...f].sort((a,b)=>b.price-a.price)
+  // المنتجات مع فلتر السعر والخصم
+  const allP = products.filter(p=>!p.disabled)
+  
+  const filtered = (() => {
+    let f = [...allP]
+    if (search) f = f.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+    if (brandSel !== 'all') f = f.filter(p => p.brand_id == brandSel)
+    if (catSel !== 'all') f = f.filter(p => p.category_id == catSel)
+    
+    // فلتر السعر
+    f = f.filter(p => p.price >= minPrice && p.price <= maxPrice)
+    
+    // فلتر الخصم (العروض تظهر أولاً)
+    const disc = Number(p.discount)||0
+    if (minDiscount > 0) f = f.filter(p => (Number(p.discount)||0) >= minDiscount)
+    
+    // الترتيب - المنتجات التي عليها عرض تظهر أولاً
+    if (sortSel === 'promo_first') {
+      f = [...f].sort((a,b) => (Number(b.discount)||0) - (Number(a.discount)||0))
+    } else if (sortSel === 'newest') {
+      f = [...f].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+    } else if (sortSel === 'price_asc') {
+      f = [...f].sort((a,b) => a.price - b.price)
+    } else if (sortSel === 'price_desc') {
+      f = [...f].sort((a,b) => b.price - a.price)
+    }
     return f
   })()
-  const PER=12; const PAGES=Math.ceil(filtered.length/PER)
-  const paged=filtered.slice((page-1)*PER,page*PER)
+  
+  const PER = 12
+  const PAGES = Math.ceil(filtered.length / PER)
+  const paged = filtered.slice((page-1)*PER, page*PER)
 
-  /* PC — بطاقة المنتج مع شارة عرض خاص كالصورة */
+  // تحديد الحد الأقصى للسعر للفلتر
+  const maxProductPrice = allP.length > 0 ? Math.max(...allP.map(p => p.price)) : 5000
+
+  // PC Component
   const PC = ({ p }) => {
-    const isW=wishlist.includes(p.id)
-    const isN=new Date(p.created_at)>=sevenAgo
-    const disc=Number(p.discount)||0
-    // حساب سعر العرض من promos
-    const activePromo=promos.find(pr=>{
+    const isW = wishlist.includes(p.id)
+    const isN = new Date(p.created_at) >= sevenAgo
+    const disc = Number(p.discount)||0
+    const outOfStock = (p.stock||0) === 0
+    const cartonPrice = p.price * (p.units || 12)
+    
+    const activePromo = promos.find(pr => {
       if(!pr.active) return false
-      if(pr.end_date&&new Date(pr.end_date)<new Date()) return false
-      const ids=typeof pr.product_ids==='string'?JSON.parse(pr.product_ids||'[]'):(pr.product_ids||[])
-      return ids.length===0||ids.includes(p.id)||ids.includes(String(p.id))
+      if(pr.end_date && new Date(pr.end_date) < new Date()) return false
+      const ids = typeof pr.product_ids === 'string' ? JSON.parse(pr.product_ids||'[]') : (pr.product_ids||[])
+      return ids.length === 0 || ids.includes(p.id) || ids.includes(String(p.id))
     })
-    const hasPromo=!!activePromo
-    let promoDisc=disc, promoPrice=disc>0?p.price*(1-disc/100):p.price
+    const hasPromo = !!activePromo
+    let promoDisc = disc, promoPrice = disc>0 ? p.price*(1-disc/100) : p.price
     if(activePromo){
-      if(activePromo.type==='percent'){promoDisc=parseFloat(activePromo.discount_value)||0;promoPrice=p.price*(1-promoDisc/100)}
-      else if(activePromo.type==='fixed'){promoPrice=p.price-(parseFloat(activePromo.discount_value)||0);promoDisc=Math.round((p.price-promoPrice)/p.price*100)}
+      if(activePromo.type === 'percent'){promoDisc = parseFloat(activePromo.discount_value)||0; promoPrice = p.price*(1-promoDisc/100)}
+      else if(activePromo.type === 'fixed'){promoPrice = p.price - (parseFloat(activePromo.discount_value)||0); promoDisc = Math.round((p.price-promoPrice)/p.price*100)}
     }
-    const hasDisc=hasPromo||disc>0
-    const fp=promoPrice.toFixed(0)
-    const pct=promoDisc
+    const hasDisc = hasPromo || disc>0
+    const fp = promoPrice.toFixed(0)
+    const pct = promoDisc
+
     return (
       <div className="pc" onClick={()=>{setDetailProd(p);setModal('detail')}}>
-        <div className="pc-img">
-          {/* شارة عرض خاص — علوي أيمن كما في الصورة */}
-          {hasPromo&&<div className="pc-promo-badge"><i className="fas fa-bullhorn" style={{fontSize:9}}/> عرض خاص</div>}
-          {p.image?<img src={p.image} alt={p.name} loading="lazy"/>:<div className="pc-noimg">🛍️</div>}
-          {isN&&!hasPromo&&<span className="badge b-new">جديد</span>}
-          <button className="fav-b" onClick={e=>{e.stopPropagation();toggleWish(p.id)}}>
+        <div className={`pc-img ${outOfStock ? 'out-of-stock' : ''}`}>
+          {hasPromo && <div className="pc-promo-badge"><i className="fas fa-bullhorn" style={{fontSize:9}}/> عرض خاص</div>}
+          {p.image ? <img src={p.image} alt={p.name} loading="lazy"/> : <div className="pc-noimg">🛍️</div>}
+          {isN && !hasPromo && <span className="badge b-new">جديد</span>}
+          {outOfStock && <span className="badge b-outstock">نفذ</span>}
+          <button className="fav-b" onClick={e=>{e.stopPropagation(); toggleWish(p.id)}}>
             <i className="fas fa-heart" style={{color:isW?'#FF6B35':'#CBD5E1'}}></i>
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
-        {/* السعر مشطوب + نسبة + السعر الجديد — كالصورة */}
-        {hasDisc
-          ? <div>
-              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2,flexWrap:'wrap'}}>
-                <span style={{background:'#888',color:'white',fontSize:11,fontWeight:900,padding:'2px 7px',borderRadius:20}}>{pct}%</span>
-                <span style={{fontSize:12,color:'#94a3b8',textDecoration:'line-through',fontWeight:600}}>{p.price}{CUR}</span>
-              </div>
-              <div style={{fontSize:16,fontWeight:900,color:'#1A0A00'}}>{fp}{CUR}</div>
+        {hasDisc ? (
+          <div>
+            <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2,flexWrap:'wrap'}}>
+              <span style={{background:'#888',color:'white',fontSize:11,fontWeight:900,padding:'2px 7px',borderRadius:20}}>{pct}%</span>
+              <span style={{fontSize:12,color:'#94a3b8',textDecoration:'line-through',fontWeight:600}}>{p.price}{CUR}</span>
             </div>
-          : <div style={{fontSize:16,fontWeight:900,color:'#FF6B35'}}>{fp} {CUR}</div>}
-        {p.units&&<div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
-        {(p.stock||0)<10&&(p.stock||0)>0&&<div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
-        {(p.stock||0)===0&&<div className="pc-stock">❌ نفذ</div>}
-        <button className="add-b" disabled={(p.stock||0)===0}
-          onClick={e=>{e.stopPropagation();addToCart(p)}}>
+            <div style={{fontSize:16,fontWeight:900,color:'#1A0A00'}}>{fp}{CUR}</div>
+          </div>
+        ) : (
+          <div style={{fontSize:16,fontWeight:900,color:'#FF6B35'}}>{fp} {CUR}</div>
+        )}
+        <div className="pc-carton">📦 كرتون: {cartonPrice.toFixed(0)} {CUR}</div>
+        {(p.stock||0)<10 && (p.stock||0)>0 && <div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
+        <button className={`add-b ${outOfStock ? 'disabled' : ''}`} disabled={outOfStock}
+          onClick={e=>{e.stopPropagation(); if(!outOfStock) addToCart(p)}}>
           <i className="fas fa-cart-plus"></i>
-          {(p.stock||0)===0?'نفذ':'أضف للسلة'}
+          {outOfStock ? 'نفذ' : 'أضف للسلة'}
         </button>
       </div>
     )
   }
 
-  /* ACTIVE PROMO BANNER */
-  const activePromoBanner = promos.find(p=>p.image&&(p.type==='percent'||p.type==='buy_x_get_y'))
-  const flashPromo = promos.find(p=>p.end_date)
+  // Free Shipping Notice
+  const FreeShippingNotice = () => {
+    const remaining = FREESHIP - cartTotal
+    if (cartTotal >= FREESHIP) {
+      return <div className="free-ship-notice">🎉 تهانينا! أنت مؤهل للتوصيل المجاني 🎉</div>
+    }
+    return <div className="free-ship-notice">🚚 أضف {remaining.toFixed(0)} {CUR} فقط للحصول على توصيل مجاني!</div>
+  }
 
-  /* ── HOME ── */
+  // HOME Component
   const Home = () => (
     <>
-      {/* ANNOUNCE */}
-      {ANNOUNCE&&<div className="announce">{ANNOUNCE}</div>}
-
-      {/* BANNER */}
+      {ANNOUNCE && <div className="announce">{ANNOUNCE}</div>}
+      <FreeShippingNotice />
+      
       <div className="banner-wrap">
         <div className="banner-track" style={{transform:`translateX(${bannerIdx*100}%)`}}>
-          {banners.length>0
-            ? banners.map((b,i)=>(b.image?<img key={i} src={b.image} className="banner-slide" alt=""/>:
-                <div key={i} className="banner-fall"><span style={{fontSize:36}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:22}}>{b.title||SNAME}</span>{b.subtitle&&<span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>{b.subtitle}</span>}</div>))
-            : <div className="banner-fall"><span style={{fontSize:40}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span><span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span></div>}
+          {banners.length>0 ? banners.map((b,i)=>(
+            b.image ? <img key={i} src={b.image} className="banner-slide" alt=""/> :
+            <div key={i} className="banner-fall"><span style={{fontSize:36}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:22}}>{b.title||SNAME}</span>{b.subtitle&&<span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>{b.subtitle}</span>}</div>
+          )) : <div className="banner-fall"><span style={{fontSize:40}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span><span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span></div>}
         </div>
-        {banners.length>1&&<div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
+        {banners.length>1 && <div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
       </div>
 
-      {/* PROMO TEXT */}
-      {PROMO_TEXT&&<div style={{background:'linear-gradient(135deg,#FFF0EB,#FFE4D6)',margin:'10px 14px 0',borderRadius:14,padding:'10px 16px',textAlign:'center',fontSize:13,fontWeight:800,color:'#FF6B35',border:'1px solid #FFD5C0'}}>{PROMO_TEXT}</div>}
+      {PROMO_TEXT && <div style={{background:'linear-gradient(135deg,#FFF0EB,#FFE4D6)',margin:'10px 14px 0',borderRadius:14,padding:'10px 16px',textAlign:'center',fontSize:13,fontWeight:800,color:'#FF6B35',border:'1px solid #FFD5C0'}}>{PROMO_TEXT}</div>}
 
-      {/* FLASH BAR from DB promos */}
-      {flashPromo&&(
-        <div className="flash-bar" onClick={()=>setTab('search')}>
-          <div>
-            <div style={{color:'white',fontWeight:900,fontSize:16}}>⚡ {flashPromo.name}</div>
-            <div style={{color:'rgba(255,255,255,.8)',fontSize:12}}>{flashPromo.description||'عرض لفترة محدودة'}</div>
-          </div>
-          <div className="timer-wrap">
-            <div className="tbox">{timer.h}</div>
-            <span style={{color:'white',fontWeight:900}}>:</span>
-            <div className="tbox">{timer.m}</div>
-            <span style={{color:'white',fontWeight:900}}>:</span>
-            <div className="tbox">{timer.s}</div>
-          </div>
+      {/* Loyalty Banner for logged in users */}
+      {customer && loyaltyPoints > 0 && (
+        <div className="loyalty-banner" onClick={()=>setModal('loyalty')}>
+          <div>⭐ <strong>نقاط الولاء</strong></div>
+          <div className="loyalty-points">{loyaltyPoints} نقطة</div>
         </div>
       )}
 
-      {/* ANIMATED BRANDS GRID */}
-      {brands.length>0&&(
+      {flashPromo && (
+        <div className="flash-bar" onClick={()=>setTab('search')}>
+          <div><div style={{color:'white',fontWeight:900,fontSize:16}}>⚡ {flashPromo.name}</div>
+          <div style={{color:'rgba(255,255,255,.8)',fontSize:12}}>{flashPromo.description||'عرض لفترة محدودة'}</div></div>
+          <div className="timer-wrap"><div className="tbox">{timer.h}</div><span style={{color:'white',fontWeight:900}}>:</span><div className="tbox">{timer.m}</div><span style={{color:'white',fontWeight:900}}>:</span><div className="tbox">{timer.s}</div></div>
+        </div>
+      )}
+
+      {brands.length>0 && (
         <div className="sec">
-          <div className="sec-head">
-            <span className="sec-title">⭐ أفضل الماركات</span>
-            <button className="sec-more" onClick={()=>setDrawerOpen(true)}>عرض الكل</button>
-          </div>
+          <div className="sec-head"><span className="sec-title">⭐ أفضل الماركات</span><button className="sec-more" onClick={()=>setDrawerOpen(true)}>عرض الكل</button></div>
           <div className="anim-grid">
-            <div className="anim-all" onClick={()=>{setBrandSel('all');setTab('search')}}>
-              <i className="fas fa-th"></i><span>عرض الكل</span>
-            </div>
+            <div className="anim-all" onClick={()=>{setBrandSel('all');setTab('search')}}><i className="fas fa-th"></i><span>عرض الكل</span></div>
             {brands.slice(0,5).map(b=>(
-              <div key={b.id} className={`anim-card${brandSel==b.id?' sel':''}`}
-                onClick={()=>{setBrandSel(b.id);setTab('search')}}>
-                {b.image?<><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></>:
-                  <div className="no-img">{b.name}</div>}
+              <div key={b.id} className={`anim-card${brandSel==b.id?' sel':''}`} onClick={()=>{setBrandSel(b.id);setTab('search')}}>
+                {b.image ? <><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ANIMATED CATEGORIES */}
-      {categories.length>0&&(
+      {categories.length>0 && (
         <div className="sec">
-          <div className="sec-head">
-            <span className="sec-title">📂 الفئات</span>
-            <button className="sec-more" onClick={()=>setTab('cats')}>عرض الكل</button>
-          </div>
+          <div className="sec-head"><span className="sec-title">📂 الفئات</span><button className="sec-more" onClick={()=>setTab('cats')}>عرض الكل</button></div>
           <div className="cats-scroll">
             {categories.map(c=>(
-              <div key={c.id} className={`cat-item${catSel==c.id?' sel':''}`}
-                onClick={()=>{setCatSel(c.id);setTab('search')}}>
-                <div className="cat-img">
-                  {c.image?<img src={c.image} alt={c.name}/>:<span>📁</span>}
-                </div>
+              <div key={c.id} className={`cat-item${catSel==c.id?' sel':''}`} onClick={()=>{setCatSel(c.id);setTab('search')}}>
+                <div className="cat-img">{c.image ? <img src={c.image} alt={c.name}/> : <span>📁</span>}</div>
                 <div className="cat-label">{c.name}</div>
               </div>
             ))}
@@ -1155,71 +1459,18 @@ export default function Store() {
         </div>
       )}
 
-      {/* PROMO BOXES */}
       <div className="promo-strip">
-        <div className="promo-box" style={{background:'linear-gradient(135deg,#10b981,#059669)'}}
-          onClick={()=>{setSortSel('newest');setTab('search')}}>
-          <div style={{fontSize:24}}>🎁</div>
-          <div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>
-            {promos.find(p=>p.type==='buy_x_get_y')?promos.find(p=>p.type==='buy_x_get_y').name:'اشتري 3 خذ 4'}
-          </div>
-          <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>أرخص منتج مجاناً</div>
+        <div className="promo-box" style={{background:'linear-gradient(135deg,#10b981,#059669)'}} onClick={()=>{setSortSel('promo_first');setTab('search')}}>
+          <div style={{fontSize:24}}>🎁</div><div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>العروض أولاً</div>
+          <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>المنتجات المخفضة تظهر أولاً</div>
         </div>
-        <div className="promo-box" style={{background:'linear-gradient(135deg,#3b82f6,#1d4ed8)'}}
-          onClick={()=>{setSortSel('price_asc');setTab('search')}}>
-          <div style={{fontSize:24}}>📦</div>
-          <div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>خصم الكميات</div>
+        <div className="promo-box" style={{background:'linear-gradient(135deg,#3b82f6,#1d4ed8)'}} onClick={()=>{setSortSel('price_asc');setTab('search')}}>
+          <div style={{fontSize:24}}>📦</div><div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>خصم الكميات</div>
           <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>500دج→5% | 1000دج→10%</div>
         </div>
       </div>
 
-      {/* DAY DEAL */}
-      {dayDeal&&(
-        <div className="day-deal">
-          <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',padding:'10px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{color:'white',fontWeight:900,fontSize:15}}>🌟 عرض اليوم</span>
-            <span style={{color:'white',fontSize:13}}>خصم {dayDeal.discount}%</span>
-          </div>
-          <div style={{display:'flex',gap:16,padding:16,cursor:'pointer'}} onClick={()=>{setDetailProd(dayDeal);setModal('detail')}}>
-            {dayDeal.image?<img src={dayDeal.image} style={{width:90,height:90,borderRadius:12,objectFit:'cover'}}/>:
-              <div style={{width:90,height:90,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>🛍️</div>}
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{dayDeal.name}</div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontSize:12,color:'#94a3b8',textDecoration:'line-through'}}>{dayDeal.price} {CUR}</span>
-                <span style={{fontSize:20,fontWeight:900,color:'#FF6B35'}}>{(dayDeal.price*(1-dayDeal.discount/100)).toFixed(0)} {CUR}</span>
-              </div>
-              <button className="add-b" style={{marginTop:8}} onClick={e=>{e.stopPropagation();addToCart(dayDeal)}}>أضف للسلة</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FLASH PRODUCTS */}
-      {flashP.length>0&&(
-        <div className="sec">
-          <div className="sec-head"><span className="sec-title">⚡ عروض خاصة</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
-          <div className="hscroll">{flashP.map(p=><PC key={p.id} p={p}/>)}</div>
-        </div>
-      )}
-
-      {/* NEW */}
-      {newP.length>0&&(
-        <div className="sec">
-          <div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
-          <div className="hscroll">{newP.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
-        </div>
-      )}
-
-      {/* ALL */}
-      {allP.length>0&&(
-        <div className="sec">
-          <div className="sec-head"><span className="sec-title">📦 جميع المنتجات</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
-          <div className="hscroll">{allP.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
-        </div>
-      )}
-
-      {cartCount>0&&(
+      {cartCount>0 && (
         <div className="cart-bar" onClick={()=>setModal('cart')}>
           <span style={{color:'white',fontWeight:700,fontSize:14}}>🛒 {cartCount} كرتون في السلة</span>
           <span style={{color:'white',fontWeight:900,fontSize:16}}>{cartTotal.toFixed(0)} {CUR}</span>
@@ -1232,9 +1483,35 @@ export default function Store() {
     </>
   )
 
-  /* SEARCH TAB */
+  // SEARCH TAB with Filters
   const SearchTab = () => (
     <div className="sec" style={{marginTop:14}}>
+      {/* Filter Toggle Button */}
+      <button className="sec-more" style={{marginBottom:10}} onClick={()=>setShowFilters(!showFilters)}>
+        {showFilters ? '▲ إخفاء التصفية' : '▼ تصفية متقدمة'}
+      </button>
+      
+      {showFilters && (
+        <div className="filter-section">
+          <div className="filter-range">
+            <span className="filter-label">💰 السعر:</span>
+            <input type="range" min="0" max={maxProductPrice} value={minPrice} onChange={e=>{setMinPrice(parseInt(e.target.value)); setPage(1)}} />
+            <input type="range" min="0" max={maxProductPrice} value={maxPrice} onChange={e=>{setMaxPrice(parseInt(e.target.value)); setPage(1)}} />
+            <span>{minPrice} - {maxPrice} {CUR}</span>
+          </div>
+          <div className="filter-range">
+            <span className="filter-label">🎯 خصم أكبر من:</span>
+            <select value={minDiscount} onChange={e=>{setMinDiscount(parseInt(e.target.value)); setPage(1)}} style={{...S.input,width:'auto',padding:'6px 12px'}}>
+              <option value={0}>الكل</option>
+              <option value={10}>10%</option>
+              <option value={20}>20%</option>
+              <option value={30}>30%</option>
+              <option value={50}>50%</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       <div className="chips" style={{marginBottom:10}}>
         <button className={`chip${catSel==='all'?' sel':''}`} onClick={()=>{setCatSel('all');setPage(1)}}>الكل</button>
         {categories.map(c=>(
@@ -1242,48 +1519,43 @@ export default function Store() {
         ))}
       </div>
       <div className="chips" style={{marginBottom:14}}>
-        {[['newest','الأحدث'],['price_asc','السعر ↑'],['price_desc','السعر ↓']].map(([v,l])=>(
+        {[['promo_first','🎯 العروض أولاً'],['newest','الأحدث'],['price_asc','السعر ↑'],['price_desc','السعر ↓']].map(([v,l])=>(
           <button key={v} className={`chip${sortSel===v?' sel':''}`} onClick={()=>{setSortSel(v);setPage(1)}}>{l}</button>
         ))}
       </div>
-      {paged.length===0?<div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div>:
+      {paged.length===0 ? <div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div> :
         <div className="prod-grid">{paged.map(p=><PC key={p.id} p={p}/>)}</div>}
-      {PAGES>1&&(
+      {PAGES>1 && (
         <div style={{display:'flex',justifyContent:'center',gap:8,marginTop:18,flexWrap:'wrap'}}>
-          {page>1&&<button className="chip" onClick={()=>setPage(p=>p-1)}>‹ السابق</button>}
+          {page>1 && <button className="chip" onClick={()=>setPage(p=>p-1)}>‹ السابق</button>}
           {Array.from({length:Math.min(PAGES,5)},(_,i)=>i+1).map(n=>(
             <button key={n} className={`chip${page===n?' sel':''}`} onClick={()=>setPage(n)}>{n}</button>
           ))}
-          {page<PAGES&&<button className="chip" onClick={()=>setPage(p=>p+1)}>التالي ›</button>}
+          {page<PAGES && <button className="chip" onClick={()=>setPage(p=>p+1)}>التالي ›</button>}
         </div>
       )}
     </div>
   )
 
-  /* CATS TAB */
+  // CATS TAB
   const CatsTab = () => (
     <div className="sec" style={{marginTop:14}}>
       <div className="sec-head" style={{paddingTop:0}}><span className="sec-title">🏷️ الماركات</span></div>
       <div className="anim-grid">
-        <div className="anim-all" onClick={()=>{setBrandSel('all');setCatSel('all');setTab('search')}}>
-          <i className="fas fa-th"></i><span>كل المنتجات</span>
-        </div>
+        <div className="anim-all" onClick={()=>{setBrandSel('all');setCatSel('all');setTab('search')}}><i className="fas fa-th"></i><span>كل المنتجات</span></div>
         {brands.map(b=>(
           <div key={b.id} className="anim-card" onClick={()=>{setBrandSel(b.id);setTab('search')}}>
-            {b.image?<><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></>:
-              <div className="no-img">{b.name}</div>}
+            {b.image ? <><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
           </div>
         ))}
       </div>
-      {categories.length>0&&(
+      {categories.length>0 && (
         <div style={{marginTop:20}}>
           <div className="sec-head" style={{paddingTop:0}}><span className="sec-title">📂 الفئات</span></div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
             {categories.map(c=>(
-              <div key={c.id} onClick={()=>{setCatSel(c.id);setTab('search')}}
-                style={{background:'white',borderRadius:16,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,.07)',transition:'.2s',overflow:'hidden'}}>
-                {c.image?<img src={c.image} style={{width:50,height:38,borderRadius:10,objectFit:'cover',flexShrink:0}}/>:
-                  <div style={{width:50,height:38,borderRadius:10,background:'#FFF0EB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📦</div>}
+              <div key={c.id} onClick={()=>{setCatSel(c.id);setTab('search')}} style={{background:'white',borderRadius:16,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,.07)',transition:'.2s',overflow:'hidden'}}>
+                {c.image ? <img src={c.image} style={{width:50,height:38,borderRadius:10,objectFit:'cover',flexShrink:0}}/> : <div style={{width:50,height:38,borderRadius:10,background:'#FFF0EB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📦</div>}
                 <span style={{fontWeight:700,fontSize:14,color:'#1A0A00'}}>{c.name}</span>
               </div>
             ))}
@@ -1293,25 +1565,24 @@ export default function Store() {
     </div>
   )
 
-  /* WISH TAB */
+  // WISH TAB
   const WishTab = () => {
-    const wp=products.filter(p=>wishlist.includes(p.id))
+    const wp = products.filter(p=>wishlist.includes(p.id))
     return (
       <div className="sec" style={{marginTop:14}}>
-        {wp.length===0?<div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة</p></div>:
+        {wp.length===0 ? <div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة</p></div> :
           <div className="prod-grid">{wp.map(p=><PC key={p.id} p={p}/>)}</div>}
       </div>
     )
   }
 
-  /* PROMOS TAB — عصري */
+  // PROMOS TAB
   const PromosTab = () => {
     const active = promos.filter(p=>p.active)
     const typeLabel={percent:'خصم نسبة %',fixed:'خصم مبلغ ثابت',buy_x_get_y:'اشتري X خذ Y',tier_buy:'خصم كمية الشركة'}
     const typeColor={percent:'#FF6B35',fixed:'#7c3aed',buy_x_get_y:'#10b981',tier_buy:'#3b82f6'}
     return (
       <div style={{paddingBottom:80}}>
-        {/* Hero */}
         <div style={{background:'linear-gradient(135deg,#FF6B35,#7C3AED)',padding:'22px 18px 20px',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',top:'-40%',right:'-15%',width:180,height:180,background:'rgba(255,255,255,.07)',borderRadius:'50%'}}/>
           <div style={{position:'relative',zIndex:1}}>
@@ -1320,7 +1591,7 @@ export default function Store() {
             <p style={{color:'rgba(255,255,255,.8)',fontSize:13}}>وفّر أكثر مع عروضنا المتجددة</p>
           </div>
         </div>
-        {active.length===0&&<div className="empty" style={{marginTop:40}}><i className="fas fa-tag"/><p>لا توجد عروض حالياً</p></div>}
+        {active.length===0 && <div className="empty" style={{marginTop:40}}><i className="fas fa-tag"/><p>لا توجد عروض حالياً</p></div>}
         {active.map(promo=>{
           const pids=typeof promo.product_ids==='string'?JSON.parse(promo.product_ids||'[]'):(promo.product_ids||[])
           const promoProds=pids.length>0?products.filter(p=>pids.includes(p.id)||pids.includes(String(p.id))):products.slice(0,5)
@@ -1328,55 +1599,32 @@ export default function Store() {
           const isExpired=promo.end_date&&new Date(promo.end_date)<new Date()
           if(isExpired) return null
           return (
-            <div key={promo.id} style={{background:'white',borderRadius:20,margin:'12px 14px',
-              boxShadow:'0 4px 20px rgba(0,0,0,.08)',overflow:'hidden',border:'1.5px solid #F1ECE8'}}>
+            <div key={promo.id} style={{background:'white',borderRadius:20,margin:'12px 14px',boxShadow:'0 4px 20px rgba(0,0,0,.08)',overflow:'hidden',border:'1.5px solid #F1ECE8'}}>
               {promo.image&&<img src={promo.image} style={{width:'100%',height:130,objectFit:'cover'}}/>}
               <div style={{padding:'16px 16px 10px'}}>
-                {/* شارة النوع */}
-                <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 12px',
-                  borderRadius:30,fontSize:11,fontWeight:800,marginBottom:10,
-                  background:col+'18',color:col}}>
-                  {typeLabel[promo.type]||promo.type}
-                </div>
-                {/* قيمة الخصم بارزة */}
-                {(promo.type==='percent'||promo.type==='fixed')&&(
-                  <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',
-                    borderRadius:50,padding:'5px 14px',fontSize:17,fontWeight:900,
-                    display:'inline-block',marginBottom:8,float:'left',
-                    boxShadow:'0 4px 12px rgba(255,107,53,.35)'}}>
+                <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 12px',borderRadius:30,fontSize:11,fontWeight:800,marginBottom:10,background:col+'18',color:col}}>{typeLabel[promo.type]||promo.type}</div>
+                {(promo.type==='percent'||promo.type==='fixed') && (
+                  <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',borderRadius:50,padding:'5px 14px',fontSize:17,fontWeight:900,display:'inline-block',marginBottom:8,float:'left',boxShadow:'0 4px 12px rgba(255,107,53,.35)'}}>
                     {promo.type==='percent'?`-${promo.discount_value}%`:`-${promo.discount_value} ${CUR}`}
                   </div>
                 )}
                 <div style={{fontWeight:900,fontSize:16,marginBottom:4,clear:'both'}}>{promo.name}</div>
                 {promo.description&&<p style={{color:'#64748b',fontSize:13,marginBottom:10}}>{promo.description}</p>}
-                {promo.type==='tier_buy'&&<p style={{color:'#3b82f6',fontSize:12,fontWeight:700,marginBottom:10}}>
-                  📦 اشتري {promo.tier_qty} كرتون من نفس الشركة → خصم {promo.tier_value}{promo.tier_type==='percent'?'%':' '+CUR}
-                </p>}
               </div>
-              {/* صور المنتجات */}
-              {promoProds.length>0&&(
+              {promoProds.length>0 && (
                 <div style={{display:'flex',gap:8,overflowX:'auto',padding:'0 14px 14px'}}>
                   {promoProds.slice(0,6).map(pp=>(
-                    <div key={pp.id} style={{flexShrink:0,width:64,textAlign:'center',cursor:'pointer'}}
-                      onClick={()=>{setDetailProd(pp);setModal('detail')}}>
-                      {pp.image
-                        ?<img src={pp.image} style={{width:60,height:60,borderRadius:12,objectFit:'cover',display:'block',margin:'0 auto 4px',border:'2px solid #F1ECE8'}}/>
-                        :<div style={{width:60,height:60,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,margin:'0 auto 4px'}}>🛍️</div>}
+                    <div key={pp.id} style={{flexShrink:0,width:64,textAlign:'center',cursor:'pointer'}} onClick={()=>{setDetailProd(pp);setModal('detail')}}>
+                      {pp.image ? <img src={pp.image} style={{width:60,height:60,borderRadius:12,objectFit:'cover',display:'block',margin:'0 auto 4px',border:'2px solid #F1ECE8'}}/> :
+                        <div style={{width:60,height:60,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,margin:'0 auto 4px'}}>🛍️</div>}
                       <div style={{fontSize:10,fontWeight:700,color:'#7A6A5A',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{pp.name}</div>
                     </div>
                   ))}
                 </div>
               )}
-              {/* footer */}
               <div style={{padding:'10px 16px 14px',borderTop:'1px solid #F1ECE8',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                {promo.end_date
-                  ?<PromoCountdown endDate={promo.end_date}/>
-                  :<span style={{fontSize:12,color:'#94a3b8',fontWeight:700}}>⚡ بدون تاريخ انتهاء</span>}
-                <button style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',
-                  border:'none',borderRadius:30,padding:'8px 18px',fontWeight:800,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}
-                  onClick={()=>setTab('search')}>
-                  تسوّق الآن
-                </button>
+                {promo.end_date ? <PromoCountdown endDate={promo.end_date}/> : <span style={{fontSize:12,color:'#94a3b8',fontWeight:700}}>⚡ بدون تاريخ انتهاء</span>}
+                <button style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',border:'none',borderRadius:30,padding:'8px 18px',fontWeight:800,fontSize:13,cursor:'pointer',fontFamily:'inherit'}} onClick={()=>setTab('search')}>تسوّق الآن</button>
               </div>
             </div>
           )
@@ -1385,7 +1633,7 @@ export default function Store() {
     )
   }
 
-  const tabs={home:<Home/>,search:<SearchTab/>,cats:<CatsTab/>,wish:<WishTab/>,promos:<PromosTab/>}
+  const tabs = {home:<Home/>, search:<SearchTab/>, cats:<CatsTab/>, wish:<WishTab/>, promos:<PromosTab/>}
 
   return (
     <div dir="rtl">
@@ -1395,140 +1643,113 @@ export default function Store() {
           <button className="sh-icon" onClick={()=>setDrawerOpen(true)}><i className="fas fa-bars"></i></button>
           <span className="sh-logo">{SNAME}</span>
           <div className="sh-right">
-            <button className="sh-contact" onClick={()=>setModal('contact')}>
-              <i className="fas fa-phone"></i> اتصل
-            </button>
-            {customer
-              ?<button className="sh-login" onClick={()=>setModal('account')}>
-                  <i className="fas fa-user"></i> {customer.name.split(' ')[0]}
-                </button>
-              :<button className="sh-login" onClick={()=>setModal('login')}>
-                  <i className="fas fa-user"></i> دخول
-                </button>}
+            <button className="sh-contact" onClick={()=>setModal('contact')}><i className="fas fa-phone"></i> اتصل</button>
+            {customer ? (
+              <button className="sh-login" onClick={()=>setModal('account')}><i className="fas fa-user"></i> {customer.name.split(' ')[0]}</button>
+            ) : (
+              <button className="sh-login" onClick={()=>setModal('login')}><i className="fas fa-user"></i> دخول</button>
+            )}
           </div>
         </div>
         <div className="sh-search">
           <i className="fas fa-search" style={{color:'#aaa'}}></i>
-          <input value={search}
-            onChange={e=>{setSearch(e.target.value);setTab('search');setPage(1)}}
-            placeholder="بحث عن المنتجات..." />
-          {search&&<button onClick={()=>{setSearch('');setTab('home')}}
-            style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:16}}>×</button>}
+          <input value={search} onChange={e=>{setSearch(e.target.value); setTab('search'); setPage(1)}} placeholder="بحث عن المنتجات..." />
+          {search && <button onClick={()=>{setSearch(''); setTab('home')}} style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:16}}>×</button>}
         </div>
       </div>
 
-      {/* DRAWER */}
-      {drawerOpen&&<div className="drawer-overlay" onClick={()=>setDrawerOpen(false)}/>}
+      {/* DRAWER SIDEBAR */}
+      {drawerOpen && <div className="drawer-overlay" onClick={()=>setDrawerOpen(false)}/>}
       <div className={`drawer${drawerOpen?' open':''}`}>
         <div className="drawer-head">
           <div style={{fontSize:20,fontWeight:900,color:'white',marginBottom:4}}>🛍️ {SNAME}</div>
-          {customer
-            ?<div style={{fontSize:13,color:'rgba(255,255,255,.85)',fontWeight:700}}>مرحباً، {customer.name} 👋</div>
-            :<div style={{fontSize:12,color:'rgba(255,255,255,.7)'}}>اطلب بالكارتون ووفّر أكثر</div>}
-          <button onClick={()=>setDrawerOpen(false)}
-            style={{position:'absolute',top:14,left:14,background:'rgba(255,255,255,.2)',border:'none',
-              color:'white',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:15}}>✕</button>
+          {customer ? <div style={{fontSize:13,color:'rgba(255,255,255,.85)',fontWeight:700}}>مرحباً، {customer.name} 👋</div> : <div style={{fontSize:12,color:'rgba(255,255,255,.7)'}}>اطلب بالكارتون ووفّر أكثر</div>}
+          <button onClick={()=>setDrawerOpen(false)} style={{position:'absolute',top:14,left:14,background:'rgba(255,255,255,.2)',border:'none',color:'white',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:15}}>✕</button>
         </div>
         <div className="drawer-nav">
           {[
-            {id:'home',  e:'🏠', l:'الرئيسية'},
-            {id:'search',e:'🔍', l:'جميع المنتجات'},
-            {id:'cats',  e:'📂', l:'الفئات والماركات'},
-            {id:'promos',e:'🎯', l:'العروض', b:promos.filter(x=>x.active).length},
+            {id:'home', e:'🏠', l:'الرئيسية'},
+            {id:'search', e:'🔍', l:'جميع المنتجات'},
+            {id:'cats', e:'📂', l:'الفئات والماركات'},
+            {id:'promos', e:'🎯', l:'العروض', b:promos.filter(x=>x.active).length},
             null,
-            {id:'wish',  e:'❤️', l:'المفضلة', b:wishlist.length},
-            {id:'cart-d',e:'🛒', l:'السلة', b:cartCount, a:()=>setModal('cart')},
+            {id:'wish', e:'❤️', l:'المفضلة', b:wishlist.length},
+            {id:'quickOrder', e:'⚡', l:'طلب سريع', a:()=>setModal('quickOrder')},
+            {id:'cart-d', e:'🛒', l:'السلة', b:cartCount, a:()=>setModal('cart')},
             {id:'track', e:'📍', l:'تتبع الطلب', a:()=>setModal('tracking')},
             null,
-            {id:'auth',  e:'👤', l:customer?customer.name:'تسجيل الدخول', a:()=>setModal(customer?'account':'login')},
-            {id:'contact-d',e:'📞',l:'اتصل بنا', a:()=>setModal('contact')},
-            {id:'dark',  e:'🌙', l:'الوضع الليلي', a:()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}},
-          ].map((it,i)=>it===null
-            ?<div key={i} className="di-div"/>
-            :<div key={it.id} className={`di${tab===it.id&&!it.a?' act':''}`}
-                onClick={()=>{(it.a?it.a():setTab(it.id));setDrawerOpen(false)}}>
-                <div className="di-ico">{it.e}</div>
-                <span style={{flex:1}}>{it.l}</span>
-                {it.b>0&&<span className="di-badge">{it.b}</span>}
-              </div>
-          )}
+            {id:'myOrders', e:'📋', l:'طلباتي السابقة', a:()=>setModal('myOrders'), show:!!customer},
+            {id:'returnPolicy', e:'🔄', l:'سياسة الاسترجاع', a:()=>setModal('returnPolicy')},
+            {id:'faq', e:'❓', l:'الأسئلة الشائعة', a:()=>setModal('faq')},
+            {id:'terms', e:'📜', l:'شروط وأحكام', a:()=>setModal('terms')},
+            null,
+            {id:'auth', e:'👤', l:customer?customer.name:'تسجيل الدخول', a:()=>setModal(customer?'account':'login'), show:!customer},
+            {id:'logout', e:'🚪', l:'تسجيل خروج', a:()=>{setCustomer(null); localStorage.removeItem('nq_customer'); showToast('تم الخروج'); setDrawerOpen(false)}, show:!!customer},
+            {id:'contact-d', e:'📞', l:'اتصل بنا', a:()=>setModal('contact')},
+            {id:'dark', e:'🌙', l:'الوضع الليلي', a:()=>{document.body.classList.toggle('dark'); localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}},
+          ].filter(it => it === null || (it.show !== false)).map((it,i)=>it===null ? <div key={i} className="di-div"/> : (
+            <div key={it.id} className={`di${tab===it.id&&!it.a?' act':''}`} onClick={()=>{(it.a?it.a():setTab(it.id)); setDrawerOpen(false)}}>
+              <div className="di-ico">{it.e}</div><span style={{flex:1}}>{it.l}</span>
+              {it.b>0 && <span className="di-badge">{it.b}</span>}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* dark mode */}
-      <button onClick={()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}}
-        style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <i className="fas fa-moon"></i>
-      </button>
+      {/* Dark Mode Toggle */}
+      <button onClick={()=>{document.body.classList.toggle('dark'); localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}} style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}><i className="fas fa-moon"></i></button>
 
-      {/* customer badge */}
-      {customer&&(
+      {/* Customer Badge */}
+      {customer && (
         <div style={{position:'fixed',top:78,left:58,zIndex:400,background:'rgba(255,107,53,.9)',color:'white',borderRadius:20,padding:'5px 10px',fontSize:11,fontWeight:700,display:'flex',gap:6,alignItems:'center'}}>
-          <span>👤 {customer.name}</span>
-          <button onClick={()=>{setCustomer(null);localStorage.removeItem('nq_customer');showToast('تم الخروج')}}
-            style={{background:'none',border:'none',color:'white',cursor:'pointer',fontSize:13}}>✕</button>
+          <span>⭐ {loyaltyPoints} نقطة</span>
+          <button onClick={()=>{setCustomer(null); localStorage.removeItem('nq_customer'); showToast('تم الخروج')}} style={{background:'none',border:'none',color:'white',cursor:'pointer',fontSize:13}}>✕</button>
         </div>
-      )}
-      {!customer&&tab==='home'&&(
-        <button onClick={()=>setModal('login')}
-          style={{position:'fixed',top:78,left:14,zIndex:400,background:'rgba(255,255,255,.9)',border:'none',borderRadius:20,padding:'5px 10px',fontSize:11,cursor:'pointer',color:'#FF6B35',fontWeight:700}}>
-          <i className="fas fa-user"></i> دخول
-        </button>
       )}
 
       {/* PAGE */}
-      <div className="page">{tabs[tab]||<Home/>}</div>
+      <div className="page">{tabs[tab] || <Home/>}</div>
 
       {/* BOTTOM NAV */}
       <div className="bnav">
         {[
-          {id:'home',  icon:'fas fa-home',            label:'الرئيسية'},
-          {id:'search',icon:'fas fa-search',           label:'بحث'},
-          {id:'promos',icon:'fas fa-tag',              label:'العروض', badge:promos.filter(x=>x.active).length},
-          {id:'wish',  icon:'fas fa-heart',            label:'المفضلة',badge:wishlist.length},
-          {id:'cart-m',icon:'fas fa-shopping-basket',  label:'السلة',  badge:cartCount,action:()=>setModal('cart')},
+          {id:'home', icon:'fas fa-home', label:'الرئيسية'},
+          {id:'search', icon:'fas fa-search', label:'بحث'},
+          {id:'promos', icon:'fas fa-tag', label:'العروض', badge:promos.filter(x=>x.active).length},
+          {id:'wish', icon:'fas fa-heart', label:'المفضلة', badge:wishlist.length},
+          {id:'cart-m', icon:'fas fa-shopping-basket', label:'السلة', badge:cartCount, action:()=>setModal('cart')},
         ].map(b=>(
-          <button key={b.id} className={`bnav-b${tab===b.id&&!b.action?' on':''}`}
-            onClick={()=>b.action?b.action():setTab(b.id)}>
+          <button key={b.id} className={`bnav-b${tab===b.id&&!b.action?' on':''}`} onClick={()=>b.action?b.action():setTab(b.id)}>
             <i className={b.icon}></i>
-            {b.badge>0&&<span className="nbadge">{b.badge}</span>}
+            {b.badge>0 && <span className="nbadge">{b.badge}</span>}
             <span>{b.label}</span>
           </button>
         ))}
       </div>
 
-      {/* WHATSAPP - بارز مثل Esmmar */}
+      {/* WHATSAPP FLOAT */}
       <div className="wa-float">
-        <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
-          <i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i>
-        </button>
+        <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}><i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i></button>
         <div className="wa-label">تواصل معنا</div>
       </div>
 
       {/* SCROLL TOP */}
-      {showScr&&(
-        <button className="scrtop" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}>
-          <i className="fas fa-chevron-up"></i>
-        </button>
-      )}
+      {showScr && <button className="scrtop" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}><i className="fas fa-chevron-up"></i></button>}
 
       {/* MODALS */}
-      {modal==='login'&&<LoginModal onClose={()=>setModal(null)} onLogin={handleLogin} onRegister={()=>setModal('register')}/>}
-      {modal==='register'&&<RegisterModal onClose={()=>setModal(null)} onSuccess={()=>{setModal('login');showToast('✅ سجّل الآن للدخول')}}/>}
-      {modal==='cart'&&<CartModal cart={cart} setCart={setCart} onClose={()=>setModal(null)}
-        onCheckout={(total,disc)=>{setCheckoutTotal(total);setModal('checkout')}}
-        freeShip={FREESHIP} currency={CUR} promos={promos}/>}
-      {modal==='checkout'&&<CheckoutModal cart={cart} finalTotal={checkoutTotal||cartTotal}
-        onClose={()=>setModal('cart')}
-        onSuccess={id=>{setCart([]);setThankId(id);setModal('thankyou')}}
-        currency={CUR} waNum={WA} storeName={SNAME}/>}
-      {modal==='detail'&&<DetailModal product={detailProd} wishlist={wishlist}
-        onClose={()=>setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish}
-        currency={CUR} products={products} sevenAgo={sevenAgo}
-        onShowProduct={p=>setDetailProd(p)} promos={promos}/>}
-      {modal==='tracking'&&<TrackingModal onClose={()=>setModal(null)} currency={CUR}/>}
-      {modal==='contact'&&<ContactModal settings={settings} onClose={()=>setModal(null)}/>}
-      {modal==='thankyou'&&<ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null);setTab('home')}}/>}
+      {modal==='login' && <LoginModal onClose={()=>setModal(null)} onLogin={handleLogin} onRegister={()=>setModal('register')}/>}
+      {modal==='register' && <RegisterModal onClose={()=>setModal(null)} onSuccess={()=>{setModal('login'); showToast('✅ سجّل الآن للدخول')}}/>}
+      {modal==='cart' && <CartModal cart={cart} setCart={setCart} onClose={()=>setModal(null)} onCheckout={(total,disc,loyaltyDisc,pointsUsed)=>{setCheckoutTotal(total); setCheckoutLoyaltyDisc(loyaltyDisc); setCheckoutPointsUsed(pointsUsed); setModal('checkout')}} freeShip={FREESHIP} currency={CUR} promos={promos} customer={customer} loyaltyPoints={loyaltyPoints}/>}
+      {modal==='checkout' && <CheckoutModal cart={cart} finalTotal={checkoutTotal} onClose={()=>setModal('cart')} onSuccess={id=>{setCart([]); setThankId(id); setModal('thankyou')}} currency={CUR} waNum={WA} storeName={SNAME} customer={customer} pointsToUse={checkoutPointsUsed}/>}
+      {modal==='detail' && <DetailModal product={detailProd} wishlist={wishlist} onClose={()=>setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish} currency={CUR} products={products} sevenAgo={sevenAgo} onShowProduct={p=>setDetailProd(p)} promos={promos}/>}
+      {modal==='tracking' && <TrackingModal onClose={()=>setModal(null)} currency={CUR}/>}
+      {modal==='contact' && <ContactModal settings={settings} onClose={()=>setModal(null)}/>}
+      {modal==='thankyou' && <ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null); setTab('home')}}/>}
+      {modal==='myOrders' && <MyOrdersModal customer={customer} onClose={()=>setModal(null)} currency={CUR}/>}
+      {modal==='quickOrder' && <QuickOrderModal products={products} onAddToCart={addToCart} onClose={()=>setModal(null)} currency={CUR}/>}
+      {modal==='returnPolicy' && <ReturnPolicyModal onClose={()=>setModal(null)} content={RETURN_POLICY}/>}
+      {modal==='faq' && <FAQModal onClose={()=>setModal(null)} faqData={FAQ_DATA}/>}
+      {modal==='terms' && <ReturnPolicyModal onClose={()=>setModal(null)} content={TERMS} title="شروط وأحكام"/>}
     </div>
   )
 }
