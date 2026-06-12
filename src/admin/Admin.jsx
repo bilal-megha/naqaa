@@ -1615,7 +1615,7 @@ function Inventory() {
     const wa=(localStorage.getItem('nq_wa_alert')||WA_DEFAULT).replace(/\D/g,'')
     if(!wa){showToast('أدخل رقم واتساب أولاً','error');return}
     const msg=`⚠️ تنبيه مخزون نقاء%0A%0Aالمنتج: ${encodeURIComponent(prod.name)}%0Aالمخزون الحالي: ${prod.stock||0} كرتون%0Aالحد الأدنى: ${prod.min_stock||5}%0A%0Aيرجى إعادة الطلب عاجلاً`
-    window.open(\`https://wa.me/\${wa}?text=\${msg}\`,'_blank')
+    window.open('https://wa.me/' + msg, '_blank')
     showToast('📱 تم فتح واتساب')
   }
 

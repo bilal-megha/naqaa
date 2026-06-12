@@ -89,7 +89,7 @@ body.dark .anim-card{background:#1e1208}
 .anim-card .overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);
   display:flex;align-items:flex-end;padding:8px;opacity:0;transition:.3s}
 .anim-card:hover .overlay{opacity:1}
-.anim-card .overlay span{color:white;fontWeight:700;fontSize:12px}
+.anim-card .overlay span{color:white;font-weight:700;font-size:12px}
 .anim-card .no-img{font-weight:900;font-size:13px;color:#1A0A00;text-align:center;padding:8px}
 body.dark .anim-card .no-img{color:#F0E8E0}
 .anim-all{border-radius:16px;aspect-ratio:1;display:flex;flex-direction:column;
@@ -899,6 +899,7 @@ export default function Store() {
   const [customer,    setCustomer]    = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_customer')||'null')}catch{return null} })
   const [cart,        setCart]        = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_cart')||'[]')}catch{return []} })
   const [wishlist,    setWishlist]    = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_wish')||'[]')}catch{return []} })
+  const [drawerOpen,  setDrawerOpen]  = useState(false)
   const [products,    setProducts]    = useState([])
   const [brands,      setBrands]      = useState([])
   const [categories,  setCategories]  = useState([])
@@ -1454,7 +1455,7 @@ export default function Store() {
         </div>
       </div>
 
-      {/* dark mode */}}
+      {/* dark mode */}
       <button onClick={()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}}
         style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
         <i className="fas fa-moon"></i>
