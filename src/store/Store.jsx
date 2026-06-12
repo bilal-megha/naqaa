@@ -1298,30 +1298,29 @@ export default function Store() {
   const allP = products.filter(p=>!p.disabled)
   
   const filtered = (() => {
-    let f = [...allP]
-    if (search) f = f.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-    if (brandSel !== 'all') f = f.filter(p => p.brand_id == brandSel)
-    if (catSel !== 'all') f = f.filter(p => p.category_id == catSel)
-    
-    // فلتر السعر
-    f = f.filter(p => p.price >= minPrice && p.price <= maxPrice)
-    
-    // فلتر الخصم (العروض تظهر أولاً)
-    const disc = Number(p.discount)||0
-    if (minDiscount > 0) f = f.filter(p => (Number(p.discount)||0) >= minDiscount)
-    
-    // الترتيب - المنتجات التي عليها عرض تظهر أولاً
-    if (sortSel === 'promo_first') {
-      f = [...f].sort((a,b) => (Number(b.discount)||0) - (Number(a.discount)||0))
-    } else if (sortSel === 'newest') {
-      f = [...f].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
-    } else if (sortSel === 'price_asc') {
-      f = [...f].sort((a,b) => a.price - b.price)
-    } else if (sortSel === 'price_desc') {
-      f = [...f].sort((a,b) => b.price - a.price)
-    }
-    return f
-  })()
+  let f = [...allP]
+  if (search) f = f.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+  if (brandSel !== 'all') f = f.filter(p => p.brand_id == brandSel)
+  if (catSel !== 'all') f = f.filter(p => p.category_id == catSel)
+  
+  // فلتر السعر
+  f = f.filter(p => p.price >= minPrice && p.price <= maxPrice)
+  
+  // فلتر الخصم
+  if (minDiscount > 0) f = f.filter(p => (Number(p.discount)||0) >= minDiscount)
+  
+  // الترتيب - المنتجات التي عليها عرض تظهر أولاً
+  if (sortSel === 'promo_first') {
+    f = [...f].sort((a,b) => (Number(b.discount)||0) - (Number(a.discount)||0))
+  } else if (sortSel === 'newest') {
+    f = [...f].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+  } else if (sortSel === 'price_asc') {
+    f = [...f].sort((a,b) => a.price - b.price)
+  } else if (sortSel === 'price_desc') {
+    f = [...f].sort((a,b) => b.price - a.price)
+  }
+  return f
+})()
   
   const PER = 12
   const PAGES = Math.ceil(filtered.length / PER)
