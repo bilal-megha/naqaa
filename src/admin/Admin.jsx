@@ -154,6 +154,31 @@ function printThermal(content) {
   w.document.close()
 }
 
+function downloadPDF(title, content) {
+  // تحميل PDF بدون مكتبة خارجية - نستخدم print CSS
+  const w = window.open('','_blank','width=794,height=1123')
+  if (!w) return
+  w.document.write(`<!DOCTYPE html><html dir="rtl"><head>
+    <meta charset="UTF-8">
+    <title>${title}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:Arial,sans-serif;direction:rtl;padding:24px;font-size:13px}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #F97316;padding-bottom:14px;margin-bottom:18px}
+      h1{color:#F97316;font-size:22px}
+      table{width:100%;border-collapse:collapse;margin-top:14px}
+      th{background:#F97316;color:white;padding:9px 10px;text-align:right;font-size:12px;border:1px solid #E2E8F0}
+      td{padding:8px 10px;border:1px solid #E2E8F0;font-size:12px}
+      tr:nth-child(even)td{background:#FFF7ED}
+      .total-row td{font-weight:bold;background:#1E293B;color:white}
+      .footer{margin-top:20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #E2E8F0;padding-top:10px}
+      @media print{@page{size:A4;margin:15mm}}
+    </style>
+  </head><body>${content}</body></html>`)
+  w.document.close()
+  setTimeout(()=>{ w.print() }, 600)
+}
+
 function printA4(content) {
   const w = window.open('','_blank')
   w.document.write(`<html><head><meta charset="UTF-8"><style>
@@ -326,11 +351,12 @@ function Dashboard() {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data:prods },{ data:ords },{ data:purcs },{ data:exps }] = await Promise.all([
+      const [{ data:prods },{ data:ords },{ data:purcs },{ data:exps },{ data:revs }] = await Promise.all([
         supabase.from('products').select('id,name,stock,min_stock'),
         supabase.from('orders').select('*').order('id',{ascending:false}),
         supabase.from('purchases').select('total'),
         supabase.from('expenses').select('amount'),
+        supabase.from('reviews').select('rating').catch(()=>({data:[]})),
       ])
       const now = new Date()
       const thisMonth = now.getMonth(); const thisYear = now.getFullYear()
@@ -359,9 +385,12 @@ function Dashboard() {
       const thisM = (ords||[]).filter(o=>{ const d=new Date(o.created_at||o.date); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear }).reduce((s,o)=>s+Number(o.total),0)
       const lastM = (ords||[]).filter(o=>{ const d=new Date(o.created_at||o.date); return d.getMonth()===lastMonth&&d.getFullYear()===lastYear }).reduce((s,o)=>s+Number(o.total),0)
       const changeP = lastM>0?Math.round((thisM-lastM)/lastM*100):0
+      const rv = revs||[]
+      const avgRating = rv.length ? (rv.reduce((s,r)=>s+(r.rating||0),0)/rv.length).toFixed(1) : 0
       setStats({ products:(prods||[]).length, orders:(ords||[]).length, sales, profit:sales-pur-exp,
         todaySales:todayO.reduce((s,o)=>s+Number(o.total),0),
-        thisMonthSales:thisM, lastMonthSales:lastM, changeP })
+        thisMonthSales:thisM, lastMonthSales:lastM, changeP,
+        avgRating: parseFloat(avgRating), totalReviews: rv.length })
       setRecent((ords||[]).slice(0,8))
       const minStk = p=>(p.min_stock||5)
       setLowStock((prods||[]).filter(p=>(p.stock||0)<minStk(p)))
@@ -405,6 +434,17 @@ function Dashboard() {
         <StatCard label="صافي الربح"      value={`${stats.profit.toFixed(0)} ${CUR}`} icon="💰" color={stats.profit>=0?CLR.success:CLR.danger} spark={weekData}/>
       </div>
 
+      {/* بطاقة متوسط التقييمات */}
+      {stats.avgRating>0&&(
+        <div style={{...S.card,background:'linear-gradient(135deg,#FFF7ED,#FFFBEB)',
+          border:'1px solid #FED7AA',marginBottom:14,display:'flex',gap:16,alignItems:'center'}}>
+          <div style={{fontSize:40}}>⭐</div>
+          <div>
+            <div style={{fontWeight:900,fontSize:22,color:'#F97316'}}>{stats.avgRating}/5</div>
+            <div style={{fontSize:13,color:'#92400E',fontWeight:600}}>متوسط تقييمات المنتجات ({stats.totalReviews} تقييم)</div>
+          </div>
+        </div>
+      )}
       {/* تنبيه المخزون */}
       {lowStock.length>0&&(
         <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
@@ -1867,6 +1907,18 @@ function Orders() {
 
   const updateStatus=async(id,status)=>{
     await supabase.from('orders').update({status}).eq('id',id)
+    // إشعار واتساب للعميل عند الشحن أو التسليم
+    if(status==='shipped'||status==='delivered'){
+      const {data:ord}=await supabase.from('orders').select('*').eq('id',id).maybeSingle()
+      if(ord?.phone){
+        const msgs={
+          shipped:`🚚 طلبيتك رقم #${String(id).slice(-5)} في الطريق إليك! سنتواصل معك قريباً للتسليم.`,
+          delivered:`✅ تم تسليم طلبيتك رقم #${String(id).slice(-5)} بنجاح! شكراً لثقتك بنا 🌟`
+        }
+        const wa=(ord.phone||'').replace(/\D/g,'')
+        if(wa.length>=9) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msgs[status])}`,'_blank')
+      }
+    }
     showToast('✅ تم تحديث الحالة'); await load()
   }
   const updateMulti=async(status)=>{
@@ -1924,6 +1976,28 @@ function Orders() {
   return (
     <div>{ToastUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📋 الطلبيات</h1>
+      {/* أرشفة الطلبيات القديمة */}
+      <div style={{...S.card,background:'#F0FDF4',border:'1px solid #A7F3D0',marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+          <div>
+            <strong style={{color:'#059669',fontSize:14}}>📦 أرشفة الطلبيات القديمة</strong>
+            <p style={{fontSize:12,color:'#047857',marginTop:3}}>نقل الطلبيات المسلّمة الأقدم من 6 أشهر إلى الأرشيف لتحسين الأداء</p>
+          </div>
+          <button onClick={async()=>{
+            const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-6)
+            const {data:old}=await supabase.from('orders').select('*')
+              .eq('status','delivered').lt('created_at',cutoff.toISOString())
+            if(!old||old.length===0){showToast('لا توجد طلبيات قديمة للأرشفة');return}
+            for(const o of old){
+              await supabase.from('orders_archive').upsert(o).catch(()=>{})
+              await supabase.from('orders').delete().eq('id',o.id)
+            }
+            showToast(`✅ تمت أرشفة ${old.length} طلبية`); await load()
+          }} style={{...S.btn,background:'#059669',fontSize:13}}>
+            📦 أرشفة الآن
+          </button>
+        </div>
+      </div>
       <div style={S.card}>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12}}>
           <select style={{...S.input,width:150}} value={searchType} onChange={e=>setSearchType(e.target.value)}>
@@ -2627,7 +2701,10 @@ function Settings({ showToast }) {
     store_name:'نقاء', store_currency:'دج',
     whatsapp_number:WA_DEFAULT, free_shipping_threshold:'500',
     tier_m2_min:'5000', tier_m3_min:'20000',
-    tier_m1_discount:'0', tier_m2_discount:'5', tier_m3_discount:'10'
+    tier_m1_discount:'0', tier_m2_discount:'5', tier_m3_discount:'10',
+    maintenance_mode:'0', maintenance_msg:'المتجر في طور التحديث، سنعود قريباً 🔧',
+    terms_text:'', shipping_cost:'500', admin_phone:WA_DEFAULT,
+    contact_hours:'من 8 صباحاً إلى 10 مساءً', contact_address:'',
   })
   const [saving,setSaving]=useState(false)
   useEffect(()=>{
