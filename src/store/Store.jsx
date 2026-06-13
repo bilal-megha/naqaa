@@ -1,16 +1,14 @@
 /**
- * Store.jsx — نقاء v7
+ * Store.jsx — نقاء v6
  * ✅ تسجيل دخول + تسجيل جديد مع OTP
  * ✅ عروض من قاعدة البيانات مع مؤقت
  * ✅ خصم تدريجي حسب الكمية
  * ✅ اشتري X خذ Y
+ * ✅ زر واتساب بارز
  * ✅ الطلب بالكارتون فقط
- * ✅ البحث الذكي (العروض أولاً)
- * ✅ نقاط الولاء
- * ✅ الطلبات السابقة للعميل
- * ✅ إصلاح الألوان والخطوط
- * ✅ إصلاح شريط البحث
- * ✅ إزالة زر اتصال مكرر
+ * ✅ حقول رقمية فقط
+ * ✅ تأكيد الطلب بكود
+ * ✅ صور متحركة للفئات والماركات
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -33,31 +31,20 @@ body.dark{background:#100800;color:#F0E8E0}
   padding:7px 14px;border-radius:30px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit}
 .sh-icon{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;
   background:rgba(255,255,255,.2);color:white;font-size:17px;display:flex;
-  align-items:center;justify-content:center;position:relative}
+  align-items:center;justify-content:center}
 .sh-logo{font-size:21px;font-weight:900;color:white}
 .sh-contact{background:white;color:#FF6B35;border:none;padding:7px 15px;
   border-radius:30px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
 .sh-search{background:white;border-radius:30px;display:flex;align-items:center;
-  gap:8px;padding:9px 16px;box-shadow:0 2px 12px rgba(0,0,0,.12);margin-top:8px}
+  gap:8px;padding:9px 16px;box-shadow:0 2px 12px rgba(0,0,0,.12)}
 body.dark .sh-search{background:#2a1400}
 .sh-search input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;
-  background:transparent;color:#333;padding:0}
+  background:transparent;color:#333}
 body.dark .sh-search input{color:#f0e8e0}
-.sh-search button{background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;padding:0 4px}
-
-/* NOTIFICATION BADGE */
-.badge-icon{position:relative}
-.badge-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;
-  background:#ef4444;border-radius:50%;border:2px solid white}
-.badge-num{position:absolute;top:-6px;right:-8px;background:#ef4444;color:white;
-  font-size:10px;font-weight:800;border-radius:30px;min-width:18px;height:18px;
-  display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid white}
 
 /* ANNOUNCE BAR */
 .announce{background:#FF6B35;color:white;text-align:center;padding:7px 16px;
   font-size:12px;font-weight:700;letter-spacing:.3px}
-.free-ship-bar{background:#10b981;color:white;text-align:center;padding:7px 16px;
-  font-size:12px;font-weight:700;cursor:pointer}
 
 /* BANNER */
 .banner-wrap{margin:14px 14px 0;border-radius:20px;overflow:hidden;position:relative;
@@ -87,12 +74,6 @@ body.dark .sh-search input{color:#f0e8e0}
 body.dark .sec-title{color:#F0E8E0}
 .sec-more{color:#FF6B35;font-size:13px;font-weight:700;border:none;
   background:none;cursor:pointer;font-family:inherit}
-
-/* FILTERS */
-.filter-row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.filter-slider{flex:1;min-width:120px}
-.filter-slider label{font-size:12px;color:#7A6A5A;display:block;margin-bottom:4px}
-.filter-slider input{width:100%}
 
 /* ANIMATED BRANDS/CATS GRID */
 .anim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -147,11 +128,7 @@ body.dark .pc{background:#1e1208}
 .pc:active{transform:scale(.97)}
 .pc-img{position:relative;border-radius:13px;overflow:hidden;margin-bottom:9px;
   background:#F8F4F0;aspect-ratio:1}
-.pc-img img{width:100%;height:100%;object-fit:cover;transition:.3s}
-.pc-img.outstock img{opacity:0.5}
-.outstock-overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);
-  display:flex;align-items:center;justify-content:center;color:white;
-  font-size:12px;font-weight:800}
+.pc-img img{width:100%;height:100%;object-fit:cover}
 .pc-noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px}
 .badge{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:20px;
   font-size:10px;font-weight:800;color:white}
@@ -173,15 +150,6 @@ body.dark .pc-name{color:#F0E8E0}
   background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;
   border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;
   display:flex;align-items:center;justify-content:center;gap:4px}
-.add-b.outstock{background:#94a3b8;cursor:not-allowed}
-
-/* ADD TO CART TOAST ANIMATION */
-.add-toast-animation{position:fixed;bottom:50%;left:50%;transform:translate(-50%,-50%);
-  background:#10b981;color:white;padding:12px 24px;border-radius:50px;
-  font-size:14px;font-weight:800;z-index:6000;animation:fadeOut 1.5s ease forwards;
-  white-space:nowrap}
-@keyframes fadeOut{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-  100%{opacity:0;transform:translate(-50%,-50%) scale(1.2)}}
 
 /* GRID */
 .prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -212,6 +180,24 @@ body.dark .prog-bar-wrap{background:#2d1a0a}
 body.dark .day-deal{background:#1e1208}
 
 /* BOTTOM NAV */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(3px);z-index:800}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:272px;background:white;z-index:900;
+  box-shadow:-8px 0 40px rgba(0,0,0,.18);transform:translateX(110%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+body.dark .drawer{background:#1A0A00}
+.drawer.open{transform:translateX(0)}
+.drawer-head{background:linear-gradient(135deg,#FF6B35,#C02E00);padding:20px 18px 16px;flex-shrink:0;position:relative}
+.drawer-nav{flex:1;overflow-y:auto;padding:8px 0}
+.di{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;
+  transition:.18s;color:#1A0A00;font-size:14px;font-weight:700}
+body.dark .di{color:#F0E8E0}
+.di:hover,.di.act{background:rgba(255,107,53,.09);color:#FF6B35}
+.di-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;
+  justify-content:center;font-size:17px;flex-shrink:0;background:#FFF0EB}
+.di.act .di-ico{background:linear-gradient(135deg,#FF6B35,#E8430E)}
+.di-div{height:1px;background:#F1ECE8;margin:4px 16px}
+body.dark .di-div{background:#2d1a0a}
+.di-badge{background:#FF6B35;color:white;border-radius:30px;padding:1px 8px;font-size:11px;font-weight:800;margin-right:auto}
 .bnav{position:fixed;bottom:0;left:0;right:0;background:white;
   display:flex;justify-content:space-around;align-items:center;
   padding:10px 0 16px;z-index:300;
@@ -227,7 +213,7 @@ body.dark .bnav{background:#1e1208}
   align-items:center;justify-content:center;font-weight:800;border:2px solid white}
 body.dark .nbadge{border-color:#1e1208}
 
-/* WHATSAPP */
+/* WHATSAPP - prominent like Esmmar */
 .wa-float{position:fixed;bottom:90px;left:14px;z-index:400}
 .wa-btn{width:56px;height:56px;background:#25D366;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -298,67 +284,49 @@ body.dark .ci{border-color:#2d1a0a}
   display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
 .abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
 .abtn.green{background:linear-gradient(135deg,#10b981,#059669)}
-.abtn:disabled{opacity:0.6;cursor:not-allowed}
 
-/* POINTS CARD */
-.points-card{background:linear-gradient(135deg,#fef9c3,#fde047);border-radius:16px;
-  padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;
-  align-items:center;border:1px solid #eab308}
-.points-value{font-size:24px;font-weight:900;color:#854d0e}
-.points-label{font-size:12px;color:#854d0e}
-.redeem-btn{background:#854d0e;color:white;border:none;border-radius:30px;
-  padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer}
+/* OTP */
+.otp-inputs{display:flex;gap:10px;justify-content:center;margin:16px 0}
+.otp-input{width:52px;height:58px;border:2px solid #E8DDD5;border-radius:12px;
+  text-align:center;font-size:22px;font-weight:900;font-family:inherit;
+  outline:none;background:#F7F3EF;-webkit-user-select:text;user-select:text}
+.otp-input:focus{border-color:#FF6B35}
+body.dark .otp-input{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
 
-/* MY ORDERS */
-.order-card{background:white;border-radius:14px;padding:14px;margin-bottom:12px;
-  border:1px solid #E8DDD5;cursor:pointer}
-.order-header{display:flex;justify-content:space-between;margin-bottom:8px}
-.order-id{font-weight:900;color:#FF6B35}
-.order-status{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
-.order-status.pending{background:#fef9c3;color:#92400e}
-.order-status.processing{background:#dbeafe;color:#1d4ed8}
-.order-status.shipped{background:#e0e7ff;color:#5b21b6}
-.order-status.delivered{background:#d1fae5;color:#059669}
-.order-total{font-weight:900;color:#1A0A00}
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+  background:#1A0A00;color:white;padding:10px 22px;border-radius:30px;
+  z-index:5000;font-size:13px;font-weight:700;animation:tin .3s ease;
+  white-space:nowrap;max-width:85vw;text-align:center}
+.toast.err{background:#ef4444}
+@keyframes tin{from{opacity:0;transform:translateX(-50%) translateY(16px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
-/* LOYALTY MODAL */
-.loyalty-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F7F3EF}
-.loyalty-points{font-weight:900;color:#eab308}
+.empty{text-align:center;padding:40px 16px;color:#7A6A5A}
+.empty i{font-size:52px;margin-bottom:12px;display:block;opacity:.25}
+.trstep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;
+  border-bottom:1px solid #F7F3EF}
+body.dark .trstep{border-color:#2d1a0a}
+.trdot{width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px}
+.trdot.done{background:linear-gradient(135deg,#FF6B35,#7C3AED);color:white}
+.trdot.wait{background:#F7F3EF;color:#AAA099}
+body.dark .trdot.wait{background:#2d1a0a}
 
-/* QUICK ORDER TABLE */
-.quick-table{width:100%;border-collapse:collapse}
-.quick-table th,.quick-table td{padding:10px;border:1px solid #E8DDD5;text-align:right}
-.quick-table th{background:#FFF0EB;font-weight:800}
-.quick-qty{width:80px;text-align:center}
-.quick-qty input{width:60px;padding:6px;text-align:center;border:1px solid #E8DDD5;border-radius:8px}
-
-/* FAQ */
-.faq-item{margin-bottom:12px;border:1px solid #E8DDD5;border-radius:12px;overflow:hidden}
-.faq-question{background:#F8F4F0;padding:14px 16px;font-weight:800;cursor:pointer;
-  display:flex;justify-content:space-between}
-.faq-answer{padding:14px 16px;color:#7A6A5A;border-top:1px solid #E8DDD5}
-
-/* PRICE RANGE */
-.price-range{display:flex;gap:12px;margin-bottom:12px}
-.price-range input{width:100%;padding:8px;border:1px solid #E8DDD5;border-radius:8px}
+.page{padding-bottom:80px}
+/* Quick order table */
+.qt-wrap{overflow-x:auto;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07)}
+.qt-wrap table{width:100%;border-collapse:collapse;min-width:460px}
+/* Filter range */
+input[type=range]{height:4px;border-radius:10px;cursor:pointer}
 `
 
 /* helpers */
 function showToast(msg, isErr=false) {
-  const existing = document.querySelectorAll('.toast')
-  existing.forEach(t=>t.remove())
+  document.querySelectorAll('.toast').forEach(t=>t.remove())
   const t=document.createElement('div')
-  t.className='toast'+(isErr?' err':'')
-  t.textContent=msg
-  document.body.appendChild(t)
-  setTimeout(()=>t.remove(),2800)
-}
-function showAddAnimation(msg='✅ تمت الإضافة') {
-  const div=document.createElement('div')
-  div.className='add-toast-animation'
-  div.textContent=msg
-  document.body.appendChild(div)
-  setTimeout(()=>div.remove(),1500)
+  t.className='toast'+(isErr?' err':''); t.textContent=msg
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2800)
 }
 const hashPwd = p => { try { return CryptoJS.SHA256(p).toString() } catch { return p } }
 
@@ -375,23 +343,16 @@ function useTimer(endTime) {
         s: String(Math.floor((diff%60000)/1000)).padStart(2,'0'),
       })
     }
-    tick()
-    const id=setInterval(tick,1000)
-    return ()=>clearInterval(id)
+    tick(); const id=setInterval(tick,1000); return ()=>clearInterval(id)
   }, [endTime])
   return tl
 }
 
-/* حساب سعر الكرتون */
-function getCartonPrice(price, units) {
-  return (parseFloat(price) || 0) * (parseInt(units) || 12)
-}
-
-/* ── MODALS ── */
+/* ── MODALS (outside main to prevent re-mount on re-render) ── */
 
 function LoginModal({ onClose, onLogin, onRegister }) {
   const [email, setEmail] = useState('')
-  const [pass, setPass] = useState('')
+  const [pass,  setPass]  = useState('')
   const [loading, setLoading] = useState(false)
 
   const submit = async () => {
@@ -400,11 +361,7 @@ function LoginModal({ onClose, onLogin, onRegister }) {
     const { data } = await supabase.from('customers').select('*')
       .or(`email.eq.${email},phone.eq.${email}`)
       .eq('password', hashPwd(pass)).maybeSingle()
-    if (data) { 
-      onLogin(data) 
-    } else { 
-      showToast('البيانات غير صحيحة',true) 
-    }
+    if (data) { onLogin(data) } else showToast('البيانات غير صحيحة',true)
     setLoading(false)
   }
 
@@ -444,18 +401,16 @@ function LoginModal({ onClose, onLogin, onRegister }) {
 }
 
 function RegisterModal({ onClose, onSuccess }) {
-  const [form, setForm] = useState({name:'',email:'',phone:'',address:'',pass:'',pass2:''})
-  const [step, setStep] = useState(1)
-  const [otp, setOtp] = useState('')
+  const [form, setForm]   = useState({name:'',email:'',phone:'',address:'',pass:'',pass2:''})
+  const [step, setStep]   = useState(1)
+  const [otp,  setOtp]    = useState('')
   const [genOtp, setGenOtp] = useState('')
   const [loading, setLoading] = useState(false)
-  const [digits, setDigits] = useState(['','','',''])
+  const [digits, setDigits]   = useState(['','','',''])
   const refs = [useRef(null),useRef(null),useRef(null),useRef(null)]
 
   const handleDigit = (i, v) => {
-    const nd=[...digits]
-    nd[i]=v.replace(/\D/,'')
-    setDigits(nd)
+    const nd=[...digits]; nd[i]=v.replace(/\D/,''); setDigits(nd)
     if (nd[i]&&i<3) refs[i+1].current?.focus()
     if (!nd[i]&&i>0) refs[i-1].current?.focus()
     setOtp(nd.join(''))
@@ -471,8 +426,7 @@ function RegisterModal({ onClose, onSuccess }) {
     const {data:ex}=await supabase.from('customers').select('id').eq('email',email).maybeSingle()
     if (ex) { showToast('البريد مسجّل مسبقاً',true); setLoading(false); return }
     const code = String(Math.floor(1000+Math.random()*9000))
-    setGenOtp(code)
-    setStep(2)
+    setGenOtp(code); setStep(2)
     showToast(`كود التحقق: ${code}`)
     setLoading(false)
   }
@@ -486,8 +440,7 @@ function RegisterModal({ onClose, onSuccess }) {
       created_at:new Date().toISOString()
     })
     if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
-    showToast('✅ تم التسجيل بنجاح!')
-    onSuccess()
+    showToast('✅ تم التسجيل بنجاح!'); onSuccess()
     setLoading(false)
   }
 
@@ -496,7 +449,9 @@ function RegisterModal({ onClose, onSuccess }) {
       <div className="msheet center">
         <div className="mhead"><h3>📱 تأكيد الحساب</h3><button className="mclose" onClick={onClose}>×</button></div>
         <div className="mbody" style={{textAlign:'center'}}>
-          <p style={{fontSize:14,color:'#7A6A5A',marginBottom:16}}>أدخل كود التحقق المكون من 4 أرقام</p>
+          <p style={{fontSize:14,color:'#7A6A5A',marginBottom:16}}>
+            أدخل كود التحقق المكون من 4 أرقام
+          </p>
           <div className="otp-inputs">
             {digits.map((d,i)=>(
               <input key={i} ref={refs[i]} className="otp-input"
@@ -550,35 +505,37 @@ function RegisterModal({ onClose, onSuccess }) {
 }
 
 function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, promos }) {
-  const cartTotal = cart.reduce((s,i)=>s+i.price*i.qty,0)
-  const changeQty = (id,d) => setCart(p=>p.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+d)}:i))
-  const remove = id => setCart(p=>p.filter(i=>i.id!==id))
+  const cartTotal  = cart.reduce((s,i)=>s+i.price*i.qty,0)
+  const changeQty  = (id,d) => setCart(p=>p.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+d)}:i))
+  const remove     = id => setCart(p=>p.filter(i=>i.id!==id))
 
-  const getBuyXGetYDiscount = () => {
+  // حساب خصم اشتري X خذ Y
+  const getBuy3Get1Discount = () => {
     const buyPromo = promos.find(p=>p.active&&p.type==='buy_x_get_y')
     if (!buyPromo) return 0
     const pids = typeof buyPromo.product_ids==='string'?JSON.parse(buyPromo.product_ids||'[]'):(buyPromo.product_ids||[])
     const eligible = cart.filter(i=>pids.length===0||pids.includes(i.id))
     const totalQty = eligible.reduce((s,i)=>s+i.qty,0)
-    const buyQty = buyPromo.buy_qty||3
-    const getQty = buyPromo.get_qty||1
+    const buyQty   = buyPromo.buy_qty||3
+    const getQty   = buyPromo.get_qty||1
     if (totalQty < buyQty+getQty) return 0
     const cheapest = [...eligible].sort((a,b)=>a.price-b.price)[0]
     return (cheapest?.price||0) * getQty
   }
-  const buyXDisc = getBuyXGetYDiscount()
+  const buy3Disc = getBuy3Get1Discount()
   const buyPromoActive = promos.find(p=>p.active&&p.type==='buy_x_get_y')
 
+  // خصم تدريجي (كلما اشتريت أكثر)
   const volTiers = [
-    { min:500, disc:5, label:'خصم 5%' },
+    { min:500,  disc:5,  label:'خصم 5%' },
     { min:1000, disc:10, label:'خصم 10%' },
     { min:2000, disc:15, label:'خصم 15%' },
   ]
   const currentTier = [...volTiers].reverse().find(t=>cartTotal>=t.min)
-  const nextTier = volTiers.find(t=>cartTotal<t.min)
-  const volDisc = currentTier ? cartTotal*(currentTier.disc/100) : 0
+  const nextTier    = volTiers.find(t=>cartTotal<t.min)
+  const volDisc     = currentTier ? cartTotal*(currentTier.disc/100) : 0
 
-  const finalTotal = cartTotal - buyXDisc - volDisc
+  const finalTotal  = cartTotal - buy3Disc - volDisc
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -602,7 +559,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                     </div>
                     <div className="qty-row">
                       <button className="qty-b" onClick={()=>changeQty(i.id,-1)}>−</button>
-                      <span style={{fontWeight:800,fontSize:15,minWidth:22,textAlign:'center'}}>{i.qty} كرتون</span>
+                      <span style={{fontWeight:800,fontSize:15,minWidth:22,textAlign:'center'}}>{i.qty} كرتون{i.unitsPerCarton?` (${i.qty*(i.unitsPerCarton||12)} قطعة)`:''}</span>
                       <button className="qty-b" onClick={()=>changeQty(i.id,1)}>+</button>
                     </div>
                   </div>
@@ -611,10 +568,33 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               ))}
 
-              {buyXDisc>0 && buyPromoActive && (
+              {/* خصم اشتري X خذ Y */}
+              {buy3Disc>0 && buyPromoActive && (
                 <div style={{background:'linear-gradient(135deg,#d1fae5,#a7f3d0)',borderRadius:14,padding:12,margin:'10px 0',textAlign:'center'}}>
                   <div style={{fontWeight:800,color:'#059669',fontSize:15}}>🎁 {buyPromoActive.name}</div>
-                  <div style={{fontSize:13,color:'#065f46',marginTop:4}}>خصم: <strong>{buyXDisc.toFixed(0)} {currency}</strong></div>
+                  <div style={{fontSize:13,color:'#065f46',marginTop:4}}>خصم: <strong>{buy3Disc.toFixed(0)} {currency}</strong></div>
+                </div>
+              )}
+
+              {/* خصم تدريجي */}
+              {/* شريط التوصيل المجاني */}
+              {cartTotal < freeShip && (
+                <div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,padding:'10px 12px',marginBottom:12}}>
+                  <div style={{fontSize:13,fontWeight:700,color:'#C2410C',marginBottom:5}}>
+                    🚚 أضف <strong style={{color:'#FF6B35',fontSize:15}}>{(freeShip-cartTotal).toFixed(0)} {currency}</strong> للتوصيل المجاني!
+                  </div>
+                  <div style={{background:'#E8DDD5',borderRadius:30,height:7,overflow:'hidden'}}>
+                    <div style={{width:`${Math.min(100,(cartTotal/freeShip)*100)}%`,height:'100%',
+                      background:'linear-gradient(90deg,#FF6B35,#10b981)',borderRadius:30,transition:'width .4s'}}/>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94a3b8',marginTop:3}}>
+                    <span>0 {currency}</span><span style={{color:'#10b981',fontWeight:700}}>🎁 {freeShip} {currency} = توصيل مجاني</span>
+                  </div>
+                </div>
+              )}
+              {cartTotal >= freeShip && (
+                <div style={{background:'#D1FAE5',borderRadius:10,padding:'8px 12px',marginBottom:12,textAlign:'center',fontWeight:700,color:'#059669',fontSize:13}}>
+                  🎉 أحسنت! التوصيل مجاني لهذا الطلب
                 </div>
               )}
 
@@ -631,19 +611,22 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 <div className="prog-track">
                   <div className="prog-fill" style={{width:`${Math.min(100,cartTotal/2000*100)}%`}}></div>
                 </div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#94a3b8',marginTop:4}}>
+                  <span>500دج→5%</span><span>1000دج→10%</span><span>2000دج→15%</span>
+                </div>
               </div>
 
-              {freeShip > 0 && cartTotal < freeShip && (
-                <div style={{background:'#dbeafe',borderRadius:14,padding:12,margin:'10px 0',textAlign:'center'}}>
-                  🚚 أضف <strong>{(freeShip-cartTotal).toFixed(0)} {currency}</strong> لتحصل على توصيل مجاني!
+              {/* الإجمالي */}
+              {(buy3Disc>0||volDisc>0)&&(
+                <div style={{fontSize:13,color:'#94a3b8',textDecoration:'line-through',textAlign:'left',marginBottom:4}}>
+                  {cartTotal.toFixed(0)} {currency}
                 </div>
               )}
-
               <div style={{display:'flex',justifyContent:'space-between',fontWeight:900,fontSize:18,marginBottom:16}}>
                 <span>الإجمالي</span>
                 <span style={{color:'#FF6B35'}}>{finalTotal.toFixed(0)} {currency}</span>
               </div>
-              <button className="abtn" onClick={()=>onCheckout(finalTotal,buyXDisc+volDisc)}>
+              <button className="abtn" onClick={()=>onCheckout(finalTotal,buy3Disc+volDisc)}>
                 <i className="fas fa-credit-card"></i> إتمام الشراء
               </button>
             </>}
@@ -654,64 +637,79 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
 }
 
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
-  const [form, setForm] = useState({name:'',phone:'',address:'',usePoints:false})
-  const [points, setPoints] = useState(0)
+  const [form, setForm] = useState({name:'',phone:'',address:''})
+  const [step, setStep] = useState(1) // 1=form, 2=otp-choice, 3=otp
+  const [otpMethod, setOtpMethod] = useState('whatsapp')
+  const [otp,  setOtp]  = useState('')
+  const [genOtp, setGenOtp] = useState('')
+  const [digits, setDigits] = useState(['','','',''])
+  const refs = [useRef(null),useRef(null),useRef(null),useRef(null)]
   const [loading, setLoading] = useState(false)
-
-  useEffect(()=>{
-    const cust = JSON.parse(localStorage.getItem('nq_customer')||'null')
-    if(cust?.points) setPoints(cust.points)
-  },[])
-
   const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
 
-  const confirmOrder = async () => {
+  const goToOtp = () => {
     if (!form.name||!form.phone) { showToast('الاسم والهاتف مطلوبان',true); return }
+    const code = String(Math.floor(1000+Math.random()*9000))
+    setGenOtp(code); setStep(3)
+    showToast(`كود التأكيد: ${code}`)
+  }
+
+  const handleDigit = (i, v) => {
+    const nd=[...digits]; nd[i]=v.replace(/\D/,''); setDigits(nd)
+    if (nd[i]&&i<3) refs[i+1].current?.focus()
+    if (!nd[i]&&i>0) refs[i-1].current?.focus()
+    setOtp(nd.join(''))
+  }
+
+  const confirmOrder = async () => {
+    if (otp!==genOtp) { showToast('الكود غير صحيح',true); return }
     setLoading(true)
-    
-    let discount = 0
-    let pointsUsed = 0
-    if(form.usePoints && points >= 10){
-      pointsUsed = Math.floor(points/10) * 50
-      discount = Math.min(pointsUsed, finalTotal)
-    }
-    
-    const finalAmount = finalTotal - discount
-    const orderId = Date.now()
-    
     const order = {
-      id:orderId, customer_name:form.name, customer_phone:form.phone,
+      id:Date.now(), customer_name:form.name, customer_phone:form.phone,
       customer_address:form.address,
       date:new Date().toLocaleString('ar-DZ'),
       items:JSON.stringify(cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price}))),
-      total:finalAmount, original_total:finalTotal, discount_saved:discount, status:'pending'
+      total:finalTotal, status:'processing' // تأكيد مباشر بعد OTP
     }
-    
     const {error}=await supabase.from('orders').insert(order)
     if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
-    
     for (const item of cart) {
       const {data:p}=await supabase.from('products').select('stock').eq('id',item.id).maybeSingle()
       if (p) await supabase.from('products').update({stock:Math.max(0,(p.stock||0)-item.qty)}).eq('id',item.id)
     }
-    
-    const cust = JSON.parse(localStorage.getItem('nq_customer')||'null')
-    if(cust?.id){
-      const earnedPoints = Math.floor(finalAmount/100)
-      const newPoints = (cust.points||0) - (form.usePoints?Math.floor(points/10)*10:0) + earnedPoints
-      await supabase.from('customers').update({points:newPoints, total_purchases: (cust.total_purchases||0)+finalAmount}).eq('id',cust.id)
-      localStorage.setItem('nq_customer',JSON.stringify({...cust,points:newPoints,total_purchases:(cust.total_purchases||0)+finalAmount}))
+    if (waNum) {
+      const msg=`مرحباً ${form.name}، تم تأكيد طلبك رقم ${order.id} ✅\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً! — ${storeName}`
+      window.open(`https://wa.me/${form.phone.replace(/^0/,'213')}?text=${encodeURIComponent(msg)}`,'_blank')
     }
-    
-    const adminWA = localStorage.getItem('nq_admin_wa') || WA_NUM
-    const itemsList = cart.map(i=>`- ${i.name}: ${i.qty} كرتون × ${i.price} = ${(i.price*i.qty).toFixed(0)} ${currency}`).join('%0A')
-    const msg = `🛍️ طلب جديد رقم ${orderId}%0A👤 العميل: ${form.name}%0A📱 الهاتف: ${form.phone}%0A📍 العنوان: ${form.address}%0A📦 المنتجات:%0A${itemsList}%0A💰 الإجمالي: ${finalAmount} ${currency}${discount>0?` (وفّرت ${discount} ${currency})`:''}%0A🔗 لتأكيد الطلب: ${window.location.origin}/admin`
-    window.open(`https://wa.me/${adminWA.replace(/\D/g,'')}?text=${msg}`, '_blank')
-    
-    showToast('✅ تم تأكيد الطلب! سيتم التواصل معك قريباً')
-    onSuccess(orderId)
+    onSuccess(order.id)
     setLoading(false)
   }
+
+  if (step===3) return (
+    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="msheet center">
+        <div className="mhead"><h3>🔐 تأكيد الطلبية</h3><button className="mclose" onClick={onClose}>×</button></div>
+        <div className="mbody" style={{textAlign:'center'}}>
+          <p style={{fontSize:14,color:'#7A6A5A',marginBottom:8}}>أدخل كود التأكيد المرسل إليك</p>
+          <p style={{fontWeight:700,color:'#FF6B35',marginBottom:16}}>{form.phone}</p>
+          <div className="otp-inputs">
+            {digits.map((d,i)=>(
+              <input key={i} ref={refs[i]} className="otp-input"
+                value={d} inputMode="numeric" maxLength={1}
+                onChange={e=>handleDigit(i,e.target.value)}
+                onKeyDown={e=>{if(e.key==='Backspace'&&!d&&i>0) refs[i-1].current?.focus()}} />
+            ))}
+          </div>
+          <div style={{background:'#fef9c3',borderRadius:12,padding:12,marginBottom:16,fontSize:13}}>
+            🔑 كودك: <strong style={{fontSize:20,color:'#dc2626'}}>{genOtp}</strong>
+          </div>
+          <button className="abtn green" onClick={confirmOrder} disabled={loading||otp.length<4}>
+            {loading?'⏳...':'✅ تأكيد الطلبية'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -720,45 +718,20 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
         <div className="mbody">
           <label className="fi-label">الاسم الكامل *</label>
           <input className="fi" value={form.name} onChange={F('name')} autoComplete="name" />
-          
           <label className="fi-label">رقم الهاتف *</label>
           <input className="fi" type="tel" value={form.phone} onChange={F('phone')}
             inputMode="numeric" autoComplete="tel"
             onKeyPress={e=>{if(!/[0-9+]/.test(e.key)) e.preventDefault()}} />
-          
           <label className="fi-label">العنوان</label>
           <textarea className="fi" rows="2" value={form.address} onChange={F('address')}
             style={{resize:'none'}} autoComplete="street-address"></textarea>
-          
-          {points > 0 && (
-            <div style={{background:'#fef9c3',borderRadius:14,padding:12,marginBottom:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div>
-                  <span style={{fontWeight:800}}>⭐ نقاط الولاء:</span>
-                  <span style={{fontSize:20,fontWeight:900,color:'#854d0e',marginRight:8}}>{points}</span>
-                  <span style={{fontSize:12}}>نقطة</span>
-                </div>
-                {points >= 10 && (
-                  <label style={{display:'flex',alignItems:'center',gap:6}}>
-                    <input type="checkbox" checked={form.usePoints} onChange={e=>setForm(f=>({...f,usePoints:e.target.checked}))}/>
-                    <span style={{fontSize:12}}>استخدم {Math.floor(points/10)*50} دج خصم</span>
-                  </label>
-                )}
-              </div>
-              <div style={{fontSize:11,color:'#854d0e',marginTop:6}}>كل 100 دج = نقطة واحدة، كل 10 نقاط = 50 دج خصم</div>
-            </div>
-          )}
-          
           <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 16px',
             marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontWeight:700}}>إجمالي الطلب</span>
-            <span style={{fontWeight:900,color:'#FF6B35',fontSize:18}}>
-              {form.usePoints && points>=10 ? (finalTotal - Math.min(Math.floor(points/10)*50, finalTotal)).toFixed(0) : finalTotal.toFixed(0)} {currency}
-            </span>
+            <span style={{fontWeight:900,color:'#FF6B35',fontSize:18}}>{finalTotal.toFixed(0)} {currency}</span>
           </div>
-          
-          <button className="abtn" onClick={confirmOrder} disabled={loading}>
-            {loading?'⏳...':'✅ تأكيد الطلب وإرسال للمسؤول'}
+          <button className="abtn" onClick={goToOtp}>
+            <i className="fas fa-shield-alt"></i> التالي — تأكيد بكود
           </button>
         </div>
       </div>
@@ -772,30 +745,16 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
   const disc = Number(p.discount)||0
   const finalPrice = disc>0 ? (p.price*(1-disc/100)).toFixed(0) : p.price
   const related = products.filter(r=>(r.category_id===p.category_id||r.brand_id===p.brand_id)&&r.id!==p.id&&!r.disabled).slice(0,6)
-  const isOutStock = (p.stock||0) === 0
-  const cartonPrice = getCartonPrice(p.price, p.units)
 
-  const volTiers = [
-    { qty:6, disc:5 },
-    { qty:12, disc:10 },
-    { qty:24, disc:15 },
-  ]
+  // خصم الكميات
+  const volTiers=[{qty:6,disc:5},{qty:12,disc:10},{qty:24,disc:15}]
 
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="msheet">
         <div className="mhandle"></div>
-        <div style={{position:'relative'}}>
-          {p.image
-            ? <img src={p.image} style={{width:'100%',height:260,objectFit:'cover',opacity:isOutStock?0.5:1}} alt={p.name}/>
-            : <div style={{width:'100%',height:200,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56}}>🛍️</div>
-          }
-          {isOutStock && (
-            <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <span style={{background:'#dc2626',color:'white',padding:'8px 16px',borderRadius:30,fontWeight:800}}>غير متوفر</span>
-            </div>
-          )}
-        </div>
+        {p.image?<img src={p.image} style={{width:'100%',height:260,objectFit:'cover'}} alt={p.name}/>:
+          <div style={{width:'100%',height:200,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56}}>🛍️</div>}
         <div className="mhead">
           <h3 style={{flex:1,fontSize:15}}>{p.name}</h3>
           <button className="mclose" onClick={onClose}>×</button>
@@ -812,18 +771,11 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
               <i className="fas fa-heart" style={{color:wishlist.includes(p.id)?'#FF6B35':'#CBD5E1'}}></i>
             </button>
           </div>
-          
-          <div style={{background:'#f0fdf4',borderRadius:12,padding:10,marginBottom:12,border:'1px solid #10b981'}}>
-            <div style={{display:'flex',justifyContent:'space-between'}}>
-              <span style={{fontWeight:700}}>📦 سعر الكرتون ({p.units||12} قطعة):</span>
-              <span style={{fontWeight:900,color:'#10b981'}}>{cartonPrice.toFixed(0)} {currency}</span>
-            </div>
-            <div style={{fontSize:11,color:'#059669'}}>سعر القطعة × عدد القطع = {p.price} × {p.units||12}</div>
-          </div>
-          
-          {(p.stock||0)>0&&(p.stock||0)<10&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>⚠️ متبقي {p.stock} كرتون فقط!</p>}
+          {p.carton_price&&<p style={{color:'#7A6A5A',fontSize:13,marginBottom:8}}>الكرتون ({p.units||12} قطعة): {p.carton_price} {currency}</p>}
+          {(p.stock||0)>0&&(p.stock||0)<10&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
           {(p.stock||0)===0&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>❌ نفذ من المخزون</p>}
 
+          {/* جدول خصم الكميات */}
           <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',borderRadius:12,padding:12,marginBottom:12,border:'1px solid #10b981'}}>
             <div style={{fontWeight:800,color:'#059669',marginBottom:8,fontSize:13}}>📦 كلما اشتريت أكثر — وفّرت أكثر!</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
@@ -837,9 +789,17 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
             </div>
           </div>
 
-          <button className={`abtn ${isOutStock?'outstock':''}`} onClick={()=>{if(!isOutStock){onAddCart(p);onClose()}}} disabled={isOutStock}>
+          <button className="abtn" onClick={()=>{onAddCart(p);onClose()}} disabled={(p.stock||0)===0}>
             <i className="fas fa-cart-plus"></i>
-            {isOutStock?'نفذ من المخزون':'أضف للسلة'}
+            {(p.stock||0)===0?'نفذ من المخزون':'أضف للسلة'}
+          </button>
+          <button onClick={()=>{
+            const msg=`🛍️ ${p.name}%0A💰 ${p.price} ${currency}/كرتون%0A📦 ${p.units||12} قطعة/كرتون%0A🔗 ${window.location.origin}`
+            window.open(`https://wa.me/?text=${msg}`,'_blank')
+          }} style={{width:'100%',padding:'10px',borderRadius:30,border:'2px solid #25D366',
+            background:'none',color:'#25D366',fontWeight:800,cursor:'pointer',fontFamily:'inherit',
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:6,fontSize:14}}>
+            <i className="fab fa-whatsapp"></i> شارك هذا المنتج
           </button>
 
           {related.length>0&&(
@@ -858,11 +818,146 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
               </div>
             </div>
           )}
+          {/* تقييمات المنتج */}
+          <ReviewsSection productId={p.id} currency={currency}/>
         </div>
       </div>
     </div>
   )
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⭐ نظام تقييمات المنتجات
+━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function ReviewsSection({ productId, currency }) {
+  const [reviews, setReviews] = useState([])
+  const [rating,  setRating]  = useState(0)
+  const [comment, setComment] = useState('')
+  const [hover,   setHover]   = useState(0)
+  const [saving,  setSaving]  = useState(false)
+  const [loaded,  setLoaded]  = useState(false)
+
+  useEffect(()=>{
+    supabase.from('reviews').select('*').eq('product_id', productId)
+      .order('id',{ascending:false}).limit(20)
+      .then(({data})=>{ setReviews(data||[]); setLoaded(true) })
+  },[productId])
+
+  const avgR = reviews.length ? (reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length).toFixed(1) : 0
+  const cust = (() => { try{ return JSON.parse(localStorage.getItem('nq_customer')||'null') }catch{ return null } })()
+
+  const toast = (msg,err=false) => {
+    const d=document.createElement('div'); d.className='toast'+(err?' err':'')
+    d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),3000)
+  }
+
+  const submit = async () => {
+    if(!cust){ toast('سجّل دخولك لإضافة تقييم',true); return }
+    if(!rating){ toast('اختر عدد النجوم أولاً',true); return }
+    setSaving(true)
+    await supabase.from('reviews').insert({
+      id: Date.now(), product_id: productId,
+      customer_id: cust.id, customer_name: cust.name,
+      rating, comment: comment.trim(),
+      created_at: new Date().toISOString()
+    }).catch(()=>{})
+    const {data} = await supabase.from('reviews').select('*').eq('product_id',productId).order('id',{ascending:false}).limit(20)
+    setReviews(data||[]); setRating(0); setComment(''); setSaving(false)
+    toast('✅ تم إضافة تقييمك')
+  }
+
+  if (!loaded) return null
+
+  return (
+    <div style={{borderTop:'1px solid #F1ECE8',padding:'16px 18px 0'}}>
+      {/* ملخص التقييم */}
+      {reviews.length>0&&(
+        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,
+          background:'#FFF7ED',borderRadius:12,padding:14}}>
+          <div style={{textAlign:'center',flexShrink:0}}>
+            <div style={{fontSize:36,fontWeight:900,color:'#FF6B35',lineHeight:1}}>{avgR}</div>
+            <div style={{display:'flex',justifyContent:'center',gap:1,margin:'4px 0'}}>
+              {[1,2,3,4,5].map(n=><span key={n} style={{color:n<=Math.round(avgR)?'#FF6B35':'#E2E8F0',fontSize:14}}>★</span>)}
+            </div>
+            <div style={{fontSize:11,color:'#7A6A5A'}}>{reviews.length} تقييم</div>
+          </div>
+          <div style={{flex:1}}>
+            {[5,4,3,2,1].map(n=>{
+              const cnt=reviews.filter(r=>r.rating===n).length
+              const pct=reviews.length?Math.round(cnt/reviews.length*100):0
+              return (
+                <div key={n} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                  <span style={{fontSize:11,color:'#7A6A5A',width:8,textAlign:'center'}}>{n}</span>
+                  <span style={{color:'#FF6B35',fontSize:11}}>★</span>
+                  <div style={{flex:1,background:'#E8DDD5',borderRadius:30,height:5,overflow:'hidden'}}>
+                    <div style={{width:`${pct}%`,height:'100%',background:'#FF6B35',borderRadius:30,transition:'width .5s'}}/>
+                  </div>
+                  <span style={{fontSize:10,color:'#94a3b8',width:18,textAlign:'left'}}>{cnt}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      <h3 style={{fontWeight:800,marginBottom:12,fontSize:15}}>⭐ التقييمات ({reviews.length})</h3>
+      {/* نموذج إضافة تقييم */}
+      {cust ? (
+        <div style={{background:'#F7F3EF',borderRadius:12,padding:14,marginBottom:14}}>
+          <p style={{fontSize:13,fontWeight:700,marginBottom:8,color:'#1A0A00'}}>🌟 أضف تقييمك</p>
+          <div style={{display:'flex',gap:6,marginBottom:10}}>
+            {[1,2,3,4,5].map(n=>(
+              <span key={n} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)}
+                onClick={()=>setRating(n)}
+                style={{fontSize:30,cursor:'pointer',transition:'transform .15s',
+                  color:(hover||rating)>=n?'#FF6B35':'#E2E8F0',
+                  transform:(hover||rating)>=n?'scale(1.15)':'scale(1)'}}>★</span>
+            ))}
+            {rating>0&&<span style={{fontSize:12,color:'#7A6A5A',marginRight:4,alignSelf:'center'}}>
+              {['','سيء','مقبول','جيد','جيد جداً','ممتاز'][rating]}
+            </span>}
+          </div>
+          <textarea value={comment} onChange={e=>setComment(e.target.value)}
+            placeholder="اكتب تعليقك (اختياري)..." maxLength={300} rows={2}
+            style={{border:'1.5px solid #E8DDD5',borderRadius:10,padding:'9px 12px',
+              width:'100%',fontFamily:'inherit',fontSize:13,outline:'none',
+              resize:'none',background:'white',boxSizing:'border-box',marginBottom:8}}
+            onFocus={e=>e.target.style.borderColor='#FF6B35'}
+            onBlur={e=>e.target.style.borderColor='#E8DDD5'}/>
+          <button className="abtn" onClick={submit} disabled={saving||!rating}
+            style={{marginBottom:0,padding:'10px',fontSize:13,opacity:!rating?0.5:1}}>
+            {saving?'⏳ جاري الإرسال...':'✅ إرسال التقييم'}
+          </button>
+        </div>
+      ) : (
+        <p style={{fontSize:13,color:'#7A6A5A',marginBottom:12,textAlign:'center',padding:'8px',
+          background:'#F7F3EF',borderRadius:10}}>
+          🔐 <strong>سجّل دخولك</strong> لإضافة تقييم
+        </p>
+      )}
+      {/* قائمة التقييمات */}
+      {reviews.map(r=>(
+        <div key={r.id} style={{borderBottom:'1px solid #F1ECE8',padding:'12px 0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
+            <div>
+              <strong style={{fontSize:13,color:'#1A0A00'}}>{r.customer_name}</strong>
+              <div style={{display:'flex',gap:1,marginTop:2}}>
+                {[1,2,3,4,5].map(n=><span key={n} style={{color:n<=r.rating?'#FF6B35':'#E2E8F0',fontSize:13}}>★</span>)}
+              </div>
+            </div>
+            <span style={{fontSize:11,color:'#94a3b8'}}>{new Date(r.created_at).toLocaleDateString('ar-DZ')}</span>
+          </div>
+          {r.comment&&<p style={{fontSize:13,color:'#475569',margin:0,lineHeight:1.5}}>{r.comment}</p>}
+        </div>
+      ))}
+      {reviews.length===0&&loaded&&(
+        <p style={{textAlign:'center',color:'#94a3b8',fontSize:13,padding:'20px 0'}}>
+          لا توجد تقييمات بعد — كن أول من يقيّم! ⭐
+        </p>
+      )}
+    </div>
+  )
+}
+
 
 function ThankyouModal({ orderId, storeName, onClose }) {
   return (
@@ -882,8 +977,7 @@ function ThankyouModal({ orderId, storeName, onClose }) {
 }
 
 function TrackingModal({ onClose, currency }) {
-  const [num,setNum]=useState('')
-  const [res,setRes]=useState(null)
+  const [num,setNum]=useState(''); const [res,setRes]=useState(null)
   const steps=['pending','processing','shipped','delivered']
   const labels={pending:'تم استلام الطلب',processing:'قيد التجهيز',shipped:'في الطريق',delivered:'تم التسليم'}
   const track=async()=>{
@@ -961,6 +1055,7 @@ function ContactModal({ settings, onClose }) {
 /* ═══════════════════════════════
    MAIN STORE
 ═══════════════════════════════ */
+/* Promo Countdown */
 function PromoCountdown({ endDate }) {
   const [t, setT] = useState({h:'00',m:'00',s:'00'})
   useEffect(()=>{
@@ -972,9 +1067,7 @@ function PromoCountdown({ endDate }) {
         s:String(Math.floor(diff%60000/1000)).padStart(2,'0')
       })
     }
-    tick()
-    const id=setInterval(tick,1000)
-    return ()=>clearInterval(id)
+    tick(); const id=setInterval(tick,1000); return ()=>clearInterval(id)
   },[endDate])
   return (
     <div style={{display:'flex',alignItems:'center',gap:4}}>
@@ -989,496 +1082,284 @@ function PromoCountdown({ endDate }) {
   )
 }
 
-function MyOrdersModal({ onClose, currency, customerId }) {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  
-  useEffect(()=>{
-    const load = async () => {
-      const {data} = await supabase.from('orders').select('*').eq('customer_phone', customerId).order('id',{ascending:false})
-      setOrders(data||[])
-      setLoading(false)
-    }
-    load()
-  },[customerId])
-  
-  const statusStyle = (s) => {
-    const styles = {
-      pending: {bg:'#fef9c3',color:'#92400e',label:'قيد الانتظار'},
-      processing: {bg:'#dbeafe',color:'#1d4ed8',label:'قيد التجهيز'},
-      shipped: {bg:'#e0e7ff',color:'#5b21b6',label:'تم الشحن'},
-      delivered: {bg:'#d1fae5',color:'#059669',label:'تم التسليم'}
-    }
-    return styles[s] || styles.pending
-  }
-  
-  return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center" style={{maxWidth:600}}>
-        <div className="mhead"><h3>📋 طلباتي السابقة</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody">
-          {loading && <div className="empty">⏳ جاري التحميل...</div>}
-          {!loading && orders.length===0 && <div className="empty"><i className="fas fa-box-open"></i><p>لا توجد طلبات سابقة</p></div>}
-          {orders.map(o=>{
-            const st = statusStyle(o.status)
-            const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items||[])
-            return (
-              <div key={o.id} className="order-card">
-                <div className="order-header">
-                  <span className="order-id">#{o.id}</span>
-                  <span className={`order-status ${o.status}`} style={{background:st.bg,color:st.color}}>{st.label}</span>
-                </div>
-                <div style={{fontSize:12,color:'#7A6A5A',marginBottom:6}}>{o.date}</div>
-                <div style={{marginBottom:6}}>
-                  {items.slice(0,3).map(i=>(
-                    <div key={i.id} style={{fontSize:12,display:'flex',justifyContent:'space-between'}}>
-                      <span>{i.name} × {i.quantity}</span>
-                      <span>{(i.price*i.quantity).toFixed(0)} {currency}</span>
-                    </div>
-                  ))}
-                  {items.length>3 && <div style={{fontSize:11,color:'#94a3b8'}}>+{items.length-3} منتجات أخرى</div>}
-                </div>
-                <div className="order-total">الإجمالي: {Number(o.total).toFixed(0)} {currency}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function QuickOrderModal({ products, onClose, addToCart, currency }) {
-  const [qtys, setQtys] = useState({})
-  
-  const handleQtyChange = (id, qty) => {
-    setQtys(prev => ({...prev, [id]: Math.max(0, parseInt(qty)||0)}))
-  }
-  
-  const addAllToCart = () => {
-    let added = 0
-    products.forEach(p => {
-      const qty = qtys[p.id] || 0
-      if(qty > 0 && (p.stock||0) >= qty){
-        addToCart(p, qty)
-        added++
-      }
-    })
-    if(added > 0){
-      showToast(`✅ تم إضافة ${added} منتج إلى السلة`)
-      onClose()
-    } else {
-      showToast('⚠️ لم يتم إضافة أي منتج', true)
-    }
-  }
-  
-  const totalItems = Object.values(qtys).reduce((a,b)=>a+(parseInt(b)||0),0)
-  const selectedCount = Object.keys(qtys).filter(id=>(qtys[id]||0)>0).length
-  
-  return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet" style={{maxWidth:700}}>
-        <div className="mhandle"></div>
-        <div className="mhead"><h3>⚡ طلب سريع (بالكرتون)</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody">
-          <div style={{
-            display:'flex', justifyContent:'space-between', alignItems:'center',
-            marginBottom:16, padding:'8px 12px', background:'#FFF0EB', borderRadius:12
-          }}>
-            <span style={{fontSize:12,color:'#FF6B35',fontWeight:700}}>📦 {totalItems} كرتون | {selectedCount} منتج</span>
-            <button className="abtn" style={{margin:0,padding:'8px 16px',fontSize:13,width:'auto'}} onClick={addAllToCart}>
-              🛒 إضافة الكل ({selectedCount})
-            </button>
-          </div>
-          <div style={{overflowX:'auto',maxHeight:'60vh',overflowY:'auto'}}>
-            <table className="quick-table">
-              <thead>
-                <tr style={{position:'sticky',top:0,background:'white',zIndex:1}}>
-                  <th style={{padding:10,textAlign:'right',borderBottom:'2px solid #E8DDD5'}}>المنتج</th>
-                  <th style={{padding:10,textAlign:'center',borderBottom:'2px solid #E8DDD5'}}>سعر الكرتون</th>
-                  <th style={{padding:10,textAlign:'center',borderBottom:'2px solid #E8DDD5'}}>الكمية</th>
-                 </tr>
-              </thead>
-              <tbody>
-                {products.map(p => {
-                  const cartonPrice = getCartonPrice(p.price, p.units)
-                  const isOutStock = (p.stock||0) === 0
-                  return (
-                    <tr key={p.id} style={{opacity:isOutStock?0.5:1}}>
-                      <td style={{padding:10}}>
-                        <div style={{display:'flex',alignItems:'center',gap:8}}>
-                          {p.image && <img src={p.image} style={{width:40,height:40,borderRadius:8,objectFit:'cover'}} alt=""/>}
-                          <span>{p.name}</span>
-                        </div>
-                      </td>
-                      <td style={{padding:10,textAlign:'center',color:'#FF6B35',fontWeight:700}}>{cartonPrice.toFixed(0)} {currency}</td>
-                      <td className="quick-qty" style={{padding:10,textAlign:'center'}}>
-                        <input type="number" min="0" max={p.stock||0} value={qtys[p.id]||0}
-                          onChange={e=>handleQtyChange(p.id, e.target.value)}
-                          style={{width:70,padding:6,textAlign:'center',border:'1px solid #E8DDD5',borderRadius:8}}
-                          disabled={isOutStock}/>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FAQModal({ onClose }) {
-  const [open, setOpen] = useState(null)
-  const faqs = [
-    { q: 'ما هو الحد الأدنى للطلب؟', a: 'الحد الأدنى للطلب هو كرتون واحد (12 قطعة) من أي منتج.' },
-    { q: 'كم تكلفة التوصيل؟', a: 'التوصيل مجاني للطلبات التي تتجاوز 500 دج، وإلا فالتكلفة 150 دج حسب المنطقة.' },
-    { q: 'كيف أتتبع طلبي؟', a: 'يمكنك تتبع طلبك من خلال قسم "تتبع الطلب" في القائمة الجانبية باستخدام رقم الطلب.' },
-    { q: 'ماذا لو وصلني منتج تالف؟', a: 'يمكنك استبدال المنتج خلال 7 أيام من تاريخ الاستلام بشرط إرفاق الفاتورة.' },
-    { q: 'كم تستغرق عملية التوصيل؟', a: 'تستغرق عملية التوصيل من 2 إلى 5 أيام حسب المنطقة.' },
-    { q: 'كيف أحصل على خصم الكميات؟', a: 'الخصم يحسب تلقائياً عند إضافة المنتجات إلى السلة: 5% عند شراء 6 قطع، 10% عند شراء 12 قطعة، 15% عند شراء 24 قطعة.' }
-  ]
-  return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center" style={{maxWidth:500}}>
-        <div className="mhead"><h3>❓ الأسئلة الشائعة</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody">
-          {faqs.map((faq,i)=>(
-            <div key={i} className="faq-item">
-              <div className="faq-question" onClick={()=>setOpen(open===i?null:i)}>
-                <span>{faq.q}</span>
-                <span>{open===i?'▲':'▼'}</span>
-              </div>
-              {open===i && <div className="faq-answer">{faq.a}</div>}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TermsModal({ onClose }) {
-  return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center" style={{maxWidth:500}}>
-        <div className="mhead"><h3>📜 الشروط والأحكام</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody">
-          <div style={{fontSize:13,lineHeight:1.7,color:'#7A6A5A'}}>
-            <p><strong>1. قبول الشروط</strong><br/>باستخدامك لهذا المتجر، فإنك توافق على هذه الشروط والأحكام.</p>
-            <p><strong>2. الطلبات</strong><br/>جميع الطلبات تخضع للتأكيد من قبل إدارة المتجر قبل الشحن.</p>
-            <p><strong>3. الأسعار</strong><br/>الأسعار المعروضة شاملة جميع الضرائب وقد تتغير دون إشعار مسبق.</p>
-            <p><strong>4. الدفع</strong><br/>الدفع يكون عند الاستلام نقداً أو عبر تحويل بنكي.</p>
-            <p><strong>5. الخصوصية</strong><br/>بيانات العملاء محمية ولا يتم مشاركتها مع أي طرف ثالث.</p>
-            <p><strong>6. التوصيل</strong><br/>نقوم بالتوصيل إلى جميع ولايات الجزائر خلال 2-5 أيام عمل.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ReturnPolicyModal({ onClose }) {
-  return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center" style={{maxWidth:500}}>
-        <div className="mhead"><h3>🔄 سياسة الاسترجاع والاستبدال</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody">
-          <div style={{fontSize:13,lineHeight:1.7,color:'#7A6A5A'}}>
-            <p><strong>مدة الاسترجاع:</strong> 14 يوماً من تاريخ استلام المنتج.</p>
-            <p><strong>شروط الاسترجاع:</strong><br/>- المنتج غير مستخدم وفي حالته الأصلية.<br/>- وجود الفاتورة الأصلية.<br/>- المنتج غير قابل للاسترجاع إذا كان من المواد الغذائية القابلة للتلف بعد فتحها.</p>
-            <p><strong>إجراءات الاسترجاع:</strong><br/>يمكنك التواصل مع خدمة العملاء عبر الواتساب لبدء عملية الاسترجاع.</p>
-            <p><strong>رسوم الاسترجاع:</strong> يتحمل العميل رسوم الشحن في حالة الاسترجاع دون عيب مصنعي.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function Store() {
-  const [customer, setCustomer] = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_customer')||'null')}catch{return null} })
-  const [cart, setCart] = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_cart')||'[]')}catch{return []} })
-  const [wishlist, setWishlist] = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_wish')||'[]')}catch{return []} })
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [products, setProducts] = useState([])
-  const [brands, setBrands] = useState([])
-  const [categories, setCategories] = useState([])
-  const [settings, setSettings] = useState({})
-  const [promos, setPromos] = useState([])
-  const [banners, setBanners] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [customer,    setCustomer]    = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_customer')||'null')}catch{return null} })
+  const [cart,        setCart]        = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_cart')||'[]')}catch{return []} })
+  const [wishlist,    setWishlist]    = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_wish')||'[]')}catch{return []} })
+  const [drawerOpen,  setDrawerOpen]  = useState(false)
+  const [products,    setProducts]    = useState([])
+  const [brands,      setBrands]      = useState([])
+  const [categories,  setCategories]  = useState([])
+  const [settings,    setSettings]    = useState({})
+  const [promos,      setPromos]      = useState([])
+  const [banners,     setBanners]     = useState([])
+  const [loading,     setLoading]     = useState(true)
 
-  const [modal, setModal] = useState(null)
-  const [detailProd, setDetailProd] = useState(null)
-  const [thankId, setThankId] = useState(null)
+  const [modal,       setModal]       = useState(null)
+  const [detailProd,  setDetailProd]  = useState(null)
+  const [thankId,     setThankId]     = useState(null)
   const [checkoutTotal, setCheckoutTotal] = useState(0)
-  const [tab, setTab] = useState('home')
-  const [search, setSearch] = useState('')
-  const [brandSel, setBrandSel] = useState('all')
-  const [catSel, setCatSel] = useState('all')
-  const [sortSel, setSortSel] = useState('newest')
-  const [page, setPage] = useState(1)
-  const [showScr, setShowScr] = useState(false)
-  const [bannerIdx, setBannerIdx] = useState(0)
-  const [priceMin, setPriceMin] = useState('')
-  const [priceMax, setPriceMax] = useState('')
-  const [discountMin, setDiscountMin] = useState(0)
+  const [tab,         setTab]         = useState('home')
+  const [search,      setSearch]      = useState('')
+  const [brandSel,    setBrandSel]    = useState('all')
+  const [catSel,      setCatSel]      = useState('all')
+  const [sortSel,     setSortSel]     = useState('newest')
+  const [page,        setPage]        = useState(1)
+  const [showScr,     setShowScr]     = useState(false)
+  const [bannerIdx,   setBannerIdx]   = useState(0)
 
   const flashEndRef = useRef(Date.now() + 24*3600*1000)
   const timer = useTimer(flashEndRef.current)
 
-  const SNAME = settings['store_name'] || 'نقاء'
-  const CUR = settings['store_currency'] || 'دج'
-  const WA = settings['contact_whatsapp'] || settings['whatsapp_number'] || WA_NUM
-  const FREESHIP = parseFloat(settings['free_shipping_threshold'] || '500')
-  const ANNOUNCE = settings['announce_bar'] || ''
-  const PROMO_TEXT = settings['promo_text'] || ''
+  const SNAME    = settings['store_name']      || 'نقاء'
+  const CUR      = settings['store_currency']  || 'دج'
+  const WA       = settings['contact_whatsapp']|| settings['whatsapp_number'] || WA_NUM
+  const FREESHIP = parseFloat(settings['free_shipping_threshold']||'500')
+  const ANNOUNCE = settings['announce_bar']    || ''
+  const PROMO_TEXT= settings['promo_text']     || ''
 
-  const cartTotal = cart.reduce((s,i)=>s+i.price*i.qty,0)
-  const cartCount = cart.reduce((s,i)=>s+i.qty,0)
-  const sevenAgo = new Date()
-  sevenAgo.setDate(sevenAgo.getDate()-7)
+  const cartTotal  = cart.reduce((s,i)=>s+i.price*i.qty,0)
+  const cartCount  = cart.reduce((s,i)=>s+i.qty,0)
+  const sevenAgo   = new Date(); sevenAgo.setDate(sevenAgo.getDate()-7)
+  const [bestSellers,  setBestSellers]  = useState([])
 
-  /* load data from Supabase */
+
+  /* load */
   useEffect(()=>{
-    const load = async () => {
-      setLoading(true)
-      const [{data:p},{data:b},{data:c},{data:s},{data:pr}] = await Promise.all([
+    const load=async()=>{
+      const [{data:p},{data:b},{data:c},{data:s},{data:pr}]=await Promise.all([
         supabase.from('products').select('*').eq('disabled',false).order('created_at',{ascending:false}),
         supabase.from('brands').select('*').order('name'),
         supabase.from('categories').select('*').order('name'),
         supabase.from('settings').select('*'),
         supabase.from('promotions').select('*').eq('active',true).catch(()=>({data:[]})),
       ])
-      setProducts(p||[])
-      setBrands(b||[])
-      setCategories(c||[])
-      const map = {}
-      ;(s||[]).forEach(r=>(map[r.key]=r.value))
-      setSettings(map)
-      try { setBanners(JSON.parse(map['store_banners']||'[]')) } catch(e){}
+      setProducts(p||[]); setBrands(b||[]); setCategories(c||[])
+      const map={}; (s||[]).forEach(r=>(map[r.key]=r.value)); setSettings(map)
+      try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
       setPromos((pr||[]).filter(p=>!p.end_date||new Date(p.end_date)>new Date()))
       setLoading(false)
+      // حساب الأكثر مبيعاً
+      const {data:ords} = await supabase.from('orders').select('items').limit(200).catch(()=>({data:[]}))
+      const counts={}
+      ;(ords||[]).forEach(o=>{
+        const its=typeof o.items==='string'?JSON.parse(o.items||'[]'):(o.items||[])
+        its.forEach(i=>{counts[String(i.id)]=(counts[String(i.id)]||0)+(i.qty||1)})
+      })
+      const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([id])=>id)
+      setBestSellers(sorted)
     }
     load()
   },[])
 
-  /* inject CSS */
+  /* CSS */
   useEffect(()=>{
     if(!document.getElementById('nq-css')){
-      const s=document.createElement('style')
-      s.id='nq-css'
-      s.textContent=CSS
-      document.head.appendChild(s)
+      const s=document.createElement('style');s.id='nq-css';s.textContent=CSS;document.head.appendChild(s)
     }
     if(localStorage.getItem('nqDark')==='1') document.body.classList.add('dark')
-    const fn = () => setShowScr(window.scrollY>300)
-    window.addEventListener('scroll',fn)
-    return () => window.removeEventListener('scroll',fn)
+    const fn=()=>setShowScr(window.scrollY>300)
+    window.addEventListener('scroll',fn); return()=>window.removeEventListener('scroll',fn)
   },[])
 
-  /* auto banner */
+  /* banner */
   useEffect(()=>{
     if(banners.length<2) return
-    const t = setInterval(()=>setBannerIdx(i=>(i+1)%banners.length),3800)
-    return () => clearInterval(t)
+    const t=setInterval(()=>setBannerIdx(i=>(i+1)%banners.length),3800)
+    return()=>clearInterval(t)
   },[banners.length])
 
-  /* persist cart & wishlist */
+  /* persist */
   useEffect(()=>{ localStorage.setItem('nq_cart',JSON.stringify(cart)) },[cart])
   useEffect(()=>{ localStorage.setItem('nq_wish',JSON.stringify(wishlist)) },[wishlist])
 
-  const addToCart = useCallback((p,qty=1)=>{
-    if(!p || (p.stock||0)===0){
-      showToast('المنتج غير متوفر',true)
-      return
-    }
-    setCart(prev => {
-      const existing = prev.find(i=>i.id===p.id)
+  const addToCart=useCallback((p,qty=1)=>{
+    if(!p||(p.stock||0)===0){showToast('المنتج غير متوفر',true);return}
+    setCart(prev=>{
+      const existing=prev.find(i=>i.id===p.id)
       if(existing){
-        showAddAnimation(`➕ تمت إضافة ${qty} كرتون`)
-        return prev.map(i=>i.id===p.id ? {...i, qty:i.qty+qty} : i)
+        showToast('✅ تمت زيادة الكمية')
+        return prev.map(i=>i.id===p.id?{...i,qty:i.qty+qty}:i)
       }
-      showAddAnimation(`✅ تمت إضافة ${p.name}`)
-      return [...prev, {
-        id:p.id, name:p.name, price:Number(p.price), qty,
-        image:p.image, unitsPerCarton:p.units||12
-      }]
+      showToast('✅ تمت الإضافة')
+      return [...prev,{id:p.id,name:p.name,price:Number(p.price),qty,image:p.image,unitsPerCarton:p.units||12}]
     })
   },[])
 
-  const toggleWish = useCallback(id=>{
-    setWishlist(prev => {
-      if(prev.includes(id)){
-        showToast('تم الإزالة')
-        return prev.filter(x=>x!==id)
-      }
-      showToast('❤️ تمت الإضافة')
-      return [...prev, id]
+  const toggleWish=useCallback(id=>{
+    setWishlist(prev=>{
+      if(prev.includes(id)){showToast('تم الإزالة');return prev.filter(x=>x!==id)}
+      showToast('❤️ تمت الإضافة');return [...prev,id]
     })
   },[])
 
-  const handleLogin = (data) => {
-    setCustomer(data)
-    localStorage.setItem('nq_customer',JSON.stringify(data))
-    setModal(null)
-    showToast(`مرحباً ${data.name} 👋 لديك ${data.points||0} نقطة ولاء`)
+  const handleLogin=data=>{
+    setCustomer(data);localStorage.setItem('nq_customer',JSON.stringify(data));setModal(null)
+    showToast(`مرحباً ${data.name} 👋`)
   }
 
-  const allP = products.filter(p=>!p.disabled)
-  const newP = allP.filter(p=>new Date(p.created_at)>=sevenAgo)
-  const flashP = allP.filter(p=>Number(p.discount)>0).slice(0,10)
+  /* products */
+  const allP    = products.filter(p=>!p.disabled)
+  const promoP  = allP.filter(p=>p.is_promo)
+  const newP    = allP.filter(p=>new Date(p.created_at)>=sevenAgo)
+  const flashP  = allP.filter(p=>Number(p.discount)>0).slice(0,10)
   const dayDeal = allP.find(p=>Number(p.discount)>=20)||null
 
-  const filtered = (() => {
-    let f = [...allP]
-    if(search) f = f.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()))
-    if(brandSel!=='all') f = f.filter(p=>p.brand_id==brandSel)
-    if(catSel!=='all') f = f.filter(p=>p.category_id==catSel)
-    if(priceMin) f = f.filter(p=>p.price >= parseFloat(priceMin))
-    if(priceMax) f = f.filter(p=>p.price <= parseFloat(priceMax))
-    if(discountMin>0) f = f.filter(p=>(p.discount||0) >= discountMin)
-    
-    if(sortSel==='newest') f = [...f].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
-    else if(sortSel==='price_asc') f = [...f].sort((a,b)=>a.price-b.price)
-    else if(sortSel==='price_desc') f = [...f].sort((a,b)=>b.price-a.price)
-    
-    // العروض أولاً في البحث
-    if(search){
-      const withPromo = f.filter(p=>p.discount>0||p.is_promo)
-      const withoutPromo = f.filter(p=>!p.discount && !p.is_promo)
-      f = [...withPromo, ...withoutPromo]
-    }
+  const filtered=(()=>{
+    let f=[...allP]
+    if(search) f=f.filter(p=>p.name.toLowerCase().includes(search.toLowerCase()))
+    if(brandSel!=='all') f=f.filter(p=>p.brand_id==brandSel)
+    if(catSel!=='all') f=f.filter(p=>p.category_id==catSel)
+    if(sortSel==='newest') f=[...f].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+    else if(sortSel==='price_asc') f=[...f].sort((a,b)=>a.price-b.price)
+    else if(sortSel==='price_desc') f=[...f].sort((a,b)=>b.price-a.price)
     return f
   })()
+  const PER=12; const PAGES=Math.ceil(filtered.length/PER)
+  const paged=filtered.slice((page-1)*PER,page*PER)
 
-  const PER = 12
-  const PAGES = Math.ceil(filtered.length/PER)
-  const paged = filtered.slice((page-1)*PER, page*PER)
-
+  /* PC — بطاقة المنتج مع شارة عرض خاص كالصورة */
   const PC = ({ p }) => {
-    const isW = wishlist.includes(p.id)
-    const isN = new Date(p.created_at) >= sevenAgo
-    const disc = Number(p.discount)||0
-    const isOutStock = (p.stock||0) === 0
-    const cartonPrice = getCartonPrice(p.price, p.units)
-    
-    const activePromo = promos.find(pr => {
+    const isW=wishlist.includes(p.id)
+    const isN=new Date(p.created_at)>=sevenAgo
+    const disc=Number(p.discount)||0
+    // حساب سعر العرض من promos
+    const activePromo=promos.find(pr=>{
       if(!pr.active) return false
-      if(pr.end_date && new Date(pr.end_date)<new Date()) return false
-      const ids = typeof pr.product_ids === 'string' ? JSON.parse(pr.product_ids||'[]') : (pr.product_ids||[])
-      return ids.length===0 || ids.includes(p.id) || ids.includes(String(p.id))
+      if(pr.end_date&&new Date(pr.end_date)<new Date()) return false
+      const ids=typeof pr.product_ids==='string'?JSON.parse(pr.product_ids||'[]'):(pr.product_ids||[])
+      return ids.length===0||ids.includes(p.id)||ids.includes(String(p.id))
     })
-    const hasPromo = !!activePromo
-    let promoDisc = disc
-    let promoPrice = disc>0 ? p.price*(1-disc/100) : p.price
+    const hasPromo=!!activePromo
+    let promoDisc=disc, promoPrice=disc>0?p.price*(1-disc/100):p.price
     if(activePromo){
-      if(activePromo.type === 'percent'){
-        promoDisc = parseFloat(activePromo.discount_value)||0
-        promoPrice = p.price * (1 - promoDisc/100)
-      } else if(activePromo.type === 'fixed'){
-        promoPrice = p.price - (parseFloat(activePromo.discount_value)||0)
-        promoDisc = Math.round((p.price - promoPrice)/p.price * 100)
-      }
+      if(activePromo.type==='percent'){promoDisc=parseFloat(activePromo.discount_value)||0;promoPrice=p.price*(1-promoDisc/100)}
+      else if(activePromo.type==='fixed'){promoPrice=p.price-(parseFloat(activePromo.discount_value)||0);promoDisc=Math.round((p.price-promoPrice)/p.price*100)}
     }
-    const hasDisc = hasPromo || disc>0
-    const fp = promoPrice.toFixed(0)
-    const pct = promoDisc
-    
+    const hasDisc=hasPromo||disc>0
+    const fp=promoPrice.toFixed(0)
+    const pct=promoDisc
     return (
-      <div className="pc" onClick={()=>{setDetailProd(p); setModal('detail')}}>
-        <div className={`pc-img ${isOutStock ? 'outstock' : ''}`}>
-          {p.image ? (
-            <img src={p.image} alt={p.name} loading="lazy" style={{opacity: isOutStock ? 0.5 : 1}}/>
-          ) : (
-            <div className="pc-noimg">🛍️</div>
-          )}
-          {isOutStock && <div className="outstock-overlay">غير متوفر</div>}
-          {isN && !hasPromo && <span className="badge b-new">جديد</span>}
-          <button className="fav-b" onClick={e=>{e.stopPropagation(); toggleWish(p.id)}}>
-            <i className="fas fa-heart" style={{color: isW ? '#FF6B35' : '#CBD5E1'}}></i>
+      <div className="pc" onClick={()=>{setDetailProd(p);setModal('detail')}}>
+        <div className="pc-img" style={{opacity:(p.stock||0)===0?0.45:1,filter:(p.stock||0)===0?'grayscale(60%)':'none',transition:'opacity .3s'}}>
+          {/* شارة عرض خاص — علوي أيمن كما في الصورة */}
+          {hasPromo&&<div className="pc-promo-badge"><i className="fas fa-bullhorn" style={{fontSize:9}}/> عرض خاص</div>}
+          {(p.stock||0)===0&&<div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',background:'rgba(0,0,0,.55)',color:'white',borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:800,zIndex:2,whiteSpace:'nowrap'}}>نفذ المخزون</div>}
+          {p.image?<img src={p.image} alt={p.name} loading="lazy"/>:<div className="pc-noimg">🛍️</div>}
+          {isN&&!hasPromo&&(p.stock||0)>0&&<span className="badge b-new">جديد</span>}
+          <button className="fav-b" onClick={e=>{e.stopPropagation();toggleWish(p.id)}}>
+            <i className="fas fa-heart" style={{color:isW?'#FF6B35':'#CBD5E1'}}></i>
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
-        {hasDisc ? (
-          <div>
-            <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2,flexWrap:'wrap'}}>
-              <span style={{background:'#888',color:'white',fontSize:11,fontWeight:900,padding:'2px 7px',borderRadius:20}}>{pct}%</span>
-              <span style={{fontSize:12,color:'#94a3b8',textDecoration:'line-through',fontWeight:600}}>{p.price}{CUR}</span>
+        {/* السعر مشطوب + نسبة + السعر الجديد — كالصورة */}
+        {hasDisc
+          ? <div>
+              <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2,flexWrap:'wrap'}}>
+                <span style={{background:'#888',color:'white',fontSize:11,fontWeight:900,padding:'2px 7px',borderRadius:20}}>{pct}%</span>
+                <span style={{fontSize:12,color:'#94a3b8',textDecoration:'line-through',fontWeight:600}}>{p.price}{CUR}</span>
+              </div>
+              <div style={{fontSize:16,fontWeight:900,color:'#1A0A00'}}>{fp}{CUR}</div>
             </div>
-            <div style={{fontSize:16,fontWeight:900,color:'#1A0A00'}}>{fp}{CUR}</div>
-          </div>
-        ) : (
-          <div style={{fontSize:16,fontWeight:900,color:'#FF6B35'}}>{fp} {CUR}</div>
-        )}
-        <div className="pc-carton">📦 الكرتون: {cartonPrice.toFixed(0)} {CUR}</div>
-        {(p.stock||0)<10 && (p.stock||0)>0 && <div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
-        {isOutStock && <div className="pc-stock">❌ نفد من المخزون</div>}
-        <button className={`add-b ${isOutStock ? 'outstock' : ''}`} disabled={isOutStock}
-          onClick={e=>{e.stopPropagation(); addToCart(p)}}>
-          <i className="fas fa-cart-plus"></i>
-          {isOutStock ? 'غير متوفر' : 'أضف للسلة'}
-        </button>
+          : <div style={{fontSize:16,fontWeight:900,color:'#FF6B35'}}>{fp} {CUR}</div>}
+        {p.units&&<div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
+        {(p.stock||0)<10&&(p.stock||0)>0&&<div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
+        {(p.stock||0)===0&&<div className="pc-stock">❌ نفذ</div>}
+        <div style={{display:'flex',gap:5,marginTop:'auto',paddingTop:6}}>
+          <button className="add-b" style={{flex:1}} disabled={(p.stock||0)===0}
+            onClick={e=>{e.stopPropagation();addToCart(p)}}>
+            <i className="fas fa-cart-plus"></i>
+            {(p.stock||0)===0?'نفذ':'أضف'}
+          </button>
+          <button onClick={e=>{e.stopPropagation();
+            const msg=`🛍️ ${p.name}%0A💰 السعر: ${p.price} ${CUR}%0A🔗 ${window.location.origin}`
+            window.open(`https://wa.me/?text=${msg}`,'_blank')}}
+            style={{width:32,height:32,borderRadius:8,background:'#25D36610',color:'#25D366',
+              border:'1px solid #25D36630',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <i className="fab fa-whatsapp" style={{fontSize:14}}></i>
+          </button>
+        </div>
       </div>
     )
   }
 
+  /* ACTIVE PROMO BANNER */
+  const activePromoBanner = promos.find(p=>p.image&&(p.type==='percent'||p.type==='buy_x_get_y'))
   const flashPromo = promos.find(p=>p.end_date)
 
+  /* ── HOME ── */
   const Home = () => (
     <>
-      {FREESHIP > 0 && cartTotal < FREESHIP && (
-        <div className="free-ship-bar" onClick={()=>setModal('cart')}>
-          🚚 أضف <strong>{(FREESHIP-cartTotal).toFixed(0)} {CUR}</strong> لتحصل على توصيل مجاني!
-        </div>
-      )}
-      {ANNOUNCE && <div className="announce">{ANNOUNCE}</div>}
+      {/* ANNOUNCE */}
+      {ANNOUNCE&&<div className="announce">{ANNOUNCE}</div>}
 
+      {/* BANNER */}
       <div className="banner-wrap">
         <div className="banner-track" style={{transform:`translateX(${bannerIdx*100}%)`}}>
-          {banners.length>0 ? banners.map((b,i)=>(
-            b.image ? <img key={i} src={b.image} className="banner-slide" alt=""/> :
-            <div key={i} className="banner-fall"><span style={{fontSize:36}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:22}}>{b.title||SNAME}</span>{b.subtitle&&<span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>{b.subtitle}</span>}</div>
-          )) : (
-            <div className="banner-fall"><span style={{fontSize:40}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span><span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span></div>
-          )}
+          {banners.length>0
+            ? banners.map((b,i)=>(b.image?<img key={i} src={b.image} className="banner-slide" alt=""/>:
+                <div key={i} className="banner-fall"><span style={{fontSize:36}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:22}}>{b.title||SNAME}</span>{b.subtitle&&<span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>{b.subtitle}</span>}</div>))
+            : <div className="banner-fall"><span style={{fontSize:40}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span><span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span></div>}
         </div>
-        {banners.length>1 && <div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
+        {banners.length>1&&<div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
       </div>
 
-      {PROMO_TEXT && <div style={{background:'linear-gradient(135deg,#FFF0EB,#FFE4D6)',margin:'10px 14px 0',borderRadius:14,padding:'10px 16px',textAlign:'center',fontSize:13,fontWeight:800,color:'#FF6B35',border:'1px solid #FFD5C0'}}>{PROMO_TEXT}</div>}
+      {/* PROMO TEXT */}
+      {PROMO_TEXT&&<div style={{background:'linear-gradient(135deg,#FFF0EB,#FFE4D6)',margin:'10px 14px 0',borderRadius:14,padding:'10px 16px',textAlign:'center',fontSize:13,fontWeight:800,color:'#FF6B35',border:'1px solid #FFD5C0'}}>{PROMO_TEXT}</div>}
 
-      {flashPromo && (
+      {/* FLASH BAR from DB promos */}
+      {flashPromo&&(
         <div className="flash-bar" onClick={()=>setTab('search')}>
-          <div><div style={{color:'white',fontWeight:900,fontSize:16}}>⚡ {flashPromo.name}</div><div style={{color:'rgba(255,255,255,.8)',fontSize:12}}>{flashPromo.description||'عرض لفترة محدودة'}</div></div>
-          <div className="timer-wrap"><div className="tbox">{timer.h}</div><span style={{color:'white',fontWeight:900}}>:</span><div className="tbox">{timer.m}</div><span style={{color:'white',fontWeight:900}}>:</span><div className="tbox">{timer.s}</div></div>
+          <div>
+            <div style={{color:'white',fontWeight:900,fontSize:16}}>⚡ {flashPromo.name}</div>
+            <div style={{color:'rgba(255,255,255,.8)',fontSize:12}}>{flashPromo.description||'عرض لفترة محدودة'}</div>
+          </div>
+          <div className="timer-wrap">
+            <div className="tbox">{timer.h}</div>
+            <span style={{color:'white',fontWeight:900}}>:</span>
+            <div className="tbox">{timer.m}</div>
+            <span style={{color:'white',fontWeight:900}}>:</span>
+            <div className="tbox">{timer.s}</div>
+          </div>
         </div>
       )}
 
-      {brands.length>0 && (
+      {/* ANIMATED BRANDS GRID */}
+      {brands.length>0&&(
         <div className="sec">
-          <div className="sec-head"><span className="sec-title">⭐ أفضل الماركات</span><button className="sec-more" onClick={()=>setDrawerOpen(true)}>عرض الكل</button></div>
+          <div className="sec-head">
+            <span className="sec-title">⭐ أفضل الماركات</span>
+            <button className="sec-more" onClick={()=>setDrawerOpen(true)}>عرض الكل</button>
+          </div>
           <div className="anim-grid">
-            <div className="anim-all" onClick={()=>{setBrandSel('all');setTab('search')}}><i className="fas fa-th"></i><span>عرض الكل</span></div>
+            <div className="anim-all" onClick={()=>{setBrandSel('all');setTab('search')}}>
+              <i className="fas fa-th"></i><span>عرض الكل</span>
+            </div>
             {brands.slice(0,5).map(b=>(
-              <div key={b.id} className={`anim-card${brandSel==b.id?' sel':''}`} onClick={()=>{setBrandSel(b.id);setTab('search')}}>
-                {b.image ? <><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
+              <div key={b.id} className={`anim-card${brandSel==b.id?' sel':''}`}
+                onClick={()=>{setBrandSel(b.id);setTab('search')}}>
+                {b.image?<><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></>:
+                  <div className="no-img">{b.name}</div>}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {categories.length>0 && (
+      {/* ANIMATED CATEGORIES */}
+      {categories.length>0&&(
         <div className="sec">
-          <div className="sec-head"><span className="sec-title">📂 الفئات</span><button className="sec-more" onClick={()=>setTab('cats')}>عرض الكل</button></div>
+          <div className="sec-head">
+            <span className="sec-title">📂 الفئات</span>
+            <button className="sec-more" onClick={()=>setTab('cats')}>عرض الكل</button>
+          </div>
           <div className="cats-scroll">
             {categories.map(c=>(
-              <div key={c.id} className={`cat-item${catSel==c.id?' sel':''}`} onClick={()=>{setCatSel(c.id);setTab('search')}}>
-                <div className="cat-img">{c.image ? <img src={c.image} alt={c.name}/> : <span>📁</span>}</div>
+              <div key={c.id} className={`cat-item${catSel==c.id?' sel':''}`}
+                onClick={()=>{setCatSel(c.id);setTab('search')}}>
+                <div className="cat-img">
+                  {c.image?<img src={c.image} alt={c.name}/>:<span>📁</span>}
+                </div>
                 <div className="cat-label">{c.name}</div>
               </div>
             ))}
@@ -1486,24 +1367,34 @@ export default function Store() {
         </div>
       )}
 
+      {/* PROMO BOXES */}
       <div className="promo-strip">
-        <div className="promo-box" style={{background:'linear-gradient(135deg,#10b981,#059669)'}} onClick={()=>{setSortSel('newest');setTab('search')}}>
-          <div style={{fontSize:24}}>🎁</div><div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>{promos.find(p=>p.type==='buy_x_get_y')?.name||'اشتري 3 خذ 4'}</div>
+        <div className="promo-box" style={{background:'linear-gradient(135deg,#10b981,#059669)'}}
+          onClick={()=>{setSortSel('newest');setTab('search')}}>
+          <div style={{fontSize:24}}>🎁</div>
+          <div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>
+            {promos.find(p=>p.type==='buy_x_get_y')?promos.find(p=>p.type==='buy_x_get_y').name:'اشتري 3 خذ 4'}
+          </div>
           <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>أرخص منتج مجاناً</div>
         </div>
-        <div className="promo-box" style={{background:'linear-gradient(135deg,#3b82f6,#1d4ed8)'}} onClick={()=>{setSortSel('price_asc');setTab('search')}}>
-          <div style={{fontSize:24}}>📦</div><div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>خصم الكميات</div>
+        <div className="promo-box" style={{background:'linear-gradient(135deg,#3b82f6,#1d4ed8)'}}
+          onClick={()=>{setSortSel('price_asc');setTab('search')}}>
+          <div style={{fontSize:24}}>📦</div>
+          <div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>خصم الكميات</div>
           <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>500دج→5% | 1000دج→10%</div>
         </div>
       </div>
 
-      {dayDeal && (
+      {/* DAY DEAL */}
+      {dayDeal&&(
         <div className="day-deal">
           <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',padding:'10px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{color:'white',fontWeight:900,fontSize:15}}>🌟 عرض اليوم</span><span style={{color:'white',fontSize:13}}>خصم {dayDeal.discount}%</span>
+            <span style={{color:'white',fontWeight:900,fontSize:15}}>🌟 عرض اليوم</span>
+            <span style={{color:'white',fontSize:13}}>خصم {dayDeal.discount}%</span>
           </div>
           <div style={{display:'flex',gap:16,padding:16,cursor:'pointer'}} onClick={()=>{setDetailProd(dayDeal);setModal('detail')}}>
-            {dayDeal.image ? <img src={dayDeal.image} style={{width:90,height:90,borderRadius:12,objectFit:'cover'}}/> : <div style={{width:90,height:90,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>🛍️</div>}
+            {dayDeal.image?<img src={dayDeal.image} style={{width:90,height:90,borderRadius:12,objectFit:'cover'}}/>:
+              <div style={{width:90,height:90,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:36}}>🛍️</div>}
             <div style={{flex:1}}>
               <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{dayDeal.name}</div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -1516,25 +1407,43 @@ export default function Store() {
         </div>
       )}
 
-      {flashP.length>0 && (
-        <div className="sec"><div className="sec-head"><span className="sec-title">⚡ عروض خاصة</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
+      {/* FLASH PRODUCTS */}
+      {flashP.length>0&&(
+        <div className="sec">
+          <div className="sec-head"><span className="sec-title">⚡ عروض خاصة</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
           <div className="hscroll">{flashP.map(p=><PC key={p.id} p={p}/>)}</div>
         </div>
       )}
 
-      {newP.length>0 && (
-        <div className="sec"><div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
+      {/* NEW */}
+      {newP.length>0&&(
+        <div className="sec">
+          <div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
           <div className="hscroll">{newP.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
         </div>
       )}
 
-      {allP.length>0 && (
-        <div className="sec"><div className="sec-head"><span className="sec-title">📦 جميع المنتجات</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
+      {/* الأكثر مبيعاً */}
+      {bestSellers.length>0&&(()=>{
+        const bsp=bestSellers.map(id=>allP.find(p=>String(p.id)===id)).filter(Boolean).slice(0,12)
+        return bsp.length>0?(
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">🔥 الأكثر مبيعاً</span>
+              <button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
+            <div className="hscroll">{bsp.map(p=><PC key={p.id} p={p}/>)}</div>
+          </div>
+        ):null
+      })()}
+
+      {/* ALL */}
+      {allP.length>0&&(
+        <div className="sec">
+          <div className="sec-head"><span className="sec-title">📦 جميع المنتجات</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
           <div className="hscroll">{allP.slice(0,10).map(p=><PC key={p.id} p={p}/>)}</div>
         </div>
       )}
 
-      {cartCount>0 && (
+      {cartCount>0&&(
         <div className="cart-bar" onClick={()=>setModal('cart')}>
           <span style={{color:'white',fontWeight:700,fontSize:14}}>🛒 {cartCount} كرتون في السلة</span>
           <span style={{color:'white',fontWeight:900,fontSize:16}}>{cartTotal.toFixed(0)} {CUR}</span>
@@ -1547,52 +1456,86 @@ export default function Store() {
     </>
   )
 
-  const SearchTab = () => (
+  /* SEARCH TAB */
+  const SearchTab = () => {
+    const allPricesArr = allP.map(p=>Number(p.price)||0)
+    const absoluteMax = Math.max(...allPricesArr, 1000)
+    return (
     <div className="sec" style={{marginTop:14}}>
-      <div className="filter-row">
-        <div className="filter-slider"><label>💰 السعر من</label><input type="number" placeholder="0" value={priceMin} onChange={e=>setPriceMin(e.target.value)}/></div>
-        <div className="filter-slider"><label>💰 السعر إلى</label><input type="number" placeholder="10000" value={priceMax} onChange={e=>setPriceMax(e.target.value)}/></div>
-        <div className="filter-slider"><label>🎯 أقل خصم</label><input type="range" min="0" max="50" value={discountMin} onChange={e=>setDiscountMin(parseInt(e.target.value))}/><div style={{fontSize:12,textAlign:'center'}}>{discountMin}%</div></div>
-      </div>
       <div className="chips" style={{marginBottom:10}}>
         <button className={`chip${catSel==='all'?' sel':''}`} onClick={()=>{setCatSel('all');setPage(1)}}>الكل</button>
-        {categories.map(c=>(<button key={c.id} className={`chip${catSel==c.id?' sel':''}`} onClick={()=>{setCatSel(c.id);setPage(1)}}>{c.name}</button>))}
+        {categories.map(c=>(
+          <button key={c.id} className={`chip${catSel==c.id?' sel':''}`} onClick={()=>{setCatSel(c.id);setPage(1)}}>{c.name}</button>
+        ))}
       </div>
-      <div className="chips" style={{marginBottom:14}}>
-        {[['newest','الأحدث'],['price_asc','السعر ↑'],['price_desc','السعر ↓']].map(([v,l])=>(
+      <div className="chips" style={{marginBottom:12}}>
+        {[['newest','الأحدث'],['price_asc','السعر ↑'],['price_desc','السعر ↓'],['disc','الخصومات أولاً']].map(([v,l])=>(
           <button key={v} className={`chip${sortSel===v?' sel':''}`} onClick={()=>{setSortSel(v);setPage(1)}}>{l}</button>
         ))}
       </div>
-      {paged.length===0 ? <div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div> : <div className="prod-grid">{paged.map(p=><PC key={p.id} p={p}/>)}</div>}
-      {PAGES>1 && (
+      {/* فلتر السعر */}
+      <div style={{background:'white',borderRadius:14,padding:'12px 14px',marginBottom:12,
+        boxShadow:'0 1px 6px rgba(0,0,0,.06)',border:'1.5px solid #F1ECE8'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,fontSize:13,fontWeight:700}}>
+          <span style={{color:'#1A0A00'}}>🎚️ فلتر السعر</span>
+          <span style={{color:'#FF6B35',fontWeight:800}}>{priceMin.toLocaleString()} — {priceMax>=999999?'∞':priceMax.toLocaleString()} {CUR}</span>
+        </div>
+        <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:4}}>
+          <span style={{fontSize:11,color:'#94a3b8',flexShrink:0}}>من</span>
+          <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMin,absoluteMax)}
+            onChange={e=>setPriceMin(Math.min(Number(e.target.value),priceMax-50))}
+            style={{flex:1,accentColor:'#FF6B35',cursor:'pointer'}}/>
+          <span style={{fontSize:11,color:'#94a3b8',flexShrink:0}}>إلى</span>
+          <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMax,absoluteMax)}
+            onChange={e=>setPriceMax(Math.max(Number(e.target.value),priceMin+50))}
+            style={{flex:1,accentColor:'#FF6B35',cursor:'pointer'}}/>
+        </div>
+        {(priceMin>0||priceMax<999999)&&(
+          <button onClick={()=>{setPriceMin(0);setPriceMax(999999)}}
+            style={{fontSize:11,color:'#FF6B35',background:'none',border:'none',cursor:'pointer',fontWeight:700,fontFamily:'inherit'}}>
+            ✕ إلغاء فلتر السعر
+          </button>
+        )}
+      </div>
+      {paged.length===0
+        ?<div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div>
+        :<div className="prod-grid">{paged.map(p=><PC key={p.id} p={p}/>)}</div>}
+      {PAGES>1&&(
         <div style={{display:'flex',justifyContent:'center',gap:8,marginTop:18,flexWrap:'wrap'}}>
-          {page>1 && <button className="chip" onClick={()=>setPage(p=>p-1)}>‹ السابق</button>}
-          {Array.from({length:Math.min(PAGES,5)},(_,i)=>i+1).map(n=><button key={n} className={`chip${page===n?' sel':''}`} onClick={()=>setPage(n)}>{n}</button>)}
-          {page<PAGES && <button className="chip" onClick={()=>setPage(p=>p+1)}>التالي ›</button>}
+          {page>1&&<button className="chip" onClick={()=>setPage(p=>p-1)}>‹ السابق</button>}
+          {Array.from({length:Math.min(PAGES,5)},(_,i)=>i+1).map(n=>(
+            <button key={n} className={`chip${page===n?' sel':''}`} onClick={()=>setPage(n)}>{n}</button>
+          ))}
+          {page<PAGES&&<button className="chip" onClick={()=>setPage(p=>p+1)}>التالي ›</button>}
         </div>
       )}
     </div>
-  )
+  )}
 
+  /* CATS TAB */
   const CatsTab = () => (
     <div className="sec" style={{marginTop:14}}>
       <div className="sec-head" style={{paddingTop:0}}><span className="sec-title">🏷️ الماركات</span></div>
       <div className="anim-grid">
-        <div className="anim-all" onClick={()=>{setBrandSel('all');setCatSel('all');setTab('search')}}><i className="fas fa-th"></i><span>كل المنتجات</span></div>
+        <div className="anim-all" onClick={()=>{setBrandSel('all');setCatSel('all');setTab('search')}}>
+          <i className="fas fa-th"></i><span>كل المنتجات</span>
+        </div>
         {brands.map(b=>(
           <div key={b.id} className="anim-card" onClick={()=>{setBrandSel(b.id);setTab('search')}}>
-            {b.image ? <><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
+            {b.image?<><img src={b.image} alt={b.name}/><div className="overlay"><span>{b.name}</span></div></>:
+              <div className="no-img">{b.name}</div>}
           </div>
         ))}
       </div>
-      {categories.length>0 && (
+      {categories.length>0&&(
         <div style={{marginTop:20}}>
           <div className="sec-head" style={{paddingTop:0}}><span className="sec-title">📂 الفئات</span></div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
             {categories.map(c=>(
               <div key={c.id} onClick={()=>{setCatSel(c.id);setTab('search')}}
-                style={{background:'white',borderRadius:16,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,.07)'}}>
-                {c.image ? <img src={c.image} style={{width:50,height:38,borderRadius:10,objectFit:'cover'}}/> : <div style={{width:50,height:38,borderRadius:10,background:'#FFF0EB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📦</div>}
+                style={{background:'white',borderRadius:16,padding:14,display:'flex',alignItems:'center',gap:12,cursor:'pointer',boxShadow:'0 2px 10px rgba(0,0,0,.07)',transition:'.2s',overflow:'hidden'}}>
+                {c.image?<img src={c.image} style={{width:50,height:38,borderRadius:10,objectFit:'cover',flexShrink:0}}/>:
+                  <div style={{width:50,height:38,borderRadius:10,background:'#FFF0EB',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📦</div>}
                 <span style={{fontWeight:700,fontSize:14,color:'#1A0A00'}}>{c.name}</span>
               </div>
             ))}
@@ -1602,56 +1545,90 @@ export default function Store() {
     </div>
   )
 
+  /* WISH TAB */
   const WishTab = () => {
-    const wp = products.filter(p=>wishlist.includes(p.id))
+    const wp=products.filter(p=>wishlist.includes(p.id))
     return (
       <div className="sec" style={{marginTop:14}}>
-        {wp.length===0 ? <div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة</p></div> : <div className="prod-grid">{wp.map(p=><PC key={p.id} p={p}/>)}</div>}
+        {wp.length===0?<div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة</p></div>:
+          <div className="prod-grid">{wp.map(p=><PC key={p.id} p={p}/>)}</div>}
       </div>
     )
   }
 
+  /* PROMOS TAB — عصري */
   const PromosTab = () => {
-    const active = promos.filter(p=>p.active && (!p.end_date || new Date(p.end_date)>new Date()))
-    const typeLabel = {percent:'خصم نسبة %', fixed:'خصم مبلغ ثابت', buy_x_get_y:'اشتري X خذ Y', tier_buy:'خصم كمية الشركة'}
-    const typeColor = {percent:'#FF6B35', fixed:'#7c3aed', buy_x_get_y:'#10b981', tier_buy:'#3b82f6'}
+    const active = promos.filter(p=>p.active)
+    const typeLabel={percent:'خصم نسبة %',fixed:'خصم مبلغ ثابت',buy_x_get_y:'اشتري X خذ Y',tier_buy:'خصم كمية الشركة'}
+    const typeColor={percent:'#FF6B35',fixed:'#7c3aed',buy_x_get_y:'#10b981',tier_buy:'#3b82f6'}
     return (
       <div style={{paddingBottom:80}}>
-        <div style={{background:'linear-gradient(135deg,#FF6B35,#7C3AED)',padding:'22px 18px 20px'}}>
-          <div style={{fontSize:12,color:'rgba(255,255,255,.75)',fontWeight:700}}>العروض الحصرية</div>
-          <h2 style={{color:'white',fontWeight:900,fontSize:22}}>🎯 {active.length} عرض نشط</h2>
+        {/* Hero */}
+        <div style={{background:'linear-gradient(135deg,#FF6B35,#7C3AED)',padding:'22px 18px 20px',position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',top:'-40%',right:'-15%',width:180,height:180,background:'rgba(255,255,255,.07)',borderRadius:'50%'}}/>
+          <div style={{position:'relative',zIndex:1}}>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.75)',fontWeight:700,marginBottom:3}}>العروض الحصرية</div>
+            <h2 style={{color:'white',fontWeight:900,fontSize:22,marginBottom:4}}>🎯 {active.length} عرض نشط</h2>
+            <p style={{color:'rgba(255,255,255,.8)',fontSize:13}}>وفّر أكثر مع عروضنا المتجددة</p>
+          </div>
         </div>
-        {active.length===0 && <div className="empty" style={{marginTop:40}}><i className="fas fa-tag"/><p>لا توجد عروض حالياً</p></div>}
+        {active.length===0&&<div className="empty" style={{marginTop:40}}><i className="fas fa-tag"/><p>لا توجد عروض حالياً</p></div>}
         {active.map(promo=>{
-          const pids = typeof promo.product_ids === 'string' ? JSON.parse(promo.product_ids||'[]') : (promo.product_ids||[])
-          const promoProds = pids.length>0 ? products.filter(p=>pids.includes(p.id)||pids.includes(String(p.id))) : products.slice(0,5)
-          const col = typeColor[promo.type] || '#FF6B35'
+          const pids=typeof promo.product_ids==='string'?JSON.parse(promo.product_ids||'[]'):(promo.product_ids||[])
+          const promoProds=pids.length>0?products.filter(p=>pids.includes(p.id)||pids.includes(String(p.id))):products.slice(0,5)
+          const col=typeColor[promo.type]||'#FF6B35'
+          const isExpired=promo.end_date&&new Date(promo.end_date)<new Date()
+          if(isExpired) return null
           return (
-            <div key={promo.id} style={{background:'white',borderRadius:20,margin:'12px 14px',boxShadow:'0 4px 20px rgba(0,0,0,.08)',overflow:'hidden'}}>
-              {promo.image && <img src={promo.image} style={{width:'100%',height:130,objectFit:'cover'}}/>}
+            <div key={promo.id} style={{background:'white',borderRadius:20,margin:'12px 14px',
+              boxShadow:'0 4px 20px rgba(0,0,0,.08)',overflow:'hidden',border:'1.5px solid #F1ECE8'}}>
+              {promo.image&&<img src={promo.image} style={{width:'100%',height:130,objectFit:'cover'}}/>}
               <div style={{padding:'16px 16px 10px'}}>
-                <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 12px',borderRadius:30,fontSize:11,fontWeight:800,marginBottom:10,background:col+'18',color:col}}>{typeLabel[promo.type]||promo.type}</div>
-                {(promo.type==='percent'||promo.type==='fixed') && (
-                  <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',borderRadius:50,padding:'5px 14px',fontSize:17,fontWeight:900,display:'inline-block',marginBottom:8,float:'left'}}>
-                    {promo.type==='percent' ? `-${promo.discount_value}%` : `-${promo.discount_value} ${CUR}`}
+                {/* شارة النوع */}
+                <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 12px',
+                  borderRadius:30,fontSize:11,fontWeight:800,marginBottom:10,
+                  background:col+'18',color:col}}>
+                  {typeLabel[promo.type]||promo.type}
+                </div>
+                {/* قيمة الخصم بارزة */}
+                {(promo.type==='percent'||promo.type==='fixed')&&(
+                  <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',
+                    borderRadius:50,padding:'5px 14px',fontSize:17,fontWeight:900,
+                    display:'inline-block',marginBottom:8,float:'left',
+                    boxShadow:'0 4px 12px rgba(255,107,53,.35)'}}>
+                    {promo.type==='percent'?`-${promo.discount_value}%`:`-${promo.discount_value} ${CUR}`}
                   </div>
                 )}
                 <div style={{fontWeight:900,fontSize:16,marginBottom:4,clear:'both'}}>{promo.name}</div>
-                {promo.description && <p style={{color:'#64748b',fontSize:13,marginBottom:10}}>{promo.description}</p>}
+                {promo.description&&<p style={{color:'#64748b',fontSize:13,marginBottom:10}}>{promo.description}</p>}
+                {promo.type==='tier_buy'&&<p style={{color:'#3b82f6',fontSize:12,fontWeight:700,marginBottom:10}}>
+                  📦 اشتري {promo.tier_qty} كرتون من نفس الشركة → خصم {promo.tier_value}{promo.tier_type==='percent'?'%':' '+CUR}
+                </p>}
               </div>
-              {promoProds.length>0 && (
+              {/* صور المنتجات */}
+              {promoProds.length>0&&(
                 <div style={{display:'flex',gap:8,overflowX:'auto',padding:'0 14px 14px'}}>
                   {promoProds.slice(0,6).map(pp=>(
-                    <div key={pp.id} style={{flexShrink:0,width:64,textAlign:'center',cursor:'pointer'}} onClick={()=>{setDetailProd(pp);setModal('detail')}}>
-                      {pp.image ? <img src={pp.image} style={{width:60,height:60,borderRadius:12,objectFit:'cover'}}/> : <div style={{width:60,height:60,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🛍️</div>}
-                      <div style={{fontSize:10,fontWeight:700,color:'#7A6A5A'}}>{pp.name}</div>
+                    <div key={pp.id} style={{flexShrink:0,width:64,textAlign:'center',cursor:'pointer'}}
+                      onClick={()=>{setDetailProd(pp);setModal('detail')}}>
+                      {pp.image
+                        ?<img src={pp.image} style={{width:60,height:60,borderRadius:12,objectFit:'cover',display:'block',margin:'0 auto 4px',border:'2px solid #F1ECE8'}}/>
+                        :<div style={{width:60,height:60,borderRadius:12,background:'#F8F4F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,margin:'0 auto 4px'}}>🛍️</div>}
+                      <div style={{fontSize:10,fontWeight:700,color:'#7A6A5A',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{pp.name}</div>
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{padding:'10px 16px 14px',borderTop:'1px solid #E8DDD5',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                {promo.end_date ? <PromoCountdown endDate={promo.end_date}/> : <span style={{fontSize:12,color:'#94a3b8',fontWeight:700}}>⚡ بدون تاريخ انتهاء</span>}
-                <button style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',border:'none',borderRadius:30,padding:'8px 18px',fontWeight:800,fontSize:13,cursor:'pointer'}} onClick={()=>setTab('search')}>تسوّق الآن</button>
+              {/* footer */}
+              <div style={{padding:'10px 16px 14px',borderTop:'1px solid #F1ECE8',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                {promo.end_date
+                  ?<PromoCountdown endDate={promo.end_date}/>
+                  :<span style={{fontSize:12,color:'#94a3b8',fontWeight:700}}>⚡ بدون تاريخ انتهاء</span>}
+                <button style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',
+                  border:'none',borderRadius:30,padding:'8px 18px',fontWeight:800,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}
+                  onClick={()=>setTab('search')}>
+                  تسوّق الآن
+                </button>
               </div>
             </div>
           )
@@ -1660,7 +1637,109 @@ export default function Store() {
     )
   }
 
-  const tabs = {home:<Home/>, search:<SearchTab/>, cats:<CatsTab/>, wish:<WishTab/>, promos:<PromosTab/>}
+  const QuickOrderTab = () => {
+    const [qtyMap,setQtyMap]=useState({})
+    const visibleProds=allP.filter(p=>(p.stock||0)>0)
+    const addAll=()=>{
+      let count=0
+      visibleProds.forEach(p=>{
+        const qty=parseInt(qtyMap[p.id])||0
+        if(qty>0){addToCart(p,qty);count++}
+      })
+      if(count>0)showToast(`✅ تمت إضافة ${count} منتج`)
+      else showToast('أدخل الكميات أولاً',true)
+    }
+    return (
+      <div className="sec" style={{marginTop:14,paddingBottom:80}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <h2 className="sec-title">⚡ الطلب السريع</h2>
+          <button onClick={addAll}
+            style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',border:'none',
+              borderRadius:30,padding:'10px 20px',fontWeight:800,fontSize:14,cursor:'pointer',fontFamily:'inherit',
+              display:'flex',alignItems:'center',gap:6}}>
+            <i className="fas fa-cart-plus"></i> إضافة الكل للسلة
+          </button>
+        </div>
+        <div style={{background:'white',borderRadius:16,overflow:'hidden',boxShadow:'0 2px 12px rgba(0,0,0,.07)'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead>
+              <tr style={{background:'#FF6B35'}}>
+                <th style={{padding:'11px 12px',textAlign:'right',color:'white',fontWeight:700,fontSize:13,border:'1px solid rgba(255,255,255,.2)'}}>المنتج</th>
+                <th style={{padding:'11px 12px',textAlign:'center',color:'white',fontWeight:700,fontSize:13,border:'1px solid rgba(255,255,255,.2)'}}>سعر/كرتون</th>
+                <th style={{padding:'11px 12px',textAlign:'center',color:'white',fontWeight:700,fontSize:13,border:'1px solid rgba(255,255,255,.2)'}}>الكمية (كرتون)</th>
+                <th style={{padding:'11px 12px',textAlign:'center',color:'white',fontWeight:700,fontSize:13,border:'1px solid rgba(255,255,255,.2)'}}>الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleProds.map((p,i)=>{
+                const qty=parseInt(qtyMap[p.id])||0
+                const unitPrice=p.carton_price||p.price*(p.units||12)
+                return (
+                  <tr key={p.id} style={{background:i%2===0?'white':'#F8FAFC',borderBottom:'1px solid #E2E8F0'}}>
+                    <td style={{padding:'10px 12px',border:'1px solid #E2E8F0'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        {p.image&&<img src={p.image} style={{width:36,height:36,borderRadius:8,objectFit:'cover',border:'1px solid #E2E8F0'}}/>}
+                        <div>
+                          <div style={{fontWeight:700,fontSize:13,color:'#1A0A00'}}>{p.name}</div>
+                          <div style={{fontSize:11,color:'#94a3b8'}}>{p.units||12} قطعة/كرتون</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{padding:'10px 12px',textAlign:'center',fontWeight:700,color:'#FF6B35',border:'1px solid #E2E8F0'}}>{unitPrice.toFixed(0)} {CUR}</td>
+                    <td style={{padding:'10px 12px',textAlign:'center',border:'1px solid #E2E8F0'}}>
+                      <input type="number" min="0" value={qtyMap[p.id]||''} onChange={e=>setQtyMap(m=>({...m,[p.id]:e.target.value}))}
+                        placeholder="0"
+                        style={{width:70,textAlign:'center',border:'2px solid #E2E8F0',borderRadius:8,padding:'5px 8px',fontSize:14,fontWeight:700,fontFamily:'inherit',outline:'none'}}
+                        onFocus={e=>e.target.style.borderColor='#FF6B35'}
+                        onBlur={e=>e.target.style.borderColor='#E2E8F0'}/>
+                    </td>
+                    <td style={{padding:'10px 12px',textAlign:'center',fontWeight:700,color:'#1A0A00',border:'1px solid #E2E8F0'}}>
+                      {qty>0?`${(qty*unitPrice).toFixed(0)} ${CUR}`:'—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{background:'#FFF7ED'}}>
+                <td colSpan={3} style={{padding:'12px',fontWeight:800,color:'#1A0A00',fontSize:14,border:'1px solid #E2E8F0',textAlign:'right'}}>
+                  💰 الإجمالي المحدد:
+                </td>
+                <td style={{padding:'12px',fontWeight:900,color:'#FF6B35',fontSize:16,border:'1px solid #E2E8F0',textAlign:'center'}}>
+                  {Object.entries(qtyMap).reduce((sum,[id,qty])=>{
+                    const p=allP.find(x=>String(x.id)===String(id))
+                    const up=p?(p.carton_price||p.price*(p.units||12)):0
+                    return sum+(parseInt(qty)||0)*up
+                  },0).toFixed(0)} {CUR}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+
+  // وضع الصيانة
+  if (settings['maintenance_mode']==='1') return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',
+      background:'linear-gradient(135deg,#1E293B 0%,#0F172A 100%)',flexDirection:'column',
+      gap:20,padding:24,textAlign:'center',direction:'rtl'}}>
+      <div style={{fontSize:72,animation:'pulse 2s infinite'}}>🔧</div>
+      <h1 style={{color:'white',fontSize:28,fontWeight:900}}>نقاء</h1>
+      <p style={{color:'rgba(255,255,255,.8)',fontSize:16,maxWidth:340,lineHeight:1.8}}>
+        {settings['maintenance_msg']||'المتجر في طور التحديث، سنعود قريباً 🔧'}
+      </p>
+      <a href={`https://wa.me/${settings['whatsapp_number']||'213696668065'}`} target="_blank"
+        style={{background:'#25D366',color:'white',padding:'14px 32px',borderRadius:30,
+          textDecoration:'none',fontWeight:800,fontSize:16,display:'flex',alignItems:'center',gap:8}}>
+        <i className="fab fa-whatsapp"></i> تواصل معنا
+      </a>
+    </div>
+  )
+
+  const tabs={home:<Home/>,search:<SearchTab/>,cats:<CatsTab/>,wish:<WishTab/>,promos:<PromosTab/>,quick:<QuickOrderTab/>}
 
   return (
     <div dir="rtl">
@@ -1670,113 +1749,182 @@ export default function Store() {
           <button className="sh-icon" onClick={()=>setDrawerOpen(true)}><i className="fas fa-bars"></i></button>
           <span className="sh-logo">{SNAME}</span>
           <div className="sh-right">
-            <button className="sh-contact" onClick={()=>setModal('contact')}><i className="fas fa-phone"></i> اتصل</button>
-            {customer ? (
-              <button className="sh-login" onClick={()=>setModal('account')}>
-                <i className="fas fa-user"></i> {customer.name.split(' ')[0]} {customer.points>0 && <span style={{marginRight:4,color:'#fbbf24'}}>⭐{customer.points}</span>}
-              </button>
-            ) : (
-              <button className="sh-login" onClick={()=>setModal('login')}><i className="fas fa-user"></i> دخول</button>
-            )}
+            <button className="sh-contact" onClick={()=>setModal('contact')}>
+              <i className="fas fa-phone"></i> اتصل
+            </button>
+            {customer
+              ?<button className="sh-login" onClick={()=>setModal('account')}>
+                  <i className="fas fa-user"></i> {customer.name.split(' ')[0]}
+                </button>
+              :<button className="sh-login" onClick={()=>setModal('login')}>
+                  <i className="fas fa-user"></i> دخول
+                </button>}
           </div>
         </div>
         <div className="sh-search">
           <i className="fas fa-search" style={{color:'#aaa'}}></i>
-          <input value={search} onChange={e=>{setSearch(e.target.value);setTab('search');setPage(1)}} placeholder="بحث عن المنتجات..."/>
-          {search && <button onClick={()=>{setSearch('');setTab('home')}}>×</button>}
+          <input value={search}
+            onChange={e=>{setSearch(e.target.value);setTab('search');setPage(1)}}
+            placeholder="بحث عن المنتجات..." />
+          {search&&<button onClick={()=>{setSearch('');setTab('home')}}
+            style={{background:'none',border:'none',cursor:'pointer',color:'#aaa',fontSize:16}}>×</button>}
         </div>
       </div>
 
-      {/* DRAWER - قائمة جانبية (لا يوجد زر اتصال مكرر هنا) */}
-      {drawerOpen && <div className="drawer-overlay" onClick={()=>setDrawerOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:800}}/>}
-      <div className={`drawer${drawerOpen?' open':''}`} style={{position:'fixed',top:0,right:0,width:280,height:'100%',background:'white',zIndex:1000,transform:drawerOpen?'translateX(0)':'translateX(100%)',transition:'transform .3s ease',boxShadow:'-4px 0 20px rgba(0,0,0,.15)',display:'flex',flexDirection:'column'}}>
-        <div className="drawer-head" style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',padding:20,color:'white',position:'relative'}}>
-          <div style={{fontSize:20,fontWeight:900,marginBottom:4}}>🛍️ {SNAME}</div>
-          {customer ? <div style={{fontSize:13,color:'rgba(255,255,255,.85)',fontWeight:700}}>مرحباً، {customer.name} 👋</div> : <div style={{fontSize:12,color:'rgba(255,255,255,.7)'}}>اطلب بالكارتون ووفّر أكثر</div>}
-          <button onClick={()=>setDrawerOpen(false)} style={{position:'absolute',top:14,left:14,background:'rgba(255,255,255,.2)',border:'none',color:'white',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:15}}>✕</button>
+      {/* DRAWER */}
+      {drawerOpen&&<div className="drawer-overlay" onClick={()=>setDrawerOpen(false)}/>}
+      <div className={`drawer${drawerOpen?' open':''}`}>
+        <div className="drawer-head">
+          <div style={{fontSize:20,fontWeight:900,color:'white',marginBottom:4}}>🛍️ {SNAME}</div>
+          {customer
+            ?<div style={{fontSize:13,color:'rgba(255,255,255,.85)',fontWeight:700}}>مرحباً، {customer.name} 👋</div>
+            :<div style={{fontSize:12,color:'rgba(255,255,255,.7)'}}>اطلب بالكارتون ووفّر أكثر</div>}
+          <button onClick={()=>setDrawerOpen(false)}
+            style={{position:'absolute',top:14,left:14,background:'rgba(255,255,255,.2)',border:'none',
+              color:'white',width:30,height:30,borderRadius:'50%',cursor:'pointer',fontSize:15}}>✕</button>
         </div>
-        <div className="drawer-nav" style={{flex:1,overflowY:'auto',padding:'12px 0'}}>
+        <div className="drawer-nav">
           {[
-            {id:'home', e:'🏠', l:'الرئيسية'},
-            {id:'search', e:'🔍', l:'جميع المنتجات'},
-            {id:'cats', e:'📂', l:'الفئات والماركات'},
-            {id:'promos', e:'🎯', l:'العروض', b:promos.filter(x=>x.active).length},
+            {id:'home',  e:'🏠', l:'الرئيسية'},
+            {id:'search',e:'🔍', l:'جميع المنتجات'},
+            {id:'cats',  e:'📂', l:'الفئات والماركات'},
+            {id:'promos',e:'🎯', l:'العروض', b:promos.filter(x=>x.active).length},
             null,
-            {id:'wish', e:'❤️', l:'المفضلة', b:wishlist.length},
-            {id:'cart-d', e:'🛒', l:'السلة', b:cartCount, a:()=>setModal('cart')},
+            {id:'wish',  e:'❤️', l:'المفضلة', b:wishlist.length},
+            {id:'cart-d',e:'🛒', l:'السلة', b:cartCount, a:()=>setModal('cart')},
             {id:'track', e:'📍', l:'تتبع الطلب', a:()=>setModal('tracking')},
-            {id:'quick', e:'⚡', l:'طلب سريع', a:()=>setModal('quick')},
-            {id:'myorders', e:'📋', l:'طلباتي', a:()=>{if(customer) setModal('myorders'); else setModal('login')}},
+            {id:'quick', e:'⚡', l:'الطلب السريع'},
             null,
-            {id:'faq', e:'❓', l:'الأسئلة الشائعة', a:()=>setModal('faq')},
-            {id:'terms', e:'📜', l:'الشروط والأحكام', a:()=>setModal('terms')},
-            {id:'return', e:'🔄', l:'سياسة الاسترجاع', a:()=>setModal('return')},
-            null,
-            {id:'auth', e:'👤', l:customer?customer.name:'تسجيل الدخول', a:()=>setModal(customer?'account':'login')},
-            {id:'dark', e:'🌙', l:'الوضع الليلي', a:()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}},
-          ].map((it,i)=>it===null ? <div key={i} style={{height:1,background:'#F7F3EF',margin:'8px 16px'}}/> : (
-            <div key={it.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',cursor:'pointer',background:tab===it.id&&!it.a?'#FFF0EB':'transparent',borderRight:tab===it.id&&!it.a?'3px solid #FF6B35':'none'}} onClick={()=>{(it.a?it.a():setTab(it.id));setDrawerOpen(false)}}>
-              <div style={{fontSize:18,width:32}}>{it.e}</div>
-              <span style={{flex:1,fontWeight:tab===it.id&&!it.a?800:600}}>{it.l}</span>
-              {it.b>0 && <span style={{background:'#FF6B35',color:'white',borderRadius:30,padding:'2px 8px',fontSize:11,fontWeight:800}}>{it.b}</span>}
-            </div>
-          ))}
+            {id:'auth',  e:'👤', l:customer?customer.name:'تسجيل الدخول', a:()=>setModal(customer?'account':'login')},
+            {id:'contact-d',e:'📞',l:'اتصل بنا', a:()=>setModal('contact')},
+            {id:'dark',  e:'🌙', l:'الوضع الليلي', a:()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}},
+            {id:'faq',   e:'❓', l:'الأسئلة الشائعة', a:()=>setModal('faq')},
+            {id:'terms', e:'📄', l:'الشروط والأحكام', a:()=>setModal('terms')},
+          ].map((it,i)=>it===null
+            ?<div key={i} className="di-div"/>
+            :<div key={it.id} className={`di${tab===it.id&&!it.a?' act':''}`}
+                onClick={()=>{(it.a?it.a():setTab(it.id));setDrawerOpen(false)}}>
+                <div className="di-ico">{it.e}</div>
+                <span style={{flex:1}}>{it.l}</span>
+                {it.b>0&&<span className="di-badge">{it.b}</span>}
+              </div>
+          )}
         </div>
       </div>
 
-      {/* زر الوضع الليلي - بدون زر اتصال هنا */}
-      <button onClick={()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}} style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}><i className="fas fa-moon"></i></button>
+      {/* dark mode */}
+      <button onClick={()=>{document.body.classList.toggle('dark');localStorage.setItem('nqDark',document.body.classList.contains('dark')?'1':'0')}}
+        style={{position:'fixed',top:78,right:14,zIndex:400,width:36,height:36,borderRadius:'50%',background:'rgba(255,107,53,.15)',color:'#FF6B35',border:'1.5px solid rgba(255,107,53,.3)',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <i className="fas fa-moon"></i>
+      </button>
 
       {/* customer badge */}
-      {customer && (
+      {customer&&(
         <div style={{position:'fixed',top:78,left:58,zIndex:400,background:'rgba(255,107,53,.9)',color:'white',borderRadius:20,padding:'5px 10px',fontSize:11,fontWeight:700,display:'flex',gap:6,alignItems:'center'}}>
-          <span>👤 {customer.name} {customer.points>0 && <span style={{color:'#fbbf24'}}>⭐{customer.points}</span>}</span>
-          <button onClick={()=>{setCustomer(null);localStorage.removeItem('nq_customer');showToast('تم الخروج')}} style={{background:'none',border:'none',color:'white',cursor:'pointer',fontSize:13}}>✕</button>
+          <span>👤 {customer.name}</span>
+          <button onClick={()=>{setCustomer(null);localStorage.removeItem('nq_customer');showToast('تم الخروج')}}
+            style={{background:'none',border:'none',color:'white',cursor:'pointer',fontSize:13}}>✕</button>
         </div>
       )}
-      {!customer && tab==='home' && (
-        <button onClick={()=>setModal('login')} style={{position:'fixed',top:78,left:14,zIndex:400,background:'rgba(255,255,255,.9)',border:'none',borderRadius:20,padding:'5px 10px',fontSize:11,cursor:'pointer',color:'#FF6B35',fontWeight:700}}><i className="fas fa-user"></i> دخول</button>
-      )}
 
+
+      {/* PAGE */}
       <div className="page">{tabs[tab]||<Home/>}</div>
 
       {/* BOTTOM NAV */}
       <div className="bnav">
         {[
-          {id:'home', icon:'fas fa-home', label:'الرئيسية'},
-          {id:'search', icon:'fas fa-search', label:'بحث'},
-          {id:'promos', icon:'fas fa-tag', label:'العروض', badge:promos.filter(x=>x.active).length},
-          {id:'wish', icon:'fas fa-heart', label:'المفضلة', badge:wishlist.length},
-          {id:'cart-m', icon:'fas fa-shopping-basket', label:'السلة', badge:cartCount, action:()=>setModal('cart')},
+          {id:'home',  icon:'fas fa-home',            label:'الرئيسية'},
+          {id:'search',icon:'fas fa-search',           label:'بحث'},
+          {id:'promos',icon:'fas fa-tag',              label:'العروض', badge:promos.filter(x=>x.active).length},
+          {id:'wish',  icon:'fas fa-heart',            label:'المفضلة',badge:wishlist.length},
+          {id:'cart-m',icon:'fas fa-shopping-basket',  label:'السلة',  badge:cartCount,action:()=>setModal('cart')},
         ].map(b=>(
-          <button key={b.id} className={`bnav-b${tab===b.id&&!b.action?' on':''}`} onClick={()=>b.action?b.action():setTab(b.id)}>
+          <button key={b.id} className={`bnav-b${tab===b.id&&!b.action?' on':''}`}
+            onClick={()=>b.action?b.action():setTab(b.id)}>
             <i className={b.icon}></i>
-            {b.badge>0 && <span className="nbadge">{b.badge}</span>}
+            {b.badge>0&&<span className="nbadge">{b.badge}</span>}
             <span>{b.label}</span>
           </button>
         ))}
       </div>
 
-      {/* WHATSAPP BUTTON */}
-      <div className="wa-float"><button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}><i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i></button><div className="wa-label">تواصل معنا</div></div>
+      {/* Terms Modal */}
+      {modal==='terms'&&(
+        <div className="moverlay" onClick={e=>{if(e.target.className==='moverlay')setModal(null)}}>
+          <div className="msheet">
+            <div className="mhandle"/>
+            <div className="mhead"><h3>📄 الشروط والأحكام</h3><button className="mclose" onClick={()=>setModal(null)}>✕</button></div>
+            <div className="mbody">
+              <div style={{fontSize:14,lineHeight:1.9,color:'#475569'}}>
+                {settings['terms_text']||`1. يُعدّ الطلب مؤكداً بعد التأكيد عبر واتساب فقط.
+2. الأسعار قابلة للتغيير دون إشعار مسبق.
+3. الطلب بالكارتون الكامل فقط.
+4. التوصيل يتم خلال 24-48 ساعة داخل الولاية.
+5. سياسة الاسترجاع: خلال 24 ساعة من الاستلام وفي حالة وجود عيوب مصنعية.`}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FAQ Modal */}
+      {modal==='faq'&&(
+        <div className="moverlay" onClick={e=>{if(e.target.className==='moverlay')setModal(null)}}>
+          <div className="msheet">
+            <div className="mhandle"/>
+            <div className="mhead"><h3>❓ الأسئلة الشائعة</h3><button className="mclose" onClick={()=>setModal(null)}>✕</button></div>
+            <div className="mbody">
+              {[
+                {q:'ما هو الحد الأدنى للطلب؟',a:'لا يوجد حد أدنى، يمكنك الطلب من كرتون واحد.'},
+                {q:'كم تكلفة التوصيل؟',a:`التوصيل ${settings['shipping_cost']||'500'} ${CUR}. مجاني للطلبات التي تتجاوز ${settings['free_shipping_threshold']||'500'} ${CUR}.`},
+                {q:'كيف أتتبع طلبي؟',a:'اضغط على "تتبع الطلب" في القائمة وأدخل رقم هاتفك.'},
+                {q:'كيف يتم التسليم؟',a:'يتواصل معك فريقنا عبر واتساب لتحديد موعد التسليم.'},
+                {q:'ما طرق الدفع المتاحة؟',a:'الدفع نقداً عند الاستلام.'},
+                {q:'هل يمكن الإلغاء بعد الطلب؟',a:'يمكن الإلغاء قبل تأكيد الطلب عبر التواصل معنا.'},
+              ].map((item,i)=>(
+                <div key={i} style={{marginBottom:14,background:'#F7F3EF',borderRadius:12,padding:14}}>
+                  <div style={{fontWeight:800,fontSize:14,color:'#1A0A00',marginBottom:6}}>❓ {item.q}</div>
+                  <div style={{fontSize:13,color:'#475569',lineHeight:1.6}}>💡 {item.a}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WHATSAPP - بارز مثل Esmmar */}}
+      <div className="wa-float">
+        <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
+          <i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i>
+        </button>
+        <div className="wa-label">تواصل معنا</div>
+      </div>
 
       {/* SCROLL TOP */}
-      {showScr && <button className="scrtop" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}><i className="fas fa-chevron-up"></i></button>}
+      {showScr&&(
+        <button className="scrtop" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})}>
+          <i className="fas fa-chevron-up"></i>
+        </button>
+      )}
 
       {/* MODALS */}
-      {modal==='login' && <LoginModal onClose={()=>setModal(null)} onLogin={handleLogin} onRegister={()=>setModal('register')}/>}
-      {modal==='register' && <RegisterModal onClose={()=>setModal(null)} onSuccess={()=>{setModal('login');showToast('✅ سجّل الآن للدخول')}}/>}
-      {modal==='cart' && <CartModal cart={cart} setCart={setCart} onClose={()=>setModal(null)} onCheckout={(total)=>{setCheckoutTotal(total);setModal('checkout')}} freeShip={FREESHIP} currency={CUR} promos={promos}/>}
-      {modal==='checkout' && <CheckoutModal cart={cart} finalTotal={checkoutTotal||cartTotal} onClose={()=>setModal('cart')} onSuccess={id=>{setCart([]);setThankId(id);setModal('thankyou')}} currency={CUR} waNum={WA} storeName={SNAME}/>}
-      {modal==='detail' && <DetailModal product={detailProd} wishlist={wishlist} onClose={()=>setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish} currency={CUR} products={products} sevenAgo={sevenAgo} onShowProduct={p=>setDetailProd(p)} promos={promos}/>}
-      {modal==='tracking' && <TrackingModal onClose={()=>setModal(null)} currency={CUR}/>}
-      {modal==='contact' && <ContactModal settings={settings} onClose={()=>setModal(null)}/>}
-      {modal==='thankyou' && <ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null);setTab('home')}}/>}
-      {modal==='myorders' && <MyOrdersModal onClose={()=>setModal(null)} currency={CUR} customerId={customer?.phone||customer?.email}/>}
-      {modal==='quick' && <QuickOrderModal products={allP} onClose={()=>setModal(null)} addToCart={addToCart} currency={CUR}/>}
-      {modal==='faq' && <FAQModal onClose={()=>setModal(null)}/>}
-      {modal==='terms' && <TermsModal onClose={()=>setModal(null)}/>}
-      {modal==='return' && <ReturnPolicyModal onClose={()=>setModal(null)}/>}
+      {modal==='login'&&<LoginModal onClose={()=>setModal(null)} onLogin={handleLogin} onRegister={()=>setModal('register')}/>}
+      {modal==='register'&&<RegisterModal onClose={()=>setModal(null)} onSuccess={()=>{setModal('login');showToast('✅ سجّل الآن للدخول')}}/>}
+      {modal==='cart'&&<CartModal cart={cart} setCart={setCart} onClose={()=>setModal(null)}
+        onCheckout={(total,disc)=>{setCheckoutTotal(total);setModal('checkout')}}
+        freeShip={FREESHIP} currency={CUR} promos={promos}/>}
+      {modal==='checkout'&&<CheckoutModal cart={cart} finalTotal={checkoutTotal||cartTotal}
+        onClose={()=>setModal('cart')}
+        onSuccess={id=>{setCart([]);setThankId(id);setModal('thankyou')}}
+        currency={CUR} waNum={WA} storeName={SNAME}/>}
+      {modal==='detail'&&<DetailModal product={detailProd} wishlist={wishlist}
+        onClose={()=>setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish}
+        currency={CUR} products={products} sevenAgo={sevenAgo}
+        onShowProduct={p=>setDetailProd(p)} promos={promos}/>}
+      {modal==='tracking'&&<TrackingModal onClose={()=>setModal(null)} currency={CUR}/>}
+      {modal==='contact'&&<ContactModal settings={settings} onClose={()=>setModal(null)}/>}
+      {modal==='thankyou'&&<ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null);setTab('home')}}/>}
     </div>
   )
 }
