@@ -793,14 +793,6 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
             <i className="fas fa-cart-plus"></i>
             {(p.stock||0)===0?'نفذ من المخزون':'أضف للسلة'}
           </button>
-          <button onClick={()=>{
-            const msg=`🛍️ ${p.name}%0A💰 ${p.price} ${currency}/كرتون%0A📦 ${p.units||12} قطعة/كرتون%0A🔗 ${window.location.origin}`
-            window.open(`https://wa.me/?text=${msg}`,'_blank')
-          }} style={{width:'100%',padding:'10px',borderRadius:30,border:'2px solid #25D366',
-            background:'none',color:'#25D366',fontWeight:800,cursor:'pointer',fontFamily:'inherit',
-            display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:6,fontSize:14}}>
-            <i className="fab fa-whatsapp"></i> شارك هذا المنتج
-          </button>
 
           {related.length>0&&(
             <div style={{marginTop:16}}>
@@ -818,146 +810,11 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
               </div>
             </div>
           )}
-          {/* تقييمات المنتج */}
-          <ReviewsSection productId={p.id} currency={currency}/>
         </div>
       </div>
     </div>
   )
 }
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ⭐ نظام تقييمات المنتجات
-━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-function ReviewsSection({ productId, currency }) {
-  const [reviews, setReviews] = useState([])
-  const [rating,  setRating]  = useState(0)
-  const [comment, setComment] = useState('')
-  const [hover,   setHover]   = useState(0)
-  const [saving,  setSaving]  = useState(false)
-  const [loaded,  setLoaded]  = useState(false)
-
-  useEffect(()=>{
-    supabase.from('reviews').select('*').eq('product_id', productId)
-      .order('id',{ascending:false}).limit(20)
-      .then(({data})=>{ setReviews(data||[]); setLoaded(true) })
-  },[productId])
-
-  const avgR = reviews.length ? (reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length).toFixed(1) : 0
-  const cust = (() => { try{ return JSON.parse(localStorage.getItem('nq_customer')||'null') }catch{ return null } })()
-
-  const toast = (msg,err=false) => {
-    const d=document.createElement('div'); d.className='toast'+(err?' err':'')
-    d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),3000)
-  }
-
-  const submit = async () => {
-    if(!cust){ toast('سجّل دخولك لإضافة تقييم',true); return }
-    if(!rating){ toast('اختر عدد النجوم أولاً',true); return }
-    setSaving(true)
-    await supabase.from('reviews').insert({
-      id: Date.now(), product_id: productId,
-      customer_id: cust.id, customer_name: cust.name,
-      rating, comment: comment.trim(),
-      created_at: new Date().toISOString()
-    }).catch(()=>{})
-    const {data} = await supabase.from('reviews').select('*').eq('product_id',productId).order('id',{ascending:false}).limit(20)
-    setReviews(data||[]); setRating(0); setComment(''); setSaving(false)
-    toast('✅ تم إضافة تقييمك')
-  }
-
-  if (!loaded) return null
-
-  return (
-    <div style={{borderTop:'1px solid #F1ECE8',padding:'16px 18px 0'}}>
-      {/* ملخص التقييم */}
-      {reviews.length>0&&(
-        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,
-          background:'#FFF7ED',borderRadius:12,padding:14}}>
-          <div style={{textAlign:'center',flexShrink:0}}>
-            <div style={{fontSize:36,fontWeight:900,color:'#FF6B35',lineHeight:1}}>{avgR}</div>
-            <div style={{display:'flex',justifyContent:'center',gap:1,margin:'4px 0'}}>
-              {[1,2,3,4,5].map(n=><span key={n} style={{color:n<=Math.round(avgR)?'#FF6B35':'#E2E8F0',fontSize:14}}>★</span>)}
-            </div>
-            <div style={{fontSize:11,color:'#7A6A5A'}}>{reviews.length} تقييم</div>
-          </div>
-          <div style={{flex:1}}>
-            {[5,4,3,2,1].map(n=>{
-              const cnt=reviews.filter(r=>r.rating===n).length
-              const pct=reviews.length?Math.round(cnt/reviews.length*100):0
-              return (
-                <div key={n} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
-                  <span style={{fontSize:11,color:'#7A6A5A',width:8,textAlign:'center'}}>{n}</span>
-                  <span style={{color:'#FF6B35',fontSize:11}}>★</span>
-                  <div style={{flex:1,background:'#E8DDD5',borderRadius:30,height:5,overflow:'hidden'}}>
-                    <div style={{width:`${pct}%`,height:'100%',background:'#FF6B35',borderRadius:30,transition:'width .5s'}}/>
-                  </div>
-                  <span style={{fontSize:10,color:'#94a3b8',width:18,textAlign:'left'}}>{cnt}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      <h3 style={{fontWeight:800,marginBottom:12,fontSize:15}}>⭐ التقييمات ({reviews.length})</h3>
-      {/* نموذج إضافة تقييم */}
-      {cust ? (
-        <div style={{background:'#F7F3EF',borderRadius:12,padding:14,marginBottom:14}}>
-          <p style={{fontSize:13,fontWeight:700,marginBottom:8,color:'#1A0A00'}}>🌟 أضف تقييمك</p>
-          <div style={{display:'flex',gap:6,marginBottom:10}}>
-            {[1,2,3,4,5].map(n=>(
-              <span key={n} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)}
-                onClick={()=>setRating(n)}
-                style={{fontSize:30,cursor:'pointer',transition:'transform .15s',
-                  color:(hover||rating)>=n?'#FF6B35':'#E2E8F0',
-                  transform:(hover||rating)>=n?'scale(1.15)':'scale(1)'}}>★</span>
-            ))}
-            {rating>0&&<span style={{fontSize:12,color:'#7A6A5A',marginRight:4,alignSelf:'center'}}>
-              {['','سيء','مقبول','جيد','جيد جداً','ممتاز'][rating]}
-            </span>}
-          </div>
-          <textarea value={comment} onChange={e=>setComment(e.target.value)}
-            placeholder="اكتب تعليقك (اختياري)..." maxLength={300} rows={2}
-            style={{border:'1.5px solid #E8DDD5',borderRadius:10,padding:'9px 12px',
-              width:'100%',fontFamily:'inherit',fontSize:13,outline:'none',
-              resize:'none',background:'white',boxSizing:'border-box',marginBottom:8}}
-            onFocus={e=>e.target.style.borderColor='#FF6B35'}
-            onBlur={e=>e.target.style.borderColor='#E8DDD5'}/>
-          <button className="abtn" onClick={submit} disabled={saving||!rating}
-            style={{marginBottom:0,padding:'10px',fontSize:13,opacity:!rating?0.5:1}}>
-            {saving?'⏳ جاري الإرسال...':'✅ إرسال التقييم'}
-          </button>
-        </div>
-      ) : (
-        <p style={{fontSize:13,color:'#7A6A5A',marginBottom:12,textAlign:'center',padding:'8px',
-          background:'#F7F3EF',borderRadius:10}}>
-          🔐 <strong>سجّل دخولك</strong> لإضافة تقييم
-        </p>
-      )}
-      {/* قائمة التقييمات */}
-      {reviews.map(r=>(
-        <div key={r.id} style={{borderBottom:'1px solid #F1ECE8',padding:'12px 0'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
-            <div>
-              <strong style={{fontSize:13,color:'#1A0A00'}}>{r.customer_name}</strong>
-              <div style={{display:'flex',gap:1,marginTop:2}}>
-                {[1,2,3,4,5].map(n=><span key={n} style={{color:n<=r.rating?'#FF6B35':'#E2E8F0',fontSize:13}}>★</span>)}
-              </div>
-            </div>
-            <span style={{fontSize:11,color:'#94a3b8'}}>{new Date(r.created_at).toLocaleDateString('ar-DZ')}</span>
-          </div>
-          {r.comment&&<p style={{fontSize:13,color:'#475569',margin:0,lineHeight:1.5}}>{r.comment}</p>}
-        </div>
-      ))}
-      {reviews.length===0&&loaded&&(
-        <p style={{textAlign:'center',color:'#94a3b8',fontSize:13,padding:'20px 0'}}>
-          لا توجد تقييمات بعد — كن أول من يقيّم! ⭐
-        </p>
-      )}
-    </div>
-  )
-}
-
 
 function ThankyouModal({ orderId, storeName, onClose }) {
   return (
@@ -1719,25 +1576,6 @@ export default function Store() {
       </div>
     )
   }
-
-
-  // وضع الصيانة
-  if (settings['maintenance_mode']==='1') return (
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',
-      background:'linear-gradient(135deg,#1E293B 0%,#0F172A 100%)',flexDirection:'column',
-      gap:20,padding:24,textAlign:'center',direction:'rtl'}}>
-      <div style={{fontSize:72,animation:'pulse 2s infinite'}}>🔧</div>
-      <h1 style={{color:'white',fontSize:28,fontWeight:900}}>نقاء</h1>
-      <p style={{color:'rgba(255,255,255,.8)',fontSize:16,maxWidth:340,lineHeight:1.8}}>
-        {settings['maintenance_msg']||'المتجر في طور التحديث، سنعود قريباً 🔧'}
-      </p>
-      <a href={`https://wa.me/${settings['whatsapp_number']||'213696668065'}`} target="_blank"
-        style={{background:'#25D366',color:'white',padding:'14px 32px',borderRadius:30,
-          textDecoration:'none',fontWeight:800,fontSize:16,display:'flex',alignItems:'center',gap:8}}>
-        <i className="fab fa-whatsapp"></i> تواصل معنا
-      </a>
-    </div>
-  )
 
   const tabs={home:<Home/>,search:<SearchTab/>,cats:<CatsTab/>,wish:<WishTab/>,promos:<PromosTab/>,quick:<QuickOrderTab/>}
 
