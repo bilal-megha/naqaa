@@ -1173,7 +1173,7 @@ function Inventory() {
                   <td style={S.td}><span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: (p.stock || 0) < 5 ? '#fee2e2' : (p.stock || 0) < 20 ? '#fef9c3' : '#d1fae5', color: (p.stock || 0) < 5 ? '#dc2626' : (p.stock || 0) < 20 ? '#b45309' : '#059669' }}>{p.stock || 0}</span></td>
                   <td style={S.td}>{(p.stock || 0) < 5 ? '⚠️ منخفض' : (p.stock || 0) < 20 ? '⚡ متوسط' : '✅ جيد'}</td>
                   <td style={S.td}>{((p.stock || 0) * Number(p.price)).toFixed(0)} {CUR}</td>
-                <tr>
+                </tr>
               ))}
             </tbody>
           </table>
