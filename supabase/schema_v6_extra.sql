@@ -26,3 +26,8 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 CREATE POLICY IF NOT EXISTS "allow all reviews" ON reviews FOR ALL USING (true) WITH CHECK (true);
+
+-- ── min_stock column ──
+ALTER TABLE products ADD COLUMN IF NOT EXISTS min_stock integer DEFAULT 5;
+-- ── permissions column for employees ──
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS permissions text DEFAULT '[]';
