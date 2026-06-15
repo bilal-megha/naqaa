@@ -791,6 +791,9 @@ function Suppliers() {
 /* ══════════════════════════════════════════
    👥 العملاء
 ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   👥 العملاء (مصحح)
+══════════════════════════════════════════ */
 function Customers() {
   const [showToast, ToastUI] = useToast();
   const [askConfirm, ConfirmUI] = useConfirm()
@@ -841,16 +844,31 @@ function Customers() {
   const filtered = items.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search))
 
   return (
-    <div>{ToastUI}{ConfirmUI}
+    <div>
+      {ToastUI}
+      {ConfirmUI}
       <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20 }}>👥 العملاء</h1>
+      
+      {/* بطاقات الرتب */}
       <div style={{ ...S.card, background: 'linear-gradient(135deg,#fffbeb,#fef3c7)', border: '1px solid #fcd34d' }}>
         <h3 style={{ fontWeight: 800, marginBottom: 12, color: '#92400e' }}>🏅 إعدادات تصنيف العملاء</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #64748B' }}><div style={{ fontWeight: 800, color: '#64748B' }}>🥉 M1 عادي</div><div style={{ fontSize: 13 }}>من 0 دج</div></div>
-          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #3b82f6' }}><div style={{ fontWeight: 800, color: '#3b82f6' }}>🥈 M2 مميز</div><div style={{ fontSize: 13 }}>من {tierSettings.m2} دج</div></div>
-          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #f59e0b' }}><div style={{ fontWeight: 800, color: '#f59e0b' }}>🥇 M3 VIP</div><div style={{ fontSize: 13 }}>من {tierSettings.m3} دج</div></div>
+          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #64748B' }}>
+            <div style={{ fontWeight: 800, color: '#64748B' }}>🥉 M1 عادي</div>
+            <div style={{ fontSize: 13 }}>من 0 دج</div>
+          </div>
+          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #3b82f6' }}>
+            <div style={{ fontWeight: 800, color: '#3b82f6' }}>🥈 M2 مميز</div>
+            <div style={{ fontSize: 13 }}>من {tierSettings.m2} دج</div>
+          </div>
+          <div style={{ background: 'white', borderRadius: 12, padding: 12, textAlign: 'center', border: '2px solid #f59e0b' }}>
+            <div style={{ fontWeight: 800, color: '#f59e0b' }}>🥇 M3 VIP</div>
+            <div style={{ fontSize: 13 }}>من {tierSettings.m3} دج</div>
+          </div>
         </div>
       </div>
+
+      {/* نموذج إضافة/تعديل */}
       <div style={S.card}>
         <h3 style={{ fontWeight: 800, marginBottom: 14, color: CLR.accent }}>{form.id ? '✏️ تعديل' : '➕ إضافة'} عميل</h3>
         <div style={S.grid2}>
@@ -864,13 +882,16 @@ function Customers() {
               <option value="M1">🥉 M1 — عميل عادي</option>
               <option value="M2">🥈 M2 — عميل مميز</option>
               <option value="M3">🥇 M3 — عميل VIP</option>
-            </select></div>
+            </select>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
           <button style={S.btn} onClick={save} disabled={saving}>{saving ? '⏳...' : '💾 حفظ'}</button>
           <button style={S.btnGray} onClick={() => setForm({ id: '', name: '', email: '', phone: '', address: '', password: '', tier: 'M1' })}>✖</button>
         </div>
       </div>
+
+      {/* جدول العملاء - الجزء المصحح */}
       <div style={S.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <h3 style={{ fontWeight: 800 }}>العملاء ({filtered.length})</h3>
@@ -886,21 +907,45 @@ function Customers() {
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ background: CLR.bg }}>
-              <th style={S.th}>الاسم</th><th style={S.th}>الهاتف</th><th style={S.th}>الرتبة</th><th style={S.th}>المشتريات</th><th style={S.th}>إجراءات</th>
-            </table></thead>
-            <tbody>{filtered.filter(c => !tierFilter || tierFilter === 'all' || (c.tier || 'M1') === tierFilter).map((c, i) => (
-              <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : CLR.bg, cursor: 'pointer' }} onClick={() => edit(c)}>
-                <td style={{ ...S.td, fontWeight: 700 }}>{c.name} {c.email && <div style={{ fontSize: 11, color: CLR.textSm }}>{c.email}</div>}</td>
-                <td style={S.td}>{c.phone || '—'}</td>
-                <td style={S.td}><span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#F1F5F9', color: '#475569' }}>{tierLabel(c.tier || 'M1')}</span></td>
-                <td style={{ ...S.td, fontWeight: 700, color: CLR.accent }}>{Number(c.total_purchases || 0).toFixed(0)} {CUR}</td>
-                <td style={S.td} onClick={e => e.stopPropagation()}>
-                  <button style={{ ...S.btnSm, background: '#DBEAFE', color: '#1D4ED8' }} onClick={() => edit(c)}>✏️</button>
-                  <button style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626', marginRight: 5 }} onClick={() => del(c.id)}>🗑️</button>
-                </td>
+            <thead>
+              <tr style={{ background: CLR.bg }}>
+                <th style={S.th}>الاسم</th>
+                <th style={S.th}>الهاتف</th>
+                <th style={S.th}>الرتبة</th>
+                <th style={S.th}>المشتريات</th>
+                <th style={S.th}>إجراءات</th>
               </tr>
-            ))}</tbody>
+            </thead>
+            <tbody>
+              {filtered.filter(c => tierFilter === 'all' || (c.tier || 'M1') === tierFilter).map((c, i) => {
+                return (
+                  <tr key={c.id} style={{ background: i % 2 === 0 ? 'white' : CLR.bg, cursor: 'pointer' }} onClick={() => edit(c)}>
+                    <td style={{ ...S.td, fontWeight: 700 }}>
+                      {c.name}
+                      {c.email && <div style={{ fontSize: 11, color: CLR.textSm }}>{c.email}</div>}
+                    </td>
+                    <td style={S.td}>{c.phone || '—'}</td>
+                    <td style={S.td}>
+                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#F1F5F9', color: '#475569' }}>
+                        {tierLabel(c.tier || 'M1')}
+                      </span>
+                    </td>
+                    <td style={{ ...S.td, fontWeight: 700, color: CLR.accent }}>{Number(c.total_purchases || 0).toFixed(0)} {CUR}</td>
+                    <td style={S.td} onClick={e => e.stopPropagation()}>
+                      <button style={{ ...S.btnSm, background: '#DBEAFE', color: '#1D4ED8' }} onClick={() => edit(c)}>✏️</button>
+                      <button style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626', marginRight: 5 }} onClick={() => del(c.id)}>🗑️</button>
+                    </td>
+                  </tr>
+                )
+              })}
+              {filtered.filter(c => tierFilter === 'all' || (c.tier || 'M1') === tierFilter).length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: 36, color: CLR.textSm }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>لا يوجد عملاء
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
       </div>
