@@ -2015,7 +2015,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* WHATSAPP - بارز مثل Esmmar */}
+      {/* WHATSAPP - بارز مثل Esmmar */}}
       <div className="wa-float">
         <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
           <i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i>
