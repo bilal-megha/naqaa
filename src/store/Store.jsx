@@ -2013,7 +2013,7 @@ export default function Store() {
             </div>
           </div>
         </div>
-      )}
+      )
 
       {/* WHATSAPP - بارز مثل Esmmar */}
       <div className="wa-float">
