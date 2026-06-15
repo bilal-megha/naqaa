@@ -13,21 +13,14 @@ export default function Router() {
   useEffect(() => {
     loadAll()
       .then(ok => {
-        if (ok) setReady(true)
-        else setError('تعذّر الاتصال بقاعدة البيانات. تحقق من إعدادات .env')
+        // نُظهر المتجر دائماً حتى لو فشل تحميل بعض الجداول
+        setReady(true)
+        if (!ok) console.warn('تحذير: فشل تحميل بعض البيانات من Supabase')
+      })
+      .catch(() => {
+        setReady(true)
       })
   }, [])
-
-  if (error) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#fee2e2', flexDirection:'column', gap:16, padding:24 }}>
-      <i className="fas fa-exclamation-triangle" style={{ fontSize:48, color:'#dc2626' }}></i>
-      <h2 style={{ color:'#dc2626', fontSize:20 }}>{error}</h2>
-      <p style={{ color:'#475569', fontSize:14, textAlign:'center' }}>
-        تأكد من وجود ملف <code>.env</code> يحتوي على<br/>
-        <code>VITE_SUPABASE_URL</code> و <code>VITE_SUPABASE_ANON_KEY</code>
-      </p>
-    </div>
-  )
 
   if (!ready) return (
     <div className="loading-screen">
