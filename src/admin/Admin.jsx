@@ -1282,153 +1282,342 @@ function Customers() {
 /* ══════════════════════════════════════════
    👔 الموظفون
 ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   👔 الموظفون (نسخة مصححة)
+══════════════════════════════════════════ */
 const ALL_PERMISSIONS = [
-  {id:'dashboard',    label:'📊 لوحة القيادة'},
-  {id:'products',     label:'📦 المنتجات'},
-  {id:'categories',   label:'📂 الفئات'},
-  {id:'brands',       label:'🏷️ العلامات التجارية'},
-  {id:'suppliers',    label:'🏭 الموردون'},
-  {id:'customers',    label:'👥 العملاء'},
-  {id:'coupons',      label:'🎟️ الكوبونات'},
-  {id:'purchases',    label:'🛒 المشتريات'},
-  {id:'inventory',    label:'🗂️ المخزون'},
-  {id:'orders',       label:'📋 الطلبيات'},
-  {id:'promotions',   label:'🎯 العروض'},
-  {id:'notifications',label:'🔔 الإشعارات'},
-  {id:'reports',      label:'📈 التقارير'},
-  {id:'expenses',     label:'💸 المصاريف'},
-  {id:'activityLog',  label:'📋 سجل النشاطات'},
-  {id:'storeManager', label:'🎨 إدارة المتجر'},
+  { id: 'dashboard', label: '📊 لوحة القيادة' },
+  { id: 'products', label: '📦 المنتجات' },
+  { id: 'categories', label: '📂 الفئات' },
+  { id: 'brands', label: '🏷️ العلامات التجارية' },
+  { id: 'suppliers', label: '🏭 الموردون' },
+  { id: 'customers', label: '👥 العملاء' },
+  { id: 'coupons', label: '🎟️ الكوبونات' },
+  { id: 'purchases', label: '🛒 المشتريات' },
+  { id: 'inventory', label: '🗂️ المخزون' },
+  { id: 'orders', label: '📋 الطلبيات' },
+  { id: 'promotions', label: '🎯 العروض' },
+  { id: 'notifications', label: '🔔 الإشعارات' },
+  { id: 'reports', label: '📈 التقارير' },
+  { id: 'expenses', label: '💸 المصاريف' },
+  { id: 'activityLog', label: '📋 سجل النشاطات' },
+  { id: 'storeManager', label: '🎨 إدارة المتجر' },
 ]
 
 function Employees() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [saving,setSaving]=useState(false)
-  const [editItem,setEditItem]=useState(null)
-  const [form,setForm]=useState({name:'',username:'',password:'',email:'',permissions:[]})
-  const load=async()=>{ const {data}=await supabase.from('employees').select('id,name,username,email,role').order('name'); setItems(data||[]) }
-  useEffect(()=>{ load() },[])
-  const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
-  // ✅ الدالة المصححة - مع JSON.stringify
-const add = async () => {
-  if (!form.name || !form.username || !form.password) {
-    showToast('الاسم والمستخدم والكلمة مطلوبة', 'error')
-    return
-  }
-  setSaving(true)
-  
-  // ✅ تحويل الصلاحيات إلى JSON string
-  const permissionsJson = JSON.stringify(form.permissions || [])
-  
-  if (editItem) {
-    await supabase.from('employees').update({
-      name: form.name,
-      username: form.username,
-      email: form.email,
-      permissions: permissionsJson  // ✅ مصحح
-    }).eq('id', editItem)
-    showToast('✅ تم التعديل')
-    setEditItem(null)
-  } else {
-    await supabase.from('employees').insert({
-      id: Date.now(),
-      name: form.name,
-      username: form.username,
-      password: hashPwd(form.password),
-      email: form.email,
-      role: 'staff',
-      permissions: permissionsJson  // ✅ مصحح
+  const [showToast, ToastUI] = useToast()
+  const [askConfirm, ConfirmUI] = useConfirm()
+  const [items, setItems] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [editItem, setEditItem] = useState(null)
+  const [form, setForm] = useState({ name: '', username: '', password: '', email: '', permissions: [] })
+
+  const load = async () => {
+    const { data } = await supabase.from('employees').select('id,name,username,email,role,permissions').order('name')
+    // ✅ تحويل permissions من JSON string إلى مصفوفة عند التحميل
+    const formatted = (data || []).map(emp => {
+      let perms = []
+      try {
+        if (typeof emp.permissions === 'string') {
+          perms = JSON.parse(emp.permissions || '[]')
+        } else if (Array.isArray(emp.permissions)) {
+          perms = emp.permissions
+        }
+      } catch (err) {
+        console.error('❌ خطأ في تحويل الصلاحيات:', err)
+        perms = []
+      }
+      return { ...emp, permissions: perms }
     })
-    showToast('✅ تم إضافة الموظف')
+    setItems(formatted)
   }
-  setForm({ name: '', username: '', password: '', email: '', permissions: [] })
-  await load()
-  setSaving(false)
-}
-  const del=async id=>{if(!await askConfirm('حذف هذا الموظف؟'))return;await supabase.from('employees').delete().eq('id',id);showToast('تم الحذف');await load()}
+
+  useEffect(() => { load() }, [])
+
+  const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // ✅ دالة حفظ الموظف (المصححة)
+  const add = async () => {
+    if (!form.name || !form.username || !form.password) {
+      showToast('الاسم والمستخدم والكلمة مطلوبة', 'error')
+      return
+    }
+    setSaving(true)
+
+    // ✅ تحويل الصلاحيات إلى JSON string
+    const permissionsJson = JSON.stringify(form.permissions || [])
+
+    if (editItem) {
+      const { error } = await supabase.from('employees').update({
+        name: form.name,
+        username: form.username,
+        email: form.email,
+        permissions: permissionsJson  // ✅ مصحح
+      }).eq('id', editItem)
+      
+      if (error) {
+        showToast('خطأ: ' + error.message, 'error')
+        setSaving(false)
+        return
+      }
+      showToast('✅ تم التعديل')
+      setEditItem(null)
+    } else {
+      const { error } = await supabase.from('employees').insert({
+        id: Date.now(),
+        name: form.name,
+        username: form.username,
+        password: hashPwd(form.password),
+        email: form.email,
+        role: 'staff',
+        permissions: permissionsJson  // ✅ مصحح
+      })
+      
+      if (error) {
+        showToast('خطأ: ' + error.message, 'error')
+        setSaving(false)
+        return
+      }
+      showToast('✅ تم إضافة الموظف')
+    }
+
+    setForm({ name: '', username: '', password: '', email: '', permissions: [] })
+    await load()
+    setSaving(false)
+  }
+
+  // ✅ دالة تعديل الموظف (تحميل البيانات)
+  const edit = (emp) => {
+    // ✅ تحويل permissions من JSON string إلى مصفوفة
+    let perms = []
+    try {
+      if (typeof emp.permissions === 'string') {
+        perms = JSON.parse(emp.permissions || '[]')
+      } else if (Array.isArray(emp.permissions)) {
+        perms = emp.permissions
+      }
+    } catch (err) {
+      console.error('❌ خطأ في تحويل الصلاحيات:', err)
+      perms = []
+    }
+    
+    setEditItem(emp.id)
+    setForm({
+      name: emp.name,
+      username: emp.username,
+      password: '',
+      email: emp.email || '',
+      permissions: perms
+    })
+  }
+
+  // ✅ دالة حذف الموظف
+  const del = async (id) => {
+    if (!await askConfirm('حذف هذا الموظف؟')) return
+    const { error } = await supabase.from('employees').delete().eq('id', id)
+    if (error) {
+      showToast('خطأ: ' + error.message, 'error')
+      return
+    }
+    showToast('تم الحذف')
+    await load()
+  }
+
+  // ✅ دالة إلغاء التعديل
+  const cancelEdit = () => {
+    setEditItem(null)
+    setForm({ name: '', username: '', password: '', email: '', permissions: [] })
+  }
+
   return (
-    <div>{ToastUI}{ConfirmUI}
-      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>👔 الموظفون</h1>
-      {editItem&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13,fontWeight:600,color:'#C2410C'}}>⚠️ تعديل الموظف المحدد</div>}
-      <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:CLR.accent}}>{editItem?'✏️ تعديل موظف':'➕ إضافة موظف جديد'}</h3>
-        <div style={S.grid2}>
-          <div><label style={S.label}>الاسم الكامل *</label><input style={S.input} value={form.name} onChange={F('name')} placeholder="محمد علي" /></div>
-          <div><label style={S.label}>اسم المستخدم *</label><input style={S.input} value={form.username} onChange={F('username')} placeholder="mohammed.ali" /></div>
-          <div><label style={S.label}>كلمة المرور {editItem?'(اترك فارغاً للإبقاء)':' *'}</label><input style={S.input} type="password" value={form.password} onChange={F('password')} placeholder="••••••••" /></div>
-          <div><label style={S.label}>البريد الإلكتروني</label><input style={S.input} value={form.email} onChange={F('email')} placeholder="email@example.com" /></div>
+    <div>
+      {ToastUI}{ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        👔 الموظفون
+      </h1>
+      
+      {editItem && (
+        <div style={{
+          background: '#FFF7ED',
+          border: '1px solid #FED7AA',
+          borderRadius: 8,
+          padding: '10px 14px',
+          marginBottom: 14,
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#C2410C'
+        }}>
+          ⚠️ تعديل الموظف المحدد
         </div>
+      )}
+
+      <div style={S.card}>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: CLR.accent }}>
+          {editItem ? '✏️ تعديل موظف' : '➕ إضافة موظف جديد'}
+        </h3>
+        <div style={S.grid2}>
+          <div>
+            <label style={S.label}>الاسم الكامل *</label>
+            <input style={S.input} value={form.name} onChange={F('name')} placeholder="محمد علي" />
+          </div>
+          <div>
+            <label style={S.label}>اسم المستخدم *</label>
+            <input style={S.input} value={form.username} onChange={F('username')} placeholder="mohammed.ali" />
+          </div>
+          <div>
+            <label style={S.label}>كلمة المرور {editItem ? '(اترك فارغاً للإبقاء)' : ' *'}</label>
+            <input style={S.input} type="password" value={form.password} onChange={F('password')} placeholder="••••••••" />
+          </div>
+          <div>
+            <label style={S.label}>البريد الإلكتروني</label>
+            <input style={S.input} value={form.email} onChange={F('email')} placeholder="email@example.com" />
+          </div>
+        </div>
+
         {/* الصلاحيات */}
-        <div style={{marginTop:14}}>
-          <label style={{...S.label,marginBottom:8}}>🔑 الصفحات المسموح بها للموظف</label>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(165px,1fr))',gap:5,border:'1px solid #E2E8F0',borderRadius:8,padding:10,background:'#F8FAFC',maxHeight:220,overflowY:'auto'}}>
-            {ALL_PERMISSIONS.map(p=>(
-              <label key={p.id} style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'5px 8px',borderRadius:6,fontSize:12,
-                background:(form.permissions||[]).includes(p.id)?'#FFF7ED':'white',
-                border:`1px solid ${(form.permissions||[]).includes(p.id)?'#F97316':'#E2E8F0'}`,transition:'.15s'}}>
-                <input type="checkbox" checked={(form.permissions||[]).includes(p.id)}
-                  onChange={e=>{
-                    const np=e.target.checked?[...(form.permissions||[]),p.id]:(form.permissions||[]).filter(x=>x!==p.id)
-                    setForm(f=>({...f,permissions:np}))
-                  }} style={{accentColor:'#F97316'}}/>
-                <span style={{fontWeight:600}}>{p.label}</span>
+        <div style={{ marginTop: 14 }}>
+          <label style={{ ...S.label, marginBottom: 8 }}>
+            🔑 الصفحات المسموح بها للموظف
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))',
+            gap: 5,
+            border: '1px solid #E2E8F0',
+            borderRadius: 8,
+            padding: 10,
+            background: '#F8FAFC',
+            maxHeight: 220,
+            overflowY: 'auto'
+          }}>
+            {ALL_PERMISSIONS.map(p => (
+              <label key={p.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                padding: '5px 8px',
+                borderRadius: 6,
+                fontSize: 12,
+                background: (form.permissions || []).includes(p.id) ? '#FFF7ED' : 'white',
+                border: `1px solid ${(form.permissions || []).includes(p.id) ? '#F97316' : '#E2E8F0'}`,
+                transition: '.15s'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={(form.permissions || []).includes(p.id)}
+                  onChange={e => {
+                    const np = e.target.checked
+                      ? [...(form.permissions || []), p.id]
+                      : (form.permissions || []).filter(x => x !== p.id)
+                    setForm(f => ({ ...f, permissions: np }))
+                  }}
+                  style={{ accentColor: '#F97316' }}
+                />
+                <span style={{ fontWeight: 600 }}>{p.label}</span>
               </label>
             ))}
           </div>
-          <div style={{display:'flex',gap:6,marginTop:6}}>
-            <button style={{...S.btnSm,background:'#F97316',color:'white',fontSize:11}} onClick={()=>setForm(f=>({...f,permissions:ALL_PERMISSIONS.map(p=>p.id)}))}>✅ كل الصلاحيات</button>
-            <button style={{...S.btnSm,background:'#E2E8F0',color:'#475569',fontSize:11}} onClick={()=>setForm(f=>({...f,permissions:[]}))}>❌ إلغاء الكل</button>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button
+              style={{ ...S.btnSm, background: '#F97316', color: 'white', fontSize: 11 }}
+              onClick={() => setForm(f => ({ ...f, permissions: ALL_PERMISSIONS.map(p => p.id) }))}
+            >
+              ✅ كل الصلاحيات
+            </button>
+            <button
+              style={{ ...S.btnSm, background: '#E2E8F0', color: '#475569', fontSize: 11 }}
+              onClick={() => setForm(f => ({ ...f, permissions: [] }))}
+            >
+              ❌ إلغاء الكل
+            </button>
           </div>
         </div>
-        <div style={{display:'flex',gap:10,marginTop:16}}>
-          <button style={S.btn} onClick={add} disabled={saving}>{saving?'⏳...':`💾 ${editItem?'حفظ التعديل':'إضافة موظف'}`}</button>
-          {editItem&&<button style={S.btnGray} onClick={()=>{setEditItem(null);setForm({name:'',username:'',password:'',email:'',permissions:[]})}}>إلغاء</button>}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button style={S.btn} onClick={add} disabled={saving}>
+            {saving ? '⏳...' : `💾 ${editItem ? 'حفظ التعديل' : 'إضافة موظف'}`}
+          </button>
+          {editItem && (
+            <button style={S.btnGray} onClick={cancelEdit}>
+              إلغاء
+            </button>
+          )}
         </div>
       </div>
+
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,fontSize:15}}>قائمة الموظفين ({items.length})</h3>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{background:'#F1F5F9'}}>
-              <th style={S.th}>الاسم / المستخدم</th>
-              <th style={S.th}>الدور</th>
-              <th style={S.th}>الصلاحيات</th>
-              <th style={S.th}>إجراءات</th>
-            </tr></thead>
-            <tbody>{items.map((e,i)=>{
-              const perms=typeof e.permissions==='string'?JSON.parse(e.permissions||'[]'):(e.permissions||[])
-              return (
-              <tr key={e.id} style={{background:i%2===0?'white':'#F8FAFC',cursor:'pointer'}}
-                onClick={()=>{setEditItem(e.id);setForm({name:e.name,username:e.username,password:'',email:e.email||'',permissions:perms})}}>
-                <td style={{...S.td,fontWeight:700}}>
-                  <div>{e.name}</div>
-                  <div style={{fontSize:11,color:CLR.textSm}}>{e.username}</div>
-                </td>
-                <td style={S.td}>
-                  <span style={{padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,
-                    background:e.role==='admin'?'#FEE2E2':'#D1FAE5',
-                    color:e.role==='admin'?'#DC2626':'#059669'}}>
-                    {e.role==='admin'?'🔴 مدير':'🟢 موظف'}
-                  </span>
-                </td>
-                <td style={S.td}>
-                  <span style={{background:'#EFF6FF',color:'#1D4ED8',borderRadius:20,padding:'2px 9px',fontSize:11,fontWeight:700}}>
-                    {perms.length} / {ALL_PERMISSIONS.length} صفحة
-                  </span>
-                </td>
-                <td style={S.td} onClick={ev=>ev.stopPropagation()}>
-                  {e.role!=='admin'&&<button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={()=>del(e.id)}>🗑️</button>}
-                </td>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>
+          قائمة الموظفين ({items.length})
+        </h3>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F1F5F9' }}>
+                <th style={S.th}>الاسم / المستخدم</th>
+                <th style={S.th}>الدور</th>
+                <th style={S.th}>الصلاحيات</th>
+                <th style={S.th}>إجراءات</th>
               </tr>
-            )})}
-            {items.length===0&&<tr><td colSpan={4} style={{textAlign:'center',padding:28,color:CLR.textSm}}>
-              <div style={{fontSize:28,marginBottom:6}}>👔</div>لا توجد موظفين
-            </td></tr>}
+            </thead>
+            <tbody>
+              {items.map((e, i) => {
+                const perms = e.permissions || []
+                return (
+                  <tr
+                    key={e.id}
+                    style={{ background: i % 2 === 0 ? 'white' : '#F8FAFC', cursor: 'pointer' }}
+                    onClick={() => edit(e)}
+                  >
+                    <td style={{ ...S.td, fontWeight: 700 }}>
+                      <div>{e.name}</div>
+                      <div style={{ fontSize: 11, color: CLR.textSm }}>{e.username}</div>
+                    </td>
+                    <td style={S.td}>
+                      <span style={{
+                        padding: '3px 10px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: e.role === 'admin' ? '#FEE2E2' : '#D1FAE5',
+                        color: e.role === 'admin' ? '#DC2626' : '#059669'
+                      }}>
+                        {e.role === 'admin' ? '🔴 مدير' : '🟢 موظف'}
+                      </span>
+                    </td>
+                    <td style={S.td}>
+                      <span style={{
+                        background: '#EFF6FF',
+                        color: '#1D4ED8',
+                        borderRadius: 20,
+                        padding: '2px 9px',
+                        fontSize: 11,
+                        fontWeight: 700
+                      }}>
+                        {perms.length} / {ALL_PERMISSIONS.length} صفحة
+                      </span>
+                    </td>
+                    <td style={S.td} onClick={ev => ev.stopPropagation()}>
+                      {e.role !== 'admin' && (
+                        <button
+                          style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626' }}
+                          onClick={() => del(e.id)}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: 28, color: CLR.textSm }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>👔</div>
+                    لا توجد موظفين
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -1436,7 +1625,6 @@ const add = async () => {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
    🎟️ الكوبونات
 ══════════════════════════════════════════ */
