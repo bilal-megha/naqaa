@@ -1,29 +1,14 @@
 /**
- * Admin.jsx — نقاء v7 (النسخة الكاملة مع 15 ميزة جديدة)
+ * Admin.jsx — نقاء v7 (النسخة الكاملة المصححة)
  * 
- * 🆕 الميزات الجديدة:
- * 1. ✅ إشعارات فورية (Real-time Notifications)
- * 2. ✅ سلة مهملات (Recycle Bin) - استعادة العناصر المحذوفة خلال 30 يوم
- * 3. ✅ نسخ احتياطي تلقائي إلى Google Drive (محاكاة)
- * 4. ✅ تقرير PDF شهري
- * 5. ✅ إدارة الصلاحيات بالتفصيل (عرض/إضافة/تعديل/حذف)
- * 6. ✅ إشعارات واتساب للموظفين
- * 7. ✅ باركود للمنتجات
- * 8. ✅ إدارة الطلبات بالخريطة
- * 9. ✅ إحصائيات متقدمة مع رسوم بيانية
- * 10. ✅ إدارة العروض حسب المنطقة
- * 11. ✅ وضع مظلم (Dark Mode)
- * 12. ✅ إدارة العملاء بالمجموعات
- * 13. ✅ رسائل تذكير للعملاء
- * 14. ✅ إدارة الفروع
- * 15. ✅ تحليل المنافسين
- * 
- * ✅ مصادقة ثنائية (6789)
- * ✅ تصنيف العملاء M1/M2/M3
- * ✅ إدارة العروض الكاملة
- * ✅ استيراد/تصدير Excel
- * ✅ نسخ احتياطي
- * ✅ حقول رقمية فقط
+ * ✅ جميع الميزات السابقة + 15 ميزة جديدة
+ * ✅ إصلاح جميع المشاكل المذكورة
+ * ✅ نظام التنقيط (النقاط)
+ * ✅ تحديث المخزون تلقائياً
+ * ✅ سلة المهملات تعمل
+ * ✅ سجل النشاطات يعمل
+ * ✅ العروض تحفظ بشكل صحيح
+ * ✅ المنتجات تظهر في لوحة القيادة
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -37,6 +22,24 @@ const CUR             = 'دج'
 const WA_DEFAULT      = '213696668065'
 
 const hashPwd = p => CryptoJS.SHA256(p).toString()
+
+/* ─── دالة تسجيل النشاطات ─── */
+const logActivity = async (action, details) => {
+  try {
+    const { error } = await supabase.from('activity_log').insert({
+      id: Date.now(),
+      action: action,
+      details: details || '',
+      date: new Date().toLocaleString('ar-DZ'),
+      created_at: new Date().toISOString()
+    })
+    if (error) {
+      console.error('❌ خطأ في تسجيل النشاط:', error)
+    }
+  } catch (err) {
+    console.error('❌ خطأ في تسجيل النشاط:', err)
+  }
+}
 
 /* ─── حقل رقمي فقط ─── */
 const NumInput = ({ value, onChange, placeholder, style, step }) => (
@@ -219,14 +222,16 @@ function LoginScreen({ onLogin }) {
   const step1 = async () => {
     setErr(''); setLoading(true)
     if (email.trim()===ADMIN_EMAIL && hashPwd(pass)===ADMIN_PASS_HASH) {
-      setUserData({ name:'المدير', email:ADMIN_EMAIL, role:'admin', permissions:[] })
+      setUserData({ name:'المدير', email:ADMIN_EMAIL, role:'admin', permissions: {} })
       setStep(2); setLoading(false); return
     }
     const { data } = await supabase.from('employees').select('*')
       .eq('username', email.trim()).maybeSingle()
     if (data && data.password===hashPwd(pass)) {
-      let perms = []
-      try { perms = typeof data.permissions === 'string' ? JSON.parse(data.permissions || '[]') : (data.permissions || []) } catch { perms = [] }
+      let perms = {}
+      try { 
+        perms = typeof data.permissions === 'string' ? JSON.parse(data.permissions || '{}') : (data.permissions || {}) 
+      } catch { perms = {} }
       setUserData({ name:data.name, email:data.email, role:data.role, permissions: perms, id: data.id })
       setStep(2)
     } else { setErr('البريد أو كلمة المرور غير صحيحة') }
@@ -312,7 +317,7 @@ function LoginScreen({ onLogin }) {
 }
 
 /* ══════════════════════════════════════════
-   📊 لوحة القيادة — مع 15 ميزة جديدة
+   📊 لوحة القيادة — مع المنتجات منخفضة المخزون
 ══════════════════════════════════════════ */
 function Sparkline({ data, color }) {
   if(!data||data.length<2) return null
@@ -349,8 +354,7 @@ function StatCard({ label, value, icon, color, change, spark }) {
   )
 }
 
-// ✅ ميزة 9: إحصائيات متقدمة مع رسوم بيانية
-function AdvancedChart({ data, labels, title, type = 'bar' }) {
+function AdvancedChart({ data, labels, title }) {
   const max = Math.max(...data, 1)
   const chartH = 150
   
@@ -380,31 +384,28 @@ function AdvancedChart({ data, labels, title, type = 'bar' }) {
   )
 }
 
-// ✅ ميزة 1: إشعارات فورية
-function NotificationBadge({ notifications, onClear }) {
+function NotificationBadge({ notifications }) {
   if (!notifications || notifications.length === 0) return null
   return (
-    <div style={{ position: 'relative' }}>
-      <span style={{
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        background: CLR.danger,
-        color: 'white',
-        borderRadius: '50%',
-        width: 18,
-        height: 18,
-        fontSize: 10,
-        fontWeight: 800,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>{notifications.length}</span>
-    </div>
+    <span style={{
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      background: CLR.danger,
+      color: 'white',
+      borderRadius: '50%',
+      width: 18,
+      height: 18,
+      fontSize: 10,
+      fontWeight: 800,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>{notifications.length}</span>
   )
 }
 
-function Dashboard({ user }) {
+function Dashboard({ user, showToast }) {
   const [stats, setStats] = useState({ 
     products: 0, orders: 0, sales: 0, profit: 0, todaySales: 0,
     lastMonthSales: 0, thisMonthSales: 0, lowStockCount: 0, totalProducts: 0
@@ -415,12 +416,8 @@ function Dashboard({ user }) {
   const [monthData, setMonthData] = useState([0,0,0,0])
   const [chartMode, setChartMode] = useState('week')
   const [loading, setLoading] = useState(true)
-  
-  // ✅ ميزة 1: إشعارات فورية
   const [notifications, setNotifications] = useState([])
   const [showNotif, setShowNotif] = useState(false)
-
-  // ✅ ميزة 11: وضع مظلم
   const [darkMode, setDarkMode] = useState(localStorage.getItem('nq_dark_mode') === 'true')
 
   useEffect(() => {
@@ -432,7 +429,6 @@ function Dashboard({ user }) {
     localStorage.setItem('nq_dark_mode', darkMode)
   }, [darkMode])
 
-  // ✅ ميزة 1: الاستماع للإشعارات الفورية
   useEffect(() => {
     const channel = supabase
       .channel('admin-notifications')
@@ -440,20 +436,19 @@ function Dashboard({ user }) {
         payload => {
           const msg = `📋 طلبية جديدة من ${payload.new.customer_name || 'عميل'}`
           setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date().toLocaleTimeString() }, ...prev])
-          showToast(`🛎️ ${msg}`)
+          if (showToast) showToast(`🛎️ ${msg}`)
         }
       )
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' },
         payload => {
           const msg = `📦 منتج جديد: ${payload.new.name || 'بدون اسم'}`
           setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date().toLocaleTimeString() }, ...prev])
-          showToast(`🛎️ ${msg}`)
+          if (showToast) showToast(`🛎️ ${msg}`)
         }
       )
       .subscribe()
-
     return () => channel.unsubscribe()
-  }, [])
+  }, [showToast])
 
   const load = async () => {
     setLoading(true)
@@ -542,12 +537,9 @@ function Dashboard({ user }) {
   })
   const statusLabel={pending:'انتظار',confirmed:'مؤكد',shipping:'شحن',delivered:'تسليم',cancelled:'ملغي'}
 
-  // ✅ ميزة 11: وضع مظلم - أضف زر في الـ Header
-  const toggleDarkMode = () => setDarkMode(!darkMode)
-
   return (
     <div style={{ direction: 'rtl' }}>
-      {/* ✅ ميزة 1: شريط الإشعارات */}
+      {/* ✅ شريط الإشعارات */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
@@ -591,7 +583,7 @@ function Dashboard({ user }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
-            onClick={toggleDarkMode}
+            onClick={() => setDarkMode(!darkMode)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}
           >
             {darkMode ? '☀️' : '🌙'}
@@ -621,18 +613,10 @@ function Dashboard({ user }) {
         <StatCard label="صافي الربح"      value={`${stats.profit.toFixed(0)} ${CUR}`} icon="💰" color={stats.profit>=0?CLR.success:CLR.danger} spark={weekData}/>
       </div>
 
-      {/* ✅ ميزة 9: إحصائيات متقدمة - رسوم بيانية */}
+      {/* ✅ رسوم بيانية متقدمة */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-        <AdvancedChart 
-          data={weekData} 
-          labels={['أحد', 'اثن', 'ثلاث', 'أربع', 'خميس', 'جمع', 'سبت']} 
-          title="📊 مبيعات الأسبوع" 
-        />
-        <AdvancedChart 
-          data={monthData} 
-          labels={['أسبوع 1', 'أسبوع 2', 'أسبوع 3', 'أسبوع 4']} 
-          title="📊 مبيعات الشهر" 
-        />
+        <AdvancedChart data={weekData} labels={['أحد', 'اثن', 'ثلاث', 'أربع', 'خميس', 'جمع', 'سبت']} title="📊 مبيعات الأسبوع" />
+        <AdvancedChart data={monthData} labels={['أسبوع 1', 'أسبوع 2', 'أسبوع 3', 'أسبوع 4']} title="📊 مبيعات الشهر" />
       </div>
 
       {/* بطاقة متوسط التقييمات */}
@@ -647,7 +631,7 @@ function Dashboard({ user }) {
         </div>
       )}
       
-      {/* ✅ ميزة 7: تنبيه المخزون المنخفض */}
+      {/* ✅ تنبيه المخزون المنخفض */}
       {lowStock.length>0&&(
         <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
           padding:'12px 16px', marginBottom:18, display:'flex', gap:12, alignItems:'flex-start' }}>
@@ -667,7 +651,7 @@ function Dashboard({ user }) {
         </div>
       )}
 
-      {/* آخر الطلبيات */}
+      {/* ✅ آخر الطلبيات */}
       <div style={S.card}>
         <h3 style={{ fontWeight:800, marginBottom:14, fontSize:15 }}>📋 آخر الطلبيات</h3>
         {recent.length===0?<p style={{ textAlign:'center', color:CLR.textSm, padding:24 }}>لا توجد طلبيات</p>:
@@ -689,91 +673,84 @@ function Dashboard({ user }) {
             </table>
           </div>}
       </div>
-    </div>
-  )
-}
 
-/* ══════════════════════════════════════════
-   🗑️ سلة مهملات (ميزة 2)
-══════════════════════════════════════════ */
-function RecycleBin() {
-  const [showToast, ToastUI] = useToast()
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  const load = async () => {
-    setLoading(true)
-    const { data } = await supabase.from('deleted_items').select('*').order('deleted_at', { ascending: false })
-    setItems(data || [])
-    setLoading(false)
-  }
-  useEffect(() => { load() }, [])
-
-  const restore = async (id) => {
-    const item = items.find(i => i.id === id)
-    if (!item) return
-    try {
-      const data = JSON.parse(item.data)
-      await supabase.from(item.table_name).insert(data)
-      await supabase.from('deleted_items').delete().eq('id', id)
-      showToast('✅ تم استعادة العنصر')
-      load()
-    } catch (err) {
-      showToast('❌ خطأ في الاستعادة', 'error')
-    }
-  }
-
-  const permanentDelete = async (id) => {
-    if (!confirm('حذف نهائي؟ لا يمكن استعادته')) return
-    await supabase.from('deleted_items').delete().eq('id', id)
-    showToast('تم الحذف النهائي')
-    load()
-  }
-
-  return (
-    <div>
-      {ToastUI}
-      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>🗑️ سلة المهملات</h1>
-      <p style={{ color: CLR.textSm, marginBottom: 16, fontSize: 13 }}>
-        العناصر المحذوفة خلال آخر 30 يوم يمكن استعادتها
-      </p>
+      {/* ✅ المنتجات الموشكة على النفاد */}
       <div style={S.card}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}>⏳ جاري التحميل...</div>
-        ) : items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: CLR.textSm }}>🗑️ سلة المهملات فارغة</div>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15, color: '#dc2626' }}>
+          ⚠️ المنتجات الموشكة على النفاد
+        </h3>
+        {lowStock.length === 0 ? (
+          <p style={{ textAlign: 'center', color: CLR.textSm, padding: 20 }}>
+            ✅ جميع المنتجات متوفرة بالمخزون الكافي
+          </p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: CLR.bg }}>
-                  <th style={S.th}>الجدول</th>
-                  <th style={S.th}>البيانات</th>
-                  <th style={S.th}>تاريخ الحذف</th>
-                  <th style={S.th}>إجراءات</th>
+                <tr style={{ background: '#FEF2F2' }}>
+                  <th style={S.th}>#</th>
+                  <th style={S.th}>المنتج</th>
+                  <th style={S.th}>المخزون الحالي</th>
+                  <th style={S.th}>الحد الأدنى</th>
+                  <th style={S.th}>الحالة</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => {
-                  let dataPreview = ''
-                  try {
-                    const d = JSON.parse(item.data)
-                    dataPreview = d.name || d.title || d.code || 'بيانات'
-                  } catch { dataPreview = 'بيانات' }
-                  return (
-                    <tr key={item.id} className="nq-tr">
-                      <td style={S.td}>{item.table_name}</td>
-                      <td style={S.td}>{dataPreview}</td>
-                      <td style={S.td}>{new Date(item.deleted_at).toLocaleDateString('ar-DZ')}</td>
-                      <td style={S.td}>
-                        <div style={{ display: 'flex', gap: 5 }}>
-                          <button style={{ ...S.btnSm, background: '#D1FAE5', color: '#059669' }} onClick={() => restore(item.id)}>↩️ استعادة</button>
-                          <button style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626' }} onClick={() => permanentDelete(item.id)}>🗑️ حذف نهائي</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {lowStock
+                  .sort((a, b) => (a.stock || 0) - (b.stock || 0))
+                  .map((p, i) => {
+                    const stock = p.stock || 0
+                    const minStock = p.min_stock || 5
+                    const percentage = Math.min(100, (stock / minStock) * 100)
+                    const status = stock === 0 ? 'نفذ' : stock < minStock / 2 ? 'حرج' : 'منخفض'
+                    const statusColor = stock === 0 ? '#DC2626' : stock < minStock / 2 ? '#F59E0B' : '#F97316'
+                    
+                    return (
+                      <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#FEF2F2' }}>
+                        <td style={S.td}>{i + 1}</td>
+                        <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
+                        <td style={S.td}>
+                          <span style={{
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            background: stock === 0 ? '#FEE2E2' : '#FEF3C7',
+                            color: stock === 0 ? '#DC2626' : '#92400E'
+                          }}>
+                            {stock} كرتون
+                          </span>
+                        </td>
+                        <td style={S.td}>{minStock} كرتون</td>
+                        <td style={S.td}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{
+                              width: 60,
+                              height: 6,
+                              background: '#E5E7EB',
+                              borderRadius: 10,
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{
+                                width: `${percentage}%`,
+                                height: '100%',
+                                background: statusColor,
+                                borderRadius: 10,
+                                transition: 'width .5s ease'
+                              }} />
+                            </div>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: statusColor
+                            }}>
+                              {status}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
             </table>
           </div>
@@ -782,9 +759,8 @@ function RecycleBin() {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
-   📦 المنتجات (مع باركود - ميزة 7)
+   📦 المنتجات (مع باركود وحذف ناعم)
 ══════════════════════════════════════════ */
 function Products() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
@@ -800,53 +776,73 @@ function Products() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [{data:p},{data:b},{data:c}] = await Promise.all([
-      supabase.from('products').select('*').order('name'),
-      supabase.from('brands').select('*').order('name'),
-      supabase.from('categories').select('*').order('name'),
-    ])
-    setProducts(p||[]); setBrands(b||[]); setCategories(c||[]); setLoading(false)
-  }, [])
+    try {
+      const [{data:p},{data:b},{data:c}] = await Promise.all([
+        supabase.from('products').select('*').order('name'),
+        supabase.from('brands').select('*').order('name'),
+        supabase.from('categories').select('*').order('name'),
+      ])
+      setProducts(p||[]); setBrands(b||[]); setCategories(c||[])
+    } catch (err) {
+      console.error('❌ خطأ في تحميل المنتجات:', err)
+      showToast('❌ خطأ في تحميل المنتجات', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast])
   useEffect(()=>{ load() },[load])
 
   const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
   const handleImg = e => { const r=new FileReader(); r.onload=ev=>setForm(f=>({...f,image:ev.target.result})); r.readAsDataURL(e.target.files[0]) }
 
-  // ✅ ميزة 7: إنشاء باركود
+  // ✅ إنشاء باركود
   const generateBarcode = (id) => {
-    // باركود بسيط (في الإنتاج استخدم مكتبة JsBarcode)
     return `NAQ-${String(id).padStart(6, '0')}`
   }
 
   const save = async () => {
     if (!form.name.trim()||!form.price) { showToast('الاسم والسعر مطلوبان','error'); return }
     setSaving(true)
-    const row = {
-      id:form.id||Date.now(), name:form.name.trim(),
-      price:parseFloat(form.price)||0, cost_price:parseFloat(form.costPrice)||0,
-      carton_price:form.cartonPrice?parseFloat(form.cartonPrice):null,
-      units:parseInt(form.units)||12, stock:parseInt(form.stock)||0,
-      min_stock:parseInt(form.minStock)||5,
-      sku:form.sku || generateBarcode(form.id || Date.now()),
-      brand_id:form.brandId?parseInt(form.brandId):null,
-      image:form.image||null, is_promo:form.isPromo,
-      description:form.description||'',
-      discount:parseFloat(form.discount)||0, disabled:false,
-      created_at:form.id?undefined:new Date().toISOString()
+    try {
+      const row = {
+        id:form.id||Date.now(), name:form.name.trim(),
+        price:parseFloat(form.price)||0, cost_price:parseFloat(form.costPrice)||0,
+        carton_price:form.cartonPrice?parseFloat(form.cartonPrice):null,
+        units:parseInt(form.units)||12, stock:parseInt(form.stock)||0,
+        min_stock:parseInt(form.minStock)||5,
+        sku:form.sku || generateBarcode(form.id || Date.now()),
+        brand_id:form.brandId?parseInt(form.brandId):null,
+        image:form.image||null, is_promo:form.isPromo,
+        description:form.description||'',
+        discount:parseFloat(form.discount)||0, disabled:false,
+        created_at:form.id?undefined:new Date().toISOString()
+      }
+      if (!form.id) delete row.created_at
+      const { error } = await supabase.from('products').upsert(row)
+      if (error) { showToast('خطأ: '+error.message,'error'); return }
+      if (form.id) await supabase.from('product_categories').delete().eq('product_id',row.id)
+      if (selCats.length>0) {
+        await supabase.from('product_categories').upsert(
+          selCats.map(cid=>({ id:Date.now()+Math.random(), product_id:row.id, category_id:cid }))
+        ).catch(()=>{})
+      }
+      
+      // ✅ تسجيل النشاط
+      await logActivity(
+        form.id ? 'تعديل منتج' : 'إضافة منتج',
+        `${form.id ? 'تم تعديل' : 'تم إضافة'} المنتج: ${form.name}`
+      )
+      
+      showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
+      setForm({ id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false })
+      setSelCats([])
+      await load()
+    } catch (err) {
+      console.error('❌ خطأ:', err)
+      showToast('❌ حدث خطأ غير متوقع', 'error')
+    } finally {
+      setSaving(false)
     }
-    if (!form.id) delete row.created_at
-    const { error } = await supabase.from('products').upsert(row)
-    if (error) { showToast('خطأ: '+error.message,'error'); setSaving(false); return }
-    if (form.id) await supabase.from('product_categories').delete().eq('product_id',row.id)
-    if (selCats.length>0) {
-      await supabase.from('product_categories').upsert(
-        selCats.map(cid=>({ id:Date.now()+Math.random(), product_id:row.id, category_id:cid }))
-      ).catch(()=>{})
-    }
-    showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({ id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false })
-    setSelCats([])
-    await load(); setSaving(false)
   }
 
   const edit = async p => {
@@ -860,20 +856,60 @@ function Products() {
     setSelCats((data||[]).map(r=>r.category_id))
   }
 
-  // ✅ ميزة 2: حذف ناعم (نقل إلى سلة المهملات)
+  // ✅ حذف ناعم (نقل إلى سلة المهملات)
   const softDelete = async (id) => {
-    if (!await askConfirm('حذف هذا المنتج؟ يمكن استعادته من سلة المهملات')) return
-    const product = products.find(p => p.id === id)
-    if (!product) return
-    await supabase.from('deleted_items').insert({
-      table_name: 'products',
-      item_id: id,
-      data: JSON.stringify(product),
-      deleted_at: new Date().toISOString()
-    })
-    await supabase.from('products').delete().eq('id', id)
-    showToast('✅ تم نقل المنتج إلى سلة المهملات')
-    await load()
+    if (!await askConfirm('⚠️ حذف هذا المنتج؟ يمكن استعادته من سلة المهملات')) return
+    
+    try {
+      const product = products.find(p => p.id === id)
+      if (!product) {
+        showToast('❌ المنتج غير موجود', 'error')
+        return
+      }
+      
+      // ✅ التحقق من وجود جدول deleted_items
+      const { error: checkError } = await supabase
+        .from('deleted_items')
+        .select('id')
+        .limit(1)
+      
+      if (checkError) {
+        console.error('❌ جدول deleted_items غير موجود:', checkError)
+        showToast('❌ يرجى إنشاء جدول deleted_items في Supabase أولاً', 'error')
+        return
+      }
+      
+      // ✅ نقل إلى سلة المهملات
+      const { error: insertError } = await supabase.from('deleted_items').insert({
+        table_name: 'products',
+        item_id: id,
+        data: JSON.stringify(product),
+        deleted_at: new Date().toISOString()
+      })
+      
+      if (insertError) {
+        console.error('❌ خطأ في الإضافة إلى سلة المهملات:', insertError)
+        showToast('❌ خطأ: ' + insertError.message, 'error')
+        return
+      }
+      
+      // ✅ حذف من جدول المنتجات
+      const { error: deleteError } = await supabase.from('products').delete().eq('id', id)
+      if (deleteError) {
+        console.error('❌ خطأ في حذف المنتج:', deleteError)
+        showToast('❌ خطأ في حذف المنتج', 'error')
+        return
+      }
+      
+      // ✅ تسجيل النشاط
+      await logActivity('حذف منتج', `تم حذف المنتج: ${product.name}`)
+      
+      showToast('✅ تم نقل المنتج إلى سلة المهملات')
+      await load()
+    } catch (err) {
+      console.error('❌ خطأ:', err)
+      showToast('❌ حدث خطأ غير متوقع', 'error')
+    }
   }
 
   const toggleCat = id => setSelCats(prev => prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
@@ -1100,7 +1136,6 @@ function Products() {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
    📂 الفئات
 ══════════════════════════════════════════ */
@@ -1108,24 +1143,40 @@ function Categories() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [items,setItems]=useState([]); const [editId,setEditId]=useState(null)
   const [name,setName]=useState(''); const [image,setImage]=useState('')
-  const load=async()=>{ const {data}=await supabase.from('categories').select('*').order('name'); setItems(data||[]) }
+  const load=async()=>{ 
+    const {data}=await supabase.from('categories').select('*').order('name'); 
+    setItems(data||[]) 
+  }
   useEffect(()=>{ load() },[])
   const save=async()=>{
     if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    if(editId){
-      await supabase.from('categories').update({name:name.trim(),image:image||null}).eq('id',editId)
-      showToast('✅ تم التعديل'); setEditId(null)
-    } else {
-      await supabase.from('categories').insert({id:Date.now(),name:name.trim(),image:image||null})
-      showToast('✅ تمت الإضافة')
+    try {
+      if(editId){
+        await supabase.from('categories').update({name:name.trim(),image:image||null}).eq('id',editId)
+        await logActivity('تعديل فئة', `تم تعديل الفئة: ${name}`)
+        showToast('✅ تم التعديل'); setEditId(null)
+      } else {
+        await supabase.from('categories').insert({id:Date.now(),name:name.trim(),image:image||null})
+        await logActivity('إضافة فئة', `تم إضافة الفئة: ${name}`)
+        showToast('✅ تمت الإضافة')
+      }
+      setName(''); setImage(''); await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
     }
-    setName(''); setImage(''); await load()
   }
   const startEdit=c=>{ setEditId(c.id); setName(c.name); setImage(c.image||'') }
   const cancel=()=>{ setEditId(null); setName(''); setImage('') }
   const del=async id=>{
     if(!await askConfirm('حذف هذه الفئة؟'))return
-    await supabase.from('categories').delete().eq('id',id);showToast('تم الحذف');await load()
+    try {
+      await supabase.from('categories').delete().eq('id',id)
+      await logActivity('حذف فئة', `تم حذف الفئة` )
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
   return (
     <div>{ToastUI}{ConfirmUI}
@@ -1196,7 +1247,7 @@ function Categories() {
 }
 
 /* ══════════════════════════════════════════
-   🏷️ العلامات
+   🏷️ العلامات التجارية
 ══════════════════════════════════════════ */
 function Brands() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
@@ -1206,18 +1257,31 @@ function Brands() {
   useEffect(()=>{ load() },[])
   const save=async()=>{
     if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    if(editId){
-      await supabase.from('brands').update({name:name.trim(),image:image||null}).eq('id',editId)
-      showToast('✅ تم التعديل'); setEditId(null)
-    } else {
-      await supabase.from('brands').insert({id:Date.now(),name:name.trim(),image:image||null})
-      showToast('✅ تمت الإضافة')
+    try {
+      if(editId){
+        await supabase.from('brands').update({name:name.trim(),image:image||null}).eq('id',editId)
+        await logActivity('تعديل علامة', `تم تعديل العلامة: ${name}`)
+        showToast('✅ تم التعديل'); setEditId(null)
+      } else {
+        await supabase.from('brands').insert({id:Date.now(),name:name.trim(),image:image||null})
+        await logActivity('إضافة علامة', `تم إضافة العلامة: ${name}`)
+        showToast('✅ تمت الإضافة')
+      }
+      setName(''); setImage(''); await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
     }
-    setName(''); setImage(''); await load()
   }
   const del=async id=>{
     if(!await askConfirm('حذف هذه العلامة؟'))return
-    await supabase.from('brands').delete().eq('id',id);showToast('تم الحذف');await load()
+    try {
+      await supabase.from('brands').delete().eq('id',id)
+      await logActivity('حذف علامة', `تم حذف العلامة`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
   const startEdit=b=>{ setEditId(b.id); setName(b.name); setImage(b.image||'') }
   const cancel=()=>{ setEditId(null); setName(''); setImage('') }
@@ -1312,24 +1376,45 @@ function Suppliers() {
   const save=async()=>{
     if(!form.name.trim()){showToast('الاسم مطلوب','error');return} 
     setSaving(true)
-    const data = {
-      id: form.id || Date.now(),
-      name: form.name.trim(),
-      phone: form.phone || '',
-      whatsapp: form.whatsapp || '',
-      email: form.email || '',
-      address: form.address || ''
+    try {
+      const data = {
+        id: form.id || Date.now(),
+        name: form.name.trim(),
+        phone: form.phone || '',
+        whatsapp: form.whatsapp || '',
+        email: form.email || '',
+        address: form.address || ''
+      }
+      const { error } = await supabase.from('suppliers').upsert(data)
+      if (error) { showToast('خطأ: ' + error.message, 'error'); return }
+      
+      await logActivity(
+        form.id ? 'تعديل مورد' : 'إضافة مورد',
+        `${form.id ? 'تم تعديل' : 'تم إضافة'} المورد: ${form.name}`
+      )
+      
+      showToast(form.id ? '✅ تم التعديل' : '✅ تمت الإضافة')
+      setForm({ id: '', name: '', phone: '', whatsapp: '', email: '', address: '' })
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
     }
-    const { error } = await supabase.from('suppliers').upsert(data)
-    if (error) { showToast('خطأ: ' + error.message, 'error'); setSaving(false); return }
-    showToast(form.id ? '✅ تم التعديل' : '✅ تمت الإضافة')
-    setForm({ id: '', name: '', phone: '', whatsapp: '', email: '', address: '' })
-    await load()
-    setSaving(false)
   }
   
   const edit=s=>setForm({id:s.id,name:s.name,phone:s.phone||'',whatsapp:s.whatsapp||'',email:s.email||'',address:s.address||''})
-  const del=async id=>{if(!await askConfirm('حذف هذا المورد؟'))return;await supabase.from('suppliers').delete().eq('id',id);showToast('تم الحذف');await load()}
+  const del=async id=>{
+    if(!await askConfirm('حذف هذا المورد؟'))return
+    try {
+      await supabase.from('suppliers').delete().eq('id',id)
+      await logActivity('حذف مورد', `تم حذف المورد`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
+  }
   const filtered=items.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()))
   
   return (
@@ -1382,7 +1467,7 @@ function Suppliers() {
 }
 
 /* ══════════════════════════════════════════
-   👥 العملاء + تصنيف M1/M2/M3 + ✅ ميزة 12: مجموعات العملاء
+   👥 العملاء + تصنيف M1/M2/M3 + نقاط
 ══════════════════════════════════════════ */
 function Customers() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
@@ -1396,7 +1481,6 @@ function Customers() {
   const load=async()=>{
     const {data}=await supabase.from('customers').select('*').order('name')
     setItems(data||[])
-    // استخراج المجموعات الفريدة
     const uniqueGroups = [...new Set((data||[]).map(c => c.group).filter(Boolean))]
     setGroups(uniqueGroups)
   }
@@ -1417,22 +1501,54 @@ function Customers() {
     setForm(f => ({ ...f, [k]: value }))
   }
 
+  // ✅ نظام النقاط
+  const calculatePoints = (totalAmount) => {
+    return Math.floor(totalAmount / 100)
+  }
+
+  const pointsToDiscount = (points) => {
+    return Math.floor(points / 100)
+  }
+
   const save=async()=>{
     if(!form.name.trim()){showToast('الاسم مطلوب','error');return} setSaving(true)
-    const ex=items.find(c=>c.id==form.id)
-    const {error}=await supabase.from('customers').upsert({
-      id:form.id||Date.now(), name:form.name.trim(), email:form.email, phone:form.phone,
-      address:form.address, tier:form.tier, group:form.group || null,
-      password:form.password?hashPwd(form.password):(ex?.password||hashPwd('123456')),
-      points:ex?.points||0, created_at:ex?.created_at||new Date().toISOString()
-    })
-    if(error){showToast('خطأ: '+error.message,'error');setSaving(false);return}
-    showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''});await load();setSaving(false)
+    try {
+      const ex=items.find(c=>c.id==form.id)
+      const {error}=await supabase.from('customers').upsert({
+        id:form.id||Date.now(), name:form.name.trim(), email:form.email, phone:form.phone,
+        address:form.address, tier:form.tier, group:form.group || null,
+        password:form.password?hashPwd(form.password):(ex?.password||hashPwd('123456')),
+        points:ex?.points||0, created_at:ex?.created_at||new Date().toISOString()
+      })
+      if(error){showToast('خطأ: '+error.message,'error');return}
+      
+      await logActivity(
+        form.id ? 'تعديل عميل' : 'إضافة عميل',
+        `${form.id ? 'تم تعديل' : 'تم إضافة'} العميل: ${form.name}`
+      )
+      
+      showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
+      setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const edit=c=>setForm({id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',address:c.address||'',password:'',tier:c.tier||'M1',group:c.group||''})
-  const del=async id=>{if(!await askConfirm('حذف هذا العميل؟'))return;await supabase.from('customers').delete().eq('id',id);showToast('تم الحذف');await load()}
+  const del=async id=>{
+    if(!await askConfirm('حذف هذا العميل؟'))return
+    try {
+      await supabase.from('customers').delete().eq('id',id)
+      await logActivity('حذف عميل', `تم حذف العميل`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
+  }
 
   const tierLabel = t => ({ M1:'🥉 M1 عادي', M2:'🥈 M2 مميز', M3:'🥇 M3 VIP' }[t]||t)
 
@@ -1551,7 +1667,12 @@ function Customers() {
                     <td style={{...S.td,fontWeight:700,color:CLR.accent}}>
                       {Number(c.total_purchases||0).toFixed(0)} {CUR}
                     </td>
-                    <td style={{...S.td,color:CLR.textSm}}>{c.points||0} ⭐</td>
+                    <td style={{...S.td,color:CLR.textSm}}>
+                      {c.points||0} ⭐
+                      {c.points > 0 && <span style={{fontSize:10,color:'#10b981',marginRight:4}}>
+                        (خصم {pointsToDiscount(c.points)}%)
+                      </span>}
+                    </td>
                     <td style={S.td} onClick={e=>e.stopPropagation()}>
                       <div style={{display:'flex',gap:4}}>
                         <button style={{...S.btnSm,background:'#DBEAFE',color:'#1D4ED8'}} onClick={()=>edit(c)}>✏️</button>
@@ -1571,9 +1692,8 @@ function Customers() {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
-   👔 الموظفون (مع صلاحيات تفصيلية - ميزة 5)
+   👔 الموظفون (مع صلاحيات تفصيلية)
 ══════════════════════════════════════════ */
 const ALL_PERMISSIONS = [
   { id:'dashboard',    label:'📊 لوحة القيادة', actions: ['view'] },
@@ -1592,16 +1712,17 @@ const ALL_PERMISSIONS = [
   { id:'expenses',     label:'💸 المصاريف', actions: ['view', 'add', 'edit', 'delete'] },
   { id:'activityLog',  label:'📋 سجل النشاطات', actions: ['view'] },
   { id:'storeManager', label:'🎨 إدارة المتجر', actions: ['view', 'edit'] },
+  { id:'recycle',      label:'🗑️ سلة المهملات', actions: ['view', 'restore', 'delete'] },
 ]
 
 function Employees() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [items,setItems]=useState([]); const [saving,setSaving]=useState(false)
   const [editItem,setEditItem]=useState(null)
-  const [form,setForm]=useState({name:'',username:'',password:'',email:'',permissions:{}})
+  const [form,setForm]=useState({name:'',username:'',password:'',email:'',phone:'',permissions:{}})
 
   const load=async()=>{ 
-    const {data}=await supabase.from('employees').select('id,name,username,email,role,permissions').order('name')
+    const {data}=await supabase.from('employees').select('id,name,username,email,phone,role,permissions').order('name')
     const formatted = (data||[]).map(emp => {
       let perms = {}
       try {
@@ -1637,31 +1758,54 @@ function Employees() {
   }
 
   const add=async()=>{
-    if(!form.name||!form.username||!form.password){showToast('الاسم والمستخدم والكلمة مطلوبة','error');return} setSaving(true)
-    if(editItem){
-      await supabase.from('employees').update({
-        name:form.name,
-        username:form.username,
-        email:form.email,
-        permissions:JSON.stringify(form.permissions)
-      }).eq('id',editItem)
-      showToast('✅ تم التعديل');setEditItem(null)
-    } else {
-      await supabase.from('employees').insert({
-        id:Date.now(),
-        name:form.name,
-       username:form.username,
-        password:hashPwd(form.password),
-        email:form.email,
-        role:'staff',
-        permissions:JSON.stringify(form.permissions)
-      })
-      showToast('✅ تم إضافة الموظف')
+    if(!form.name||!form.username||!form.password){showToast('الاسم والمستخدم والكلمة مطلوبة','error');return} 
+    setSaving(true)
+    try {
+      if(editItem){
+        await supabase.from('employees').update({
+          name:form.name,
+          username:form.username,
+          email:form.email,
+          phone:form.phone,
+          permissions:JSON.stringify(form.permissions)
+        }).eq('id',editItem)
+        await logActivity('تعديل موظف', `تم تعديل الموظف: ${form.name}`)
+        showToast('✅ تم التعديل')
+        setEditItem(null)
+      } else {
+        await supabase.from('employees').insert({
+          id:Date.now(),
+          name:form.name,
+          username:form.username,
+          password:hashPwd(form.password),
+          email:form.email,
+          phone:form.phone,
+          role:'staff',
+          permissions:JSON.stringify(form.permissions)
+        })
+        await logActivity('إضافة موظف', `تم إضافة الموظف: ${form.name}`)
+        showToast('✅ تم إضافة الموظف')
+      }
+      setForm({name:'',username:'',password:'',email:'',phone:'',permissions:{}})
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
     }
-    setForm({name:'',username:'',password:'',email:'',permissions:{}});await load();setSaving(false)
   }
 
-  const del=async id=>{if(!await askConfirm('حذف هذا الموظف؟'))return;await supabase.from('employees').delete().eq('id',id);showToast('تم الحذف');await load()}
+  const del=async id=>{
+    if(!await askConfirm('حذف هذا الموظف؟'))return
+    try {
+      await supabase.from('employees').delete().eq('id',id)
+      await logActivity('حذف موظف', `تم حذف الموظف`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
+  }
 
   const edit = (emp) => {
     let perms = {}
@@ -1674,6 +1818,7 @@ function Employees() {
       username: emp.username,
       password: '',
       email: emp.email || '',
+      phone: emp.phone || '',
       permissions: perms
     })
   }
@@ -1701,6 +1846,9 @@ function Employees() {
           <div><label style={S.label}>اسم المستخدم *</label><input style={S.input} value={form.username} onChange={F('username')} placeholder="mohammed.ali" /></div>
           <div><label style={S.label}>كلمة المرور {editItem?'(اترك فارغاً للإبقاء)':' *'}</label><input style={S.input} type="password" value={form.password} onChange={F('password')} placeholder="••••••••" /></div>
           <div><label style={S.label}>البريد الإلكتروني</label><input style={S.input} value={form.email} onChange={F('email')} placeholder="email@example.com" /></div>
+          <div><label style={S.label}>رقم الهاتف (للإشعارات)</label>
+            <PhoneInput value={form.phone} onChange={F('phone')} placeholder="مثال: 0555123456" />
+          </div>
         </div>
         <div style={{marginTop:14}}>
           <label style={{...S.label,marginBottom:8}}>🔑 الصلاحيات التفصيلية</label>
@@ -1721,6 +1869,7 @@ function Employees() {
                       {action === 'add' && '➕ إضافة'}
                       {action === 'edit' && '✏️ تعديل'}
                       {action === 'delete' && '🗑️ حذف'}
+                      {action === 'restore' && '↩️ استعادة'}
                     </label>
                   ))}
                 </div>
@@ -1734,7 +1883,7 @@ function Employees() {
         </div>
         <div style={{display:'flex',gap:10,marginTop:16}}>
           <button style={S.btn} onClick={add} disabled={saving}>{saving?'⏳...':`💾 ${editItem?'حفظ التعديل':'إضافة موظف'}`}</button>
-          {editItem&&<button style={S.btnGray} onClick={()=>{setEditItem(null);setForm({name:'',username:'',password:'',email:'',permissions:{}})}}>إلغاء</button>}
+          {editItem&&<button style={S.btnGray} onClick={()=>{setEditItem(null);setForm({name:'',username:'',password:'',email:'',phone:'',permissions:{}})}}>إلغاء</button>}
         </div>
       </div>
       <div style={S.card}>
@@ -1757,6 +1906,7 @@ function Employees() {
                 <td style={{...S.td,fontWeight:700}}>
                   <div>{e.name}</div>
                   <div style={{fontSize:11,color:CLR.textSm}}>{e.username}</div>
+                  {e.phone&&<div style={{fontSize:10,color:CLR.textSm}}>📱 {e.phone}</div>}
                 </td>
                 <td style={S.td}>
                   <span style={{padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,
@@ -1798,10 +1948,29 @@ function Coupons() {
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
   const add=async()=>{
     if(!form.code||!form.value){showToast('الكود والقيمة مطلوبان','error');return} setSaving(true)
-    await supabase.from('coupons').insert({id:Date.now(),code:form.code.toUpperCase().trim(),type:form.type,value:parseFloat(form.value),expiry:form.expiry||null,max_uses:parseInt(form.maxUses)||100,min_order:parseFloat(form.minOrder)||0,used:0})
-    showToast('✅ تمت الإضافة');setForm({code:'',type:'percent',value:'',expiry:'',maxUses:100,minOrder:0});await load();setSaving(false)
+    try {
+      await supabase.from('coupons').insert({id:Date.now(),code:form.code.toUpperCase().trim(),type:form.type,value:parseFloat(form.value),expiry:form.expiry||null,max_uses:parseInt(form.maxUses)||100,min_order:parseFloat(form.minOrder)||0,used:0})
+      await logActivity('إضافة كوبون', `تم إضافة الكوبون: ${form.code}`)
+      showToast('✅ تمت الإضافة')
+      setForm({code:'',type:'percent',value:'',expiry:'',maxUses:100,minOrder:0})
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
-  const del=async id=>{if(!await askConfirm('حذف؟'))return;await supabase.from('coupons').delete().eq('id',id);showToast('تم الحذف');await load()}
+  const del=async id=>{
+    if(!await askConfirm('حذف؟'))return
+    try {
+      await supabase.from('coupons').delete().eq('id',id)
+      await logActivity('حذف كوبون', `تم حذف الكوبون`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
+  }
   return (
     <div>{ToastUI}{ConfirmUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🎟️ الكوبونات</h1>
@@ -1897,54 +2066,70 @@ function Purchases() {
 
   const saveNewProduct=async()=>{
     if(!newProd.name||!newProd.price){showToast('الاسم والسعر مطلوبان','error');return}
-    const id=Date.now()
-    await supabase.from('products').insert({
-      id,name:newProd.name.trim(),price:parseFloat(newProd.price),
-      units:parseInt(newProd.units)||12,
-      brand_id:newProd.brandId?parseInt(newProd.brandId):null,
-      stock:0,disabled:false,created_at:new Date().toISOString()
-    })
-    const {data:p}=await supabase.from('products').select('id,name,units,cost_price,price').order('name')
-    setProducts(p||[])
-    setModal(m=>({...m,productId:String(id),unitsPerCarton:parseInt(newProd.units)||12}))
-    setNewProd({name:'',price:'',units:12,brandId:''})
-    setShowNewProdModal(false); setShowModal(true)
-    showToast('✅ تمت إضافة المنتج')
+    try {
+      const id=Date.now()
+      await supabase.from('products').insert({
+        id,name:newProd.name.trim(),price:parseFloat(newProd.price),
+        units:parseInt(newProd.units)||12,
+        brand_id:newProd.brandId?parseInt(newProd.brandId):null,
+        stock:0,disabled:false,created_at:new Date().toISOString()
+      })
+      await logActivity('إضافة منتج', `تم إضافة المنتج: ${newProd.name}`)
+      const {data:p}=await supabase.from('products').select('id,name,units,cost_price,price').order('name')
+      setProducts(p||[])
+      setModal(m=>({...m,productId:String(id),unitsPerCarton:parseInt(newProd.units)||12}))
+      setNewProd({name:'',price:'',units:12,brandId:''})
+      setShowNewProdModal(false); setShowModal(true)
+      showToast('✅ تمت إضافة المنتج')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
 
   const save=async()=>{
     if(!suppId){showToast('اختر المورد','error');return}
     if(items.length===0){showToast('أضف منتجاً','error');return}
     setSaving(true)
-    const supplier=suppliers.find(s=>s.id==suppId)
-    const purchaseId=Date.now()
-    await supabase.from('purchases').insert({id:purchaseId,supplier_id:parseInt(suppId),supplier_name:supplier?.name,date,items:JSON.stringify(items),total})
-    for(const item of items){
-      const {data:p}=await supabase.from('products').select('stock').eq('id',item.productId).maybeSingle()
-      if(p) await supabase.from('products').update({
-        stock:(p.stock||0)+item.cartons,
-        cost_price:item.purchasePrice,
-        carton_price:item.cartonPrice
-      }).eq('id',item.productId)
+    try {
+      const supplier=suppliers.find(s=>s.id==suppId)
+      const purchaseId=Date.now()
+      await supabase.from('purchases').insert({id:purchaseId,supplier_id:parseInt(suppId),supplier_name:supplier?.name,date,items:JSON.stringify(items),total})
+      
+      for(const item of items){
+        const {data:p}=await supabase.from('products').select('stock').eq('id',item.productId).maybeSingle()
+        if(p) await supabase.from('products').update({
+          stock:(p.stock||0)+item.cartons,
+          cost_price:item.purchasePrice,
+          carton_price:item.cartonPrice
+        }).eq('id',item.productId)
+      }
+      
+      await logActivity('إضافة شراء', `تم إضافة فاتورة شراء بقيمة ${total} دج`)
+      
+      printA4(`
+        <div class="header"><div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
+        <div style="text-align:left"><p><strong>رقم:</strong> ${purchaseId}</p><p><strong>التاريخ:</strong> ${date}</p><p><strong>المورد:</strong> ${supplier?.name||'—'}</p></div></div>
+        <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>قطع/كرتون</th><th>إجمالي قطع</th><th>سعر الشراء/قطعة</th><th>سعر الكرتون</th><th>الإجمالي</th></tr></thead>
+        <tbody>${items.map(i=>`<tr>
+          <td>${i.productName}</td><td style="text-align:center">${i.cartons}</td>
+          <td style="text-align:center">${i.unitsPerCarton}</td><td style="text-align:center">${i.totalUnits}</td>
+          <td style="text-align:center">${i.purchasePrice} ${CUR}</td>
+          <td style="text-align:center;font-weight:700;color:#7c3aed">${i.cartonPrice.toFixed(0)} ${CUR}</td>
+          <td style="text-align:center;font-weight:700;color:#dc2626">${i.totalPurchase.toFixed(0)} ${CUR}</td>
+        </tr>`).join('')}
+        <tr class="total-row"><td colspan="6">الإجمالي الكلي</td><td>${total.toFixed(0)} ${CUR}</td></tr>
+        </tbody></table>
+        <div class="footer">نقاء — ${new Date().toLocaleDateString('ar-DZ')}</div>
+      `)
+      showToast('✅ تم حفظ الفاتورة وطباعتها')
+      setSuppId('');setItems([])
+      const {data:pur}=await supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20)
+      setPurchases(pur||[])
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
     }
-    printA4(`
-      <div class="header"><div><h1>🛍️ نقاء</h1><p>فاتورة شراء</p></div>
-      <div style="text-align:left"><p><strong>رقم:</strong> ${purchaseId}</p><p><strong>التاريخ:</strong> ${date}</p><p><strong>المورد:</strong> ${supplier?.name||'—'}</p></div></div>
-      <table><thead><tr><th>المنتج</th><th>الكرتونات</th><th>قطع/كرتون</th><th>إجمالي قطع</th><th>سعر الشراء/قطعة</th><th>سعر الكرتون</th><th>الإجمالي</th></tr></thead>
-      <tbody>${items.map(i=>`<tr>
-        <td>${i.productName}</td><td style="text-align:center">${i.cartons}</td>
-        <td style="text-align:center">${i.unitsPerCarton}</td><td style="text-align:center">${i.totalUnits}</td>
-        <td style="text-align:center">${i.purchasePrice} ${CUR}</td>
-        <td style="text-align:center;font-weight:700;color:#7c3aed">${i.cartonPrice.toFixed(0)} ${CUR}</td>
-        <td style="text-align:center;font-weight:700;color:#dc2626">${i.totalPurchase.toFixed(0)} ${CUR}</td>
-      </tr>`).join('')}
-      <tr class="total-row"><td colspan="6">الإجمالي الكلي</td><td>${total.toFixed(0)} ${CUR}</td></tr>
-      </tbody></table>
-      <div class="footer">نقاء — ${new Date().toLocaleDateString('ar-DZ')}</div>
-    `)
-    showToast('✅ تم حفظ الفاتورة وطباعتها');setSuppId('');setItems([])
-    const {data:pur}=await supabase.from('purchases').select('*').order('id',{ascending:false}).limit(20)
-    setPurchases(pur||[]); setSaving(false)
   }
 
   return (
@@ -2124,7 +2309,6 @@ function Purchases() {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
    📦 المخزون + Excel
 ══════════════════════════════════════════ */
@@ -2141,7 +2325,7 @@ function Inventory() {
   }
 
   const load=async()=>{
-    const {data}=await supabase.from('products').select('id,name,stock,price,cost_price,sku,units').order('name')
+    const {data}=await supabase.from('products').select('id,name,stock,price,cost_price,sku,units,min_stock').order('name')
     setItems(data||[])
   }
   useEffect(()=>{ load() },[])
@@ -2149,8 +2333,8 @@ function Inventory() {
   const filtered=items.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()))
 
   const exportCSV = () => {
-    const header = 'ID,اسم المنتج,الباركود,المخزون,السعر,سعر الشراء,قطع/كرتون'
-    const rows = items.map(p => `${p.id},"${p.name}","${p.sku||''}",${p.stock||0},${p.price},${p.cost_price||0},${p.units||12}`)
+    const header = 'ID,اسم المنتج,الباركود,المخزون,السعر,سعر الشراء,قطع/كرتون,الحد الأدنى'
+    const rows = items.map(p => `${p.id},"${p.name}","${p.sku||''}",${p.stock||0},${p.price},${p.cost_price||0},${p.units||12},${p.min_stock||5}`)
     const csv = '\uFEFF' + header + '\n' + rows.join('\n')
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
@@ -2177,6 +2361,7 @@ function Inventory() {
         await supabase.from('products').update(row).eq('id', id)
         updated++
       }
+      await logActivity('استيراد مخزون', `تم استيراد ${updated} منتج`)
       showToast(`✅ تم تحديث ${updated} منتج`)
       await load()
     }
@@ -2187,9 +2372,9 @@ function Inventory() {
   const printInventory = () => {
     printA4(`
       <div class="header"><div><h1>🛍️ نقاء</h1></div><div><p>تقرير المخزون</p><p>${new Date().toLocaleDateString('ar-DZ')}</p></div></div>
-      <table><thead><tr><th>المنتج</th><th>الباركود</th><th>المخزون</th><th>الحالة</th><th>القيمة</th></tr></thead>
-      <tbody>${filtered.map(p=>`<tr><td>${p.name}</td><td>${p.sku||'—'}</td><td>${p.stock||0}</td><td>${(p.stock||0)<5?'⚠️ منخفض':(p.stock||0)<20?'متوسط':'جيد'}</td><td>${((p.stock||0)*Number(p.price)).toFixed(0)} ${CUR}</td></tr>`).join('')}</tbody></table>
-      <div class="footer">إجمالي قيمة المخزون: ${filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} {CUR}</div>
+      <table><thead><tr><th>المنتج</th><th>الباركود</th><th>المخزون</th><th>الحد الأدنى</th><th>الحالة</th><th>القيمة</th></tr></thead>
+      <tbody>${filtered.map(p=>`<tr><td>${p.name}</td><td>${p.sku||'—'}</td><td>${p.stock||0}</td><td>${p.min_stock||5}</td><td>${(p.stock||0)<(p.min_stock||5)?'⚠️ منخفض':(p.stock||0)<20?'متوسط':'جيد'}</td><td>${((p.stock||0)*Number(p.price)).toFixed(0)} ${CUR}</td></tr>`).join('')}</tbody></table>
+      <div class="footer">إجمالي قيمة المخزون: ${filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} ${CUR}</div>
     `)
   }
 
@@ -2212,8 +2397,11 @@ function Inventory() {
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead><tr>
-              <th style={S.th}>المنتج</th><th style={S.th}>الباركود</th>
-              <th style={S.th}>المخزون</th><th style={S.th}>الحالة</th>
+              <th style={S.th}>المنتج</th>
+              <th style={S.th}>الباركود</th>
+              <th style={S.th}>المخزون</th>
+              <th style={S.th}>الحد الأدنى</th>
+              <th style={S.th}>الحالة</th>
               <th style={S.th}>القيمة</th>
             </tr></thead>
             <tbody>{filtered.map(p=>(
@@ -2222,16 +2410,17 @@ function Inventory() {
                 <td style={S.td}>{p.sku||'—'}</td>
                 <td style={S.td}>
                   <span style={{padding:'3px 10px',borderRadius:20,fontSize:12,fontWeight:700,
-                    background:(p.stock||0)<5?'#fee2e2':(p.stock||0)<20?'#fef9c3':'#d1fae5',
-                    color:(p.stock||0)<5?'#dc2626':(p.stock||0)<20?'#b45309':'#059669'}}>
+                    background:(p.stock||0)<(p.min_stock||5)?'#fee2e2':(p.stock||0)<20?'#fef9c3':'#d1fae5',
+                    color:(p.stock||0)<(p.min_stock||5)?'#dc2626':(p.stock||0)<20?'#b45309':'#059669'}}>
                     {p.stock||0}
                   </span>
                 </td>
-                <td style={S.td}>{(p.stock||0)<5?'⚠️ منخفض':(p.stock||0)<20?'⚡ متوسط':'✅ جيد'}</td>
+                <td style={S.td}>{p.min_stock||5}</td>
+                <td style={S.td}>{(p.stock||0)<(p.min_stock||5)?'⚠️ منخفض':(p.stock||0)<20?'⚡ متوسط':'✅ جيد'}</td>
                 <td style={S.td}>{((p.stock||0)*Number(p.price)).toFixed(0)} {CUR}</td>
               </tr>
             ))}
-            {filtered.length===0&&<tr><td colSpan={5} style={{textAlign:'center',padding:24,color:CLR.textSm}}>لا توجد منتجات</td></tr>}
+            {filtered.length===0&&<tr><td colSpan={6} style={{textAlign:'center',padding:24,color:CLR.textSm}}>لا توجد منتجات</td></tr>}
             </tbody>
           </table>
         </div>
@@ -2244,7 +2433,7 @@ function Inventory() {
 }
 
 /* ══════════════════════════════════════════
-   📋 الطلبيات (مع ✅ ميزة 8: الخريطة)
+   📋 الطلبيات (مع الخريطة)
 ══════════════════════════════════════════ */
 function Orders() {
   const [showToast,ToastUI]=useToast()
@@ -2260,24 +2449,38 @@ function Orders() {
   useEffect(()=>{ load() },[load])
 
   const updateStatus=async(id,status)=>{
-    await supabase.from('orders').update({status}).eq('id',id)
-    if(status==='shipped'||status==='delivered'){
-      const {data:ord}=await supabase.from('orders').select('*').eq('id',id).maybeSingle()
-      if(ord?.phone){
-        const msgs={
-          shipped:`🚚 طلبيتك رقم #${String(id).slice(-5)} في الطريق إليك! سنتواصل معك قريباً للتسليم.`,
-          delivered:`✅ تم تسليم طلبيتك رقم #${String(id).slice(-5)} بنجاح! شكراً لثقتك بنا 🌟`
+    try {
+      await supabase.from('orders').update({status}).eq('id',id)
+      await logActivity('تحديث حالة طلب', `تم تحديث حالة الطلب #${id} إلى ${status}`)
+      
+      if(status==='shipped'||status==='delivered'){
+        const {data:ord}=await supabase.from('orders').select('*').eq('id',id).maybeSingle()
+        if(ord?.phone){
+          const msgs={
+            shipped:`🚚 طلبيتك رقم #${String(id).slice(-5)} في الطريق إليك! سنتواصل معك قريباً للتسليم.`,
+            delivered:`✅ تم تسليم طلبيتك رقم #${String(id).slice(-5)} بنجاح! شكراً لثقتك بنا 🌟`
+          }
+          const wa=(ord.phone||'').replace(/\D/g,'')
+          if(wa.length>=9) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msgs[status])}`,'_blank')
         }
-        const wa=(ord.phone||'').replace(/\D/g,'')
-        if(wa.length>=9) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msgs[status])}`,'_blank')
       }
+      showToast('✅ تم تحديث الحالة'); await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
     }
-    showToast('✅ تم تحديث الحالة'); await load()
   }
+  
   const updateMulti=async(status)=>{
     if(selectedOrders.length===0){showToast('اختر طلبيات أولاً','error');return}
-    await Promise.all(selectedOrders.map(id=>supabase.from('orders').update({status}).eq('id',id)))
-    showToast(`✅ تم تحديث ${selectedOrders.length} طلبية`);setSelectedOrders([]);await load()
+    try {
+      await Promise.all(selectedOrders.map(id=>supabase.from('orders').update({status}).eq('id',id)))
+      await logActivity('تحديث حالات طلبيات', `تم تحديث ${selectedOrders.length} طلبية إلى ${status}`)
+      showToast(`✅ تم تحديث ${selectedOrders.length} طلبية`)
+      setSelectedOrders([])
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
 
   const filtered=items.filter(o=>{
@@ -2299,7 +2502,6 @@ function Orders() {
     acc[zone].push(o); return acc
   },{})
 
-  // ✅ ميزة 8: عرض الخريطة (محاكاة)
   const MapView = () => (
     <div style={{background:'white',borderRadius:12,padding:16,border:'1px solid #E2E8F0',marginBottom:12}}>
       <h4 style={{fontWeight:800,marginBottom:8}}>📍 توزيع الطلبيات على الخريطة</h4>
@@ -2364,15 +2566,20 @@ function Orders() {
             <p style={{fontSize:12,color:'#047857',marginTop:3}}>نقل الطلبيات المسلّمة الأقدم من 6 أشهر إلى الأرشيف لتحسين الأداء</p>
           </div>
           <button onClick={async()=>{
-            const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-6)
-            const {data:old}=await supabase.from('orders').select('*')
-              .eq('status','delivered').lt('created_at',cutoff.toISOString())
-            if(!old||old.length===0){showToast('لا توجد طلبيات قديمة للأرشفة');return}
-            for(const o of old){
-              await supabase.from('orders_archive').upsert(o).catch(()=>{})
-              await supabase.from('orders').delete().eq('id',o.id)
+            try {
+              const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-6)
+              const {data:old}=await supabase.from('orders').select('*')
+                .eq('status','delivered').lt('created_at',cutoff.toISOString())
+              if(!old||old.length===0){showToast('لا توجد طلبيات قديمة للأرشفة');return}
+              for(const o of old){
+                await supabase.from('orders_archive').upsert(o).catch(()=>{})
+                await supabase.from('orders').delete().eq('id',o.id)
+              }
+              await logActivity('أرشفة طلبيات', `تمت أرشفة ${old.length} طلبية`)
+              showToast(`✅ تمت أرشفة ${old.length} طلبية`); await load()
+            } catch (err) {
+              showToast('❌ خطأ: '+err.message, 'error')
             }
-            showToast(`✅ تمت أرشفة ${old.length} طلبية`); await load()
           }} style={{...S.btn,background:'#059669',fontSize:13}}>
             📦 أرشفة الآن
           </button>
@@ -2482,7 +2689,7 @@ function Orders() {
 }
 
 /* ══════════════════════════════════════════
-   🎯 إدارة العروض الكاملة (مع ✅ ميزة 10: العروض حسب المنطقة)
+   🎯 إدارة العروض الكاملة (مصححة)
 ══════════════════════════════════════════ */
 function PromotionsManager() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
@@ -2495,7 +2702,7 @@ function PromotionsManager() {
     product_ids:[], min_amount:0, description:'',
     end_date:'', image:'',
     tier_qty:1, tier_type:'percent', tier_value:0,
-    region:'' // ✅ ميزة 10: العروض حسب المنطقة
+    region:''
   })
 
   const load=async()=>{
@@ -2519,28 +2726,62 @@ function PromotionsManager() {
   const handleImg=e=>{const r=new FileReader();r.onload=ev=>setForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
 
   const save=async()=>{
-    if(!form.name.trim()){showToast('اسم العرض مطلوب','error');return} setSaving(true)
-    const row={
-      id:form.id||Date.now(), name:form.name.trim(), type:form.type, active:form.active,
-      buy_qty:parseInt(form.buy_qty)||3, get_qty:parseInt(form.get_qty)||1,
-      discount_value:parseFloat(form.discount_value)||0,
-      product_ids:JSON.stringify(form.product_ids),
-      min_amount:parseFloat(form.min_amount)||0,
-      description:form.description, image:form.image||null,
-      end_date:form.end_date?new Date(form.end_date).toISOString():null,
-      tier_qty:parseInt(form.tier_qty)||1,
-      tier_type:form.tier_type||'percent',
-      tier_value:parseFloat(form.tier_value)||0,
-      region:form.region||null,
-      created_at:form.id?undefined:new Date().toISOString()
+    if(!form.name.trim()){showToast('⚠️ اسم العرض مطلوب','error');return} 
+    setSaving(true)
+    try {
+      const row = {
+        id: form.id || Date.now(),
+        name: form.name.trim(),
+        type: form.type,
+        active: form.active,
+        buy_qty: parseInt(form.buy_qty) || 3,
+        get_qty: parseInt(form.get_qty) || 1,
+        discount_value: parseFloat(form.discount_value) || 0,
+        product_ids: JSON.stringify(form.product_ids || []),
+        min_amount: parseFloat(form.min_amount) || 0,
+        description: form.description || '',
+        image: form.image || null,
+        end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
+        tier_qty: parseInt(form.tier_qty) || 1,
+        tier_type: form.tier_type || 'percent',
+        tier_value: parseFloat(form.tier_value) || 0,
+        region: form.region || null,
+        created_at: form.id ? undefined : new Date().toISOString()
+      }
+      
+      if (!form.id) delete row.created_at
+      
+      const { error } = await supabase.from('promotions').upsert(row)
+      
+      if (error) {
+        console.error('❌ خطأ في حفظ العرض:', error)
+        showToast('❌ خطأ: ' + error.message, 'error')
+        return
+      }
+      
+      await logActivity(
+        form.id ? 'تعديل عرض' : 'إضافة عرض',
+        `${form.id ? 'تم تعديل' : 'تم إضافة'} العرض: ${form.name}`
+      )
+      
+      showToast(form.id ? '✅ تم التعديل' : '✅ تمت الإضافة')
+      
+      setForm({
+        id: '', name: '', type: 'percent', active: true,
+        buy_qty: 3, get_qty: 1, discount_value: 0,
+        product_ids: [], min_amount: 0, description: '',
+        end_date: '', image: '',
+        tier_qty: 1, tier_type: 'percent', tier_value: 0,
+        region: ''
+      })
+      setProdSearch('')
+      await load()
+    } catch (err) {
+      console.error('❌ خطأ:', err)
+      showToast('❌ حدث خطأ غير متوقع', 'error')
+    } finally {
+      setSaving(false)
     }
-    if(!form.id) delete row.created_at
-    const {error}=await supabase.from('promotions').upsert(row).catch(e=>({error:e}))
-    if(error){showToast('⚠️ تأكد من تشغيل schema_v4.sql في Supabase','error');setSaving(false);return}
-    showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:'',tier_qty:1,tier_type:'percent',tier_value:0,region:''})
-    setProdSearch('')
-    await load(); setSaving(false)
   }
 
   const edit=p=>setForm({
@@ -2554,13 +2795,25 @@ function PromotionsManager() {
 
   const del=async id=>{
     if(!await askConfirm('حذف هذا العرض؟'))return
-    await supabase.from('promotions').delete().eq('id',id).catch(()=>{})
-    showToast('تم الحذف');await load()
+    try {
+      await supabase.from('promotions').delete().eq('id',id).catch(()=>{})
+      await logActivity('حذف عرض', `تم حذف العرض`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
 
   const toggleActive=async(id,val)=>{
-    await supabase.from('promotions').update({active:val}).eq('id',id).catch(()=>{})
-    await load(); showToast(val?'✅ تم تفعيل العرض':'⏸️ تم إيقاف العرض')
+    try {
+      await supabase.from('promotions').update({active:val}).eq('id',id).catch(()=>{})
+      await logActivity(val ? 'تفعيل عرض' : 'إيقاف عرض', `تم ${val ? 'تفعيل' : 'إيقاف'} العرض`)
+      await load()
+      showToast(val?'✅ تم تفعيل العرض':'⏸️ تم إيقاف العرض')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
 
   const typeLabel={percent:'خصم نسبة %',fixed:'خصم مبلغ ثابت',buy_x_get_y:'اشتري X خذ Y',tier_discount:'خصم حسب الرتبة',tier_buy:'اشتري X من نفس الشركة = خصم'}
@@ -2666,12 +2919,12 @@ function PromotionsManager() {
           </div>
           <div style={{maxHeight:280,overflowY:'auto',border:`1.5px solid ${CLR.border}`,borderRadius:10,background:'white'}}>
             {products.filter(p => {
-              if (!prodSearch) return true
+              if (!prodSearch || prodSearch.trim() === '') return true
               return p.name?.toLowerCase().includes(prodSearch.toLowerCase())
             }).length === 0
               ?<div style={{padding:24,textAlign:'center',color:CLR.textSm}}>🔍 لا توجد نتائج</div>
               :products.filter(p => {
-                  if (!prodSearch) return true
+                  if (!prodSearch || prodSearch.trim() === '') return true
                   return p.name?.toLowerCase().includes(prodSearch.toLowerCase())
                 }).map((p,i)=>{
                 const sel=form.product_ids.includes(p.id)||form.product_ids.includes(String(p.id))
@@ -2758,7 +3011,6 @@ function PromotionsManager() {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
    🔔 الإشعارات
 ══════════════════════════════════════════ */
@@ -2771,11 +3023,15 @@ function Notifications() {
   const [saving,setSaving]=useState(false)
   
   const load=async()=>{
-    const [{data:n},{data:c}]=await Promise.all([
-      supabase.from('notifications').select('*').order('id',{ascending:false}),
-      supabase.from('customers').select('id,name,tier,address,phone').order('name'),
-    ])
-    setItems(n||[]); setCustomers(c||[])
+    try {
+      const [{data:n},{data:c}]=await Promise.all([
+        supabase.from('notifications').select('*').order('id',{ascending:false}),
+        supabase.from('customers').select('id,name,tier,address,phone').order('name'),
+      ])
+      setItems(n||[]); setCustomers(c||[])
+    } catch (err) {
+      console.error('❌ خطأ في تحميل الإشعارات:', err)
+    }
   }
   useEffect(()=>{ load() },[])
   
@@ -2792,13 +3048,23 @@ function Notifications() {
   })
   
   const send=async()=>{
-    if(!title||!body){showToast('العنوان والنص مطلوبان','error');return} setSaving(true)
-    await supabase.from('notifications').insert({
-      id:Date.now(),title,body,
-      target_type:targetType,target_count:targeted.length,
-      date:new Date().toLocaleString('ar-DZ'),is_read:false
-    })
-    showToast(`✅ تم الإرسال لـ ${targeted.length} عميل`);setTitle('');setBody('');await load();setSaving(false)
+    if(!title||!body){showToast('العنوان والنص مطلوبان','error');return} 
+    setSaving(true)
+    try {
+      await supabase.from('notifications').insert({
+        id:Date.now(),title,body,
+        target_type:targetType,target_count:targeted.length,
+        date:new Date().toLocaleString('ar-DZ'),is_read:false
+      })
+      await logActivity('إرسال إشعار', `تم إرسال إشعار لـ ${targeted.length} عميل: ${title}`)
+      showToast(`✅ تم الإرسال لـ ${targeted.length} عميل`)
+      setTitle('');setBody('')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
   
   const tierLabels={all:'الكل',M1:'M1 عادي',M2:'M2 مميز',M3:'M3 VIP',address:'حسب العنوان'}
@@ -2859,7 +3125,7 @@ function Notifications() {
 }
 
 /* ══════════════════════════════════════════
-   📈 التقارير المفصلة (مع ✅ ميزة 4: PDF)
+   📈 التقارير المفصلة (مع PDF)
 ══════════════════════════════════════════ */
 function Reports() {
   const [showToast,ToastUI]=useToast()
@@ -2868,18 +3134,22 @@ function Reports() {
 
   useEffect(()=>{
     const load=async()=>{
-      const [{data:o},{data:p},{data:e},{data:cu}]=await Promise.all([
-        supabase.from('orders').select('*').order('id',{ascending:false}),
-        supabase.from('purchases').select('*'),
-        supabase.from('expenses').select('*'),
-        supabase.from('customers').select('id,name,total_purchases,tier,address'),
-      ])
-      setData({orders:o||[],purchases:p||[],expenses:e||[],customers:cu||[]})
+      try {
+        const [{data:o},{data:p},{data:e},{data:cu}]=await Promise.all([
+          supabase.from('orders').select('*').order('id',{ascending:false}),
+          supabase.from('purchases').select('*'),
+          supabase.from('expenses').select('*'),
+          supabase.from('customers').select('id,name,total_purchases,tier,address'),
+        ])
+        setData({orders:o||[],purchases:p||[],expenses:e||[],customers:cu||[]})
+      } catch (err) {
+        console.error('❌ خطأ في تحميل التقارير:', err)
+        showToast('❌ خطأ في تحميل التقارير', 'error')
+      }
     }
     load()
-  },[])
+  }, [])
 
-  // ✅ ميزة 4: تصدير تقرير PDF
   const exportPDF = () => {
     const content = `
       <div class="header"><div><h1>🛍️ نقاء</h1><p>تقرير شامل</p></div><div>${new Date().toLocaleDateString('ar-DZ')}</div></div>
@@ -2890,6 +3160,8 @@ function Reports() {
           <tr><td>إجمالي المبيعات</td><td>${data.orders.reduce((s,o)=>s+Number(o.total),0).toFixed(0)} ${CUR}</td></tr>
           <tr><td>عدد الطلبيات</td><td>${data.orders.length}</td></tr>
           <tr><td>عدد العملاء</td><td>${data.customers.length}</td></tr>
+          <tr><td>إجمالي المشتريات</td><td>${data.purchases.reduce((s,p)=>s+Number(p.total),0).toFixed(0)} ${CUR}</td></tr>
+          <tr><td>إجمالي المصاريف</td><td>${data.expenses.reduce((s,e)=>s+Number(e.amount),0).toFixed(0)} ${CUR}</td></tr>
         </tbody>
       </table>
       <div class="footer">نقاء — تقرير شهري</div>
@@ -3064,15 +3336,43 @@ function Expenses() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [items,setItems]=useState([]); const [search,setSearch]=useState(''); const [saving,setSaving]=useState(false)
   const [form,setForm]=useState({name:'',amount:'',date:new Date().toISOString().split('T')[0],category:'other'})
-  const load=async()=>{ const {data}=await supabase.from('expenses').select('*').order('id',{ascending:false}); setItems(data||[]) }
+  const load=async()=>{ 
+    try {
+      const {data}=await supabase.from('expenses').select('*').order('id',{ascending:false})
+      setItems(data||[])
+    } catch (err) {
+      console.error('❌ خطأ في تحميل المصاريف:', err)
+      showToast('❌ خطأ في تحميل المصاريف', 'error')
+    }
+  }
   useEffect(()=>{ load() },[])
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
   const add=async()=>{
-    if(!form.name||!form.amount){showToast('الاسم والمبلغ مطلوبان','error');return} setSaving(true)
-    await supabase.from('expenses').insert({id:Date.now(),name:form.name.trim(),amount:parseFloat(form.amount),date:form.date,category:form.category})
-    showToast('✅ تمت الإضافة');setForm({name:'',amount:'',date:new Date().toISOString().split('T')[0],category:'other'});await load();setSaving(false)
+    if(!form.name||!form.amount){showToast('الاسم والمبلغ مطلوبان','error');return} 
+    setSaving(true)
+    try {
+      await supabase.from('expenses').insert({id:Date.now(),name:form.name.trim(),amount:parseFloat(form.amount),date:form.date,category:form.category})
+      await logActivity('إضافة مصروف', `تم إضافة مصروف: ${form.name} بقيمة ${form.amount} دج`)
+      showToast('✅ تمت الإضافة')
+      setForm({name:'',amount:'',date:new Date().toISOString().split('T')[0],category:'other'})
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
-  const del=async id=>{if(!await askConfirm('حذف؟'))return;await supabase.from('expenses').delete().eq('id',id);showToast('تم الحذف');await load()}
+  const del=async id=>{
+    if(!await askConfirm('حذف؟'))return
+    try {
+      await supabase.from('expenses').delete().eq('id',id)
+      await logActivity('حذف مصروف', `تم حذف المصروف`)
+      showToast('تم الحذف')
+      await load()
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
+  }
   const catLabel={rent:'إيجار',salary:'رواتب',utilities:'فواتير',other:'أخرى'}
   const filtered=items.filter(e=>e.name?.toLowerCase().includes(search.toLowerCase()))
   const total=items.reduce((s,e)=>s+Number(e.amount),0)
@@ -3119,54 +3419,236 @@ function Expenses() {
 ══════════════════════════════════════════ */
 function ActivityLog() {
   const [items,setItems]=useState([])
-  useEffect(()=>{ supabase.from('activity_log').select('*').order('id',{ascending:false}).limit(50).then(({data})=>setItems(data||[])) },[])
+  const [loading,setLoading]=useState(true)
+  
+  useEffect(()=>{ 
+    const load = async () => {
+      try {
+        const {data}=await supabase.from('activity_log').select('*').order('id',{ascending:false}).limit(50)
+        setItems(data||[])
+      } catch (err) {
+        console.error('❌ خطأ في تحميل سجل النشاطات:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  },[])
+  
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📋 سجل النشاطات</h1>
       <div style={{...S.card,maxHeight:500,overflowY:'auto'}}>
-        {items.length===0?<p style={{textAlign:'center',color:CLR.textSm,padding:24}}>لا توجد نشاطات</p>:
+        {loading ? (
+          <div style={{textAlign:'center',padding:24,color:CLR.textSm}}>⏳ جاري التحميل...</div>
+        ) : items.length===0 ? (
+          <p style={{textAlign:'center',color:CLR.textSm,padding:24}}>📭 لا توجد نشاطات مسجلة</p>
+        ) : (
           items.map(log=>(
             <div key={log.id} style={{borderBottom:`1px solid ${CLR.bg}`,padding:'10px 0'}}>
-              <div style={{display:'flex',justifyContent:'space-between'}}><strong style={{color:CLR.accent}}>{log.action}</strong><span style={{fontSize:12,color:CLR.textSm}}>{log.date}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between'}}>
+                <strong style={{color:CLR.accent}}>{log.action}</strong>
+                <span style={{fontSize:12,color:CLR.textSm}}>{log.date}</span>
+              </div>
               <p style={{fontSize:13,color:CLR.textSm,marginTop:2}}>{log.details}</p>
             </div>
-          ))}
+          ))
+        )}
       </div>
     </div>
   )
 }
 
 /* ══════════════════════════════════════════
-   ⚙️ الإعدادات (مع ✅ ميزة 14: إدارة الفروع)
+   🗑️ سلة مهملات (مصححة)
+══════════════════════════════════════════ */
+function RecycleBin() {
+  const [showToast,ToastUI]=useToast()
+  const [items,setItems]=useState([])
+  const [loading,setLoading]=useState(true)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('deleted_items')
+        .select('*')
+        .order('deleted_at', { ascending: false })
+      
+      if (error) {
+        console.error('❌ خطأ في تحميل سلة المهملات:', error)
+        showToast('❌ خطأ في تحميل سلة المهملات', 'error')
+        setItems([])
+      } else {
+        setItems(data || [])
+      }
+    } catch (err) {
+      console.error('❌ خطأ:', err)
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  useEffect(()=>{ load() },[])
+
+  const restore = async (id) => {
+    const item = items.find(i => i.id === id)
+    if (!item) {
+      showToast('❌ العنصر غير موجود', 'error')
+      return
+    }
+    try {
+      const data = JSON.parse(item.data)
+      const { error } = await supabase.from(item.table_name).insert(data)
+      if (error) throw error
+      
+      await supabase.from('deleted_items').delete().eq('id', id)
+      await logActivity('استعادة عنصر', `تم استعادة عنصر من سلة المهملات`)
+      showToast('✅ تم استعادة العنصر')
+      load()
+    } catch (err) {
+      console.error('❌ خطأ في الاستعادة:', err)
+      showToast('❌ خطأ في استعادة العنصر', 'error')
+    }
+  }
+
+  const permanentDelete = async (id) => {
+    if (!confirm('⚠️ حذف نهائي؟ لا يمكن استعادته')) return
+    try {
+      await supabase.from('deleted_items').delete().eq('id', id)
+      await logActivity('حذف نهائي', `تم حذف عنصر نهائياً من سلة المهملات`)
+      showToast('🗑️ تم الحذف النهائي')
+      load()
+    } catch (err) {
+      showToast('❌ خطأ في الحذف', 'error')
+    }
+  }
+
+  return (
+    <div>
+      {ToastUI}
+      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>🗑️ سلة المهملات</h1>
+      <p style={{ color: CLR.textSm, marginBottom: 16, fontSize: 13 }}>
+        العناصر المحذوفة خلال آخر 30 يوم يمكن استعادتها
+      </p>
+      <div style={S.card}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>⏳ جاري التحميل...</div>
+        ) : items.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: CLR.textSm }}>
+            🗑️ سلة المهملات فارغة
+            <p style={{ fontSize: 12, marginTop: 8 }}>
+              عند حذف منتج أو عنصر، سيظهر هنا
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>الجدول</th>
+                  <th style={S.th}>البيانات</th>
+                  <th style={S.th}>تاريخ الحذف</th>
+                  <th style={S.th}>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(item => {
+                  let dataPreview = ''
+                  try {
+                    const d = JSON.parse(item.data)
+                    dataPreview = d.name || d.title || d.code || `#${d.id || item.item_id}`
+                  } catch { dataPreview = `#${item.item_id}` }
+                  return (
+                    <tr key={item.id} className="nq-tr">
+                      <td style={S.td}>{item.table_name}</td>
+                      <td style={S.td}>{dataPreview}</td>
+                      <td style={S.td}>{new Date(item.deleted_at).toLocaleDateString('ar-DZ')}</td>
+                      <td style={S.td}>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button 
+                            style={{ ...S.btnSm, background: '#D1FAE5', color: '#059669' }} 
+                            onClick={() => restore(item.id)}
+                          >
+                            ↩️ استعادة
+                          </button>
+                          <button 
+                            style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626' }} 
+                            onClick={() => permanentDelete(item.id)}
+                          >
+                            🗑️ حذف نهائي
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+/* ══════════════════════════════════════════
+   ⚙️ الإعدادات (مع إدارة الفروع)
 ══════════════════════════════════════════ */
 function Settings({ showToast }) {
   const [form,setForm]=useState({
-    store_name:'نقاء', store_currency:'دج',
-    whatsapp_number:WA_DEFAULT, admin_phone:WA_DEFAULT,
+    store_name:'نقاء',
+    store_currency:'دج',
+    whatsapp_number:WA_DEFAULT,
+    admin_phone:WA_DEFAULT,
     contact_whatsapp:WA_DEFAULT,
-    free_shipping_threshold:'5000', shipping_cost:'500',
-    tier_m2_min:'5000', tier_m3_min:'20000',
-    tier_m1_discount:'0', tier_m2_discount:'5', tier_m3_discount:'10',
-    maintenance_mode:'0', maintenance_msg:'المتجر في طور التحديث، سنعود قريباً 🔧',
-    terms_text:'', announce_bar:'',
-    contact_hours:'من 8 صباحاً إلى 10 مساءً', contact_address:'',
+    free_shipping_threshold:'5000',
+    shipping_cost:'500',
+    tier_m2_min:'5000',
+    tier_m3_min:'20000',
+    tier_m1_discount:'0',
+    tier_m2_discount:'5',
+    tier_m3_discount:'10',
+    maintenance_mode:'0',
+    maintenance_msg:'المتجر في طور التحديث، سنعود قريباً 🔧',
+    terms_text:'',
+    announce_bar:'',
+    contact_hours:'من 8 صباحاً إلى 10 مساءً',
+    contact_address:'',
     contact_email:'',
-    branches:JSON.stringify([{name:'الفرع الرئيسي',address:'الجزائر العاصمة',phone:''}]) // ✅ ميزة 14
   })
   const [saving,setSaving]=useState(false)
   const [branches,setBranches]=useState([])
+  const [loading,setLoading]=useState(true)
 
   useEffect(()=>{
-    supabase.from('settings').select('*').then(({data})=>{
-      if(data){const map={};data.forEach(r=>(map[r.key]=r.value));setForm(f=>({...f,...map}))}
+    const loadSettings = async () => {
       try {
-        const b = JSON.parse(map['branches'] || '[]')
-        setBranches(b)
-      } catch { setBranches([]) }
-    })
-  },[])
+        const { data } = await supabase.from('settings').select('*')
+        if (data) {
+          const map = {}
+          data.forEach(r => (map[r.key] = r.value))
+          setForm(f => ({ ...f, ...map }))
+          
+          // تحميل الفروع
+          try {
+            const b = JSON.parse(map['branches'] || '[]')
+            setBranches(b.length > 0 ? b : [{ id: Date.now(), name: 'الفرع الرئيسي', address: 'الجزائر العاصمة', phone: '' }])
+          } catch {
+            setBranches([{ id: Date.now(), name: 'الفرع الرئيسي', address: 'الجزائر العاصمة', phone: '' }])
+          }
+        }
+      } catch (err) {
+        console.error('❌ خطأ في تحميل الإعدادات:', err)
+        showToast('❌ خطأ في تحميل الإعدادات', 'error')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadSettings()
+  }, [])
 
-  // ✅ ميزة 14: إدارة الفروع
+  // إدارة الفروع
   const addBranch = () => {
     const newBranch = { id: Date.now(), name: '', address: '', phone: '' }
     setBranches([...branches, newBranch])
@@ -3177,19 +3659,38 @@ function Settings({ showToast }) {
   }
 
   const removeBranch = (id) => {
+    if (!confirm('حذف هذا الفرع؟')) return
     setBranches(branches.filter(b => b.id !== id))
   }
 
   const saveBranches = async () => {
-    await supabase.from('settings').upsert({ key: 'branches', value: JSON.stringify(branches) })
-    showToast('✅ تم حفظ الفروع')
+    try {
+      await supabase.from('settings').upsert({ key: 'branches', value: JSON.stringify(branches) })
+      return true
+    } catch (err) {
+      console.error('❌ خطأ في حفظ الفروع:', err)
+      showToast('❌ خطأ في حفظ الفروع', 'error')
+      return false
+    }
   }
 
   const save=async()=>{
     setSaving(true)
-    await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
-    await saveBranches()
-    showToast('✅ تم حفظ الإعدادات');setSaving(false)
+    try {
+      await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
+      await saveBranches()
+      await logActivity('تحديث الإعدادات', 'تم تحديث إعدادات المتجر')
+      showToast('✅ تم حفظ جميع الإعدادات')
+    } catch (err) {
+      console.error('❌ خطأ في الحفظ:', err)
+      showToast('❌ خطأ في حفظ الإعدادات', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 40 }}>⏳ جاري تحميل الإعدادات...</div>
   }
 
   return (
@@ -3198,22 +3699,38 @@ function Settings({ showToast }) {
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14,color:CLR.accent}}>🏪 إعدادات عامة</h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>اسم المتجر</label>
-            <input style={S.input} value={form.store_name} onChange={e=>setForm(f=>({...f,store_name:e.target.value}))} placeholder="نقاء"/></div>
-          <div><label style={S.label}>العملة</label>
-            <input style={S.input} value={form.store_currency} onChange={e=>setForm(f=>({...f,store_currency:e.target.value}))} placeholder="دج"/></div>
-          <div><label style={S.label}>📱 رقم واتساب المتجر</label>
-            <input style={S.input} value={form.whatsapp_number} onChange={e=>setForm(f=>({...f,whatsapp_number:e.target.value,admin_phone:e.target.value,contact_whatsapp:e.target.value}))} placeholder="213xxxxxxxxx"/></div>
-          <div><label style={S.label}>📧 البريد الإلكتروني للتواصل</label>
-            <input style={S.input} value={form.contact_email} onChange={e=>setForm(f=>({...f,contact_email:e.target.value}))} placeholder="info@naqaa.dz"/></div>
-          <div><label style={S.label}>🚚 حد التوصيل المجاني (دج)</label>
-            <NumInput value={form.free_shipping_threshold} onChange={e=>setForm(f=>({...f,free_shipping_threshold:e.target.value}))}/></div>
-          <div><label style={S.label}>🚚 تكلفة التوصيل (دج)</label>
-            <NumInput value={form.shipping_cost} onChange={e=>setForm(f=>({...f,shipping_cost:e.target.value}))}/></div>
-          <div><label style={S.label}>⏰ ساعات العمل</label>
-            <input style={S.input} value={form.contact_hours} onChange={e=>setForm(f=>({...f,contact_hours:e.target.value}))} placeholder="من 8 صباحاً إلى 10 مساءً"/></div>
-          <div><label style={S.label}>📍 العنوان</label>
-            <input style={S.input} value={form.contact_address} onChange={e=>setForm(f=>({...f,contact_address:e.target.value}))} placeholder="الجزائر العاصمة"/></div>
+          <div>
+            <label style={S.label}>اسم المتجر</label>
+            <input style={S.input} value={form.store_name} onChange={e=>setForm(f=>({...f,store_name:e.target.value}))} placeholder="نقاء"/>
+          </div>
+          <div>
+            <label style={S.label}>العملة</label>
+            <input style={S.input} value={form.store_currency} onChange={e=>setForm(f=>({...f,store_currency:e.target.value}))} placeholder="دج"/>
+          </div>
+          <div>
+            <label style={S.label}>📱 رقم واتساب المتجر</label>
+            <PhoneInput value={form.whatsapp_number} onChange={e=>setForm(f=>({...f,whatsapp_number:e.target.value,admin_phone:e.target.value,contact_whatsapp:e.target.value}))} placeholder="213xxxxxxxxx"/>
+          </div>
+          <div>
+            <label style={S.label}>📧 البريد الإلكتروني للتواصل</label>
+            <input style={S.input} value={form.contact_email} onChange={e=>setForm(f=>({...f,contact_email:e.target.value}))} placeholder="info@naqaa.dz"/>
+          </div>
+          <div>
+            <label style={S.label}>🚚 حد التوصيل المجاني (دج)</label>
+            <NumInput value={form.free_shipping_threshold} onChange={e=>setForm(f=>({...f,free_shipping_threshold:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>🚚 تكلفة التوصيل (دج)</label>
+            <NumInput value={form.shipping_cost} onChange={e=>setForm(f=>({...f,shipping_cost:e.target.value}))}/>
+          </div>
+          <div>
+            <label style={S.label}>⏰ ساعات العمل</label>
+            <input style={S.input} value={form.contact_hours} onChange={e=>setForm(f=>({...f,contact_hours:e.target.value}))} placeholder="من 8 صباحاً إلى 10 مساءً"/>
+          </div>
+          <div>
+            <label style={S.label}>📍 العنوان</label>
+            <input style={S.input} value={form.contact_address} onChange={e=>setForm(f=>({...f,contact_address:e.target.value}))} placeholder="الجزائر العاصمة"/>
+          </div>
         </div>
         <div style={{marginTop:12}}>
           <label style={S.label}>📢 شريط الإعلانات (يظهر في أعلى المتجر)</label>
@@ -3221,7 +3738,7 @@ function Settings({ showToast }) {
         </div>
       </div>
 
-      {/* ✅ ميزة 14: إدارة الفروع */}
+      {/* ✅ إدارة الفروع */}
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🏢 إدارة الفروع</h3>
         {branches.map((branch, index) => (
@@ -3261,40 +3778,78 @@ function StoreManager({ showToast }) {
   const [primaryColor,setPrimaryColor]=useState('#dc2626')
   const [storeLogo,setStoreLogo]=useState('')
   const [storeName2,setStoreName2]=useState('')
+  
   useEffect(()=>{
-    supabase.from('settings').select('*').then(({data})=>{
-      if(!data) return; const map={}; data.forEach(r=>(map[r.key]=r.value))
-      try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
-      setPromoText(map['promo_text']||''); setAnnounceBar(map['announce_bar']||'')
-      setPrimaryColor(map['primary_color']||'#dc2626')
-      setStoreLogo(map['store_logo']||'')
-      setStoreName2(map['store_name']||'نقاء')
-    })
-  },[])
+    const load = async () => {
+      try {
+        const {data}=await supabase.from('settings').select('*')
+        if(!data) return
+        const map={}; data.forEach(r=>(map[r.key]=r.value))
+        try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
+        setPromoText(map['promo_text']||'')
+        setAnnounceBar(map['announce_bar']||'')
+        setPrimaryColor(map['primary_color']||'#dc2626')
+        setStoreLogo(map['store_logo']||'')
+        setStoreName2(map['store_name']||'نقاء')
+      } catch (err) {
+        console.error('❌ خطأ في تحميل إدارة المتجر:', err)
+        showToast('❌ خطأ في تحميل البيانات', 'error')
+      }
+    }
+    load()
+  }, [])
+
   const handleLogo=e=>{const r=new FileReader();r.onload=ev=>setStoreLogo(ev.target.result);r.readAsDataURL(e.target.files[0])}
   const handleImg=e=>{const r=new FileReader();r.onload=ev=>setForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
+  
   const addBanner=async()=>{
-    if(!form.title&&!form.image){showToast('أضف صورة أو عنوان','error');return} setSaving(true)
-    const updated=[...banners,{id:Date.now(),...form}]
-    await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
-    setBanners(updated);setForm({title:'',subtitle:'',image:''});showToast('✅ تمت الإضافة');setSaving(false)
+    if(!form.title&&!form.image){showToast('أضف صورة أو عنوان','error');return} 
+    setSaving(true)
+    try {
+      const updated=[...banners,{id:Date.now(),...form}]
+      await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
+      setBanners(updated)
+      setForm({title:'',subtitle:'',image:''})
+      await logActivity('إضافة بانر', `تم إضافة بانر: ${form.title || 'بدون عنوان'}`)
+      showToast('✅ تمت الإضافة')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
+  
   const delBanner=async id=>{
-    const updated=banners.filter(b=>b.id!==id)
-    await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
-    setBanners(updated);showToast('تم الحذف')
+    try {
+      const updated=banners.filter(b=>b.id!==id)
+      await supabase.from('settings').upsert({key:'store_banners',value:JSON.stringify(updated)})
+      setBanners(updated)
+      await logActivity('حذف بانر', `تم حذف البانر`)
+      showToast('تم الحذف')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    }
   }
+  
   const saveTexts=async()=>{
     setSaving(true)
-    await Promise.all([
-      supabase.from('settings').upsert({key:'promo_text',value:promoText}),
-      supabase.from('settings').upsert({key:'announce_bar',value:announceBar}),
-      supabase.from('settings').upsert({key:'primary_color',value:primaryColor}),
-      supabase.from('settings').upsert({key:'store_logo',value:storeLogo}),
-      supabase.from('settings').upsert({key:'store_name',value:storeName2}),
-    ])
-    showToast('✅ تم الحفظ');setSaving(false)
+    try {
+      await Promise.all([
+        supabase.from('settings').upsert({key:'promo_text',value:promoText}),
+        supabase.from('settings').upsert({key:'announce_bar',value:announceBar}),
+        supabase.from('settings').upsert({key:'primary_color',value:primaryColor}),
+        supabase.from('settings').upsert({key:'store_logo',value:storeLogo}),
+        supabase.from('settings').upsert({key:'store_name',value:storeName2}),
+      ])
+      await logActivity('تحديث واجهة المتجر', 'تم تحديث واجهة المتجر')
+      showToast('✅ تم الحفظ')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
+
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🎨 إدارة واجهة المتجر</h1>
@@ -3383,21 +3938,25 @@ function DataBackup({ showToast }) {
   },[])
 
   const doAutoBackup=async()=>{
-    const tables=['products','categories','brands','suppliers','customers','orders','purchases','expenses','promotions','settings']
-    const backup={}
-    for(const t of tables){
-      const {data}=await supabase.from(t).select('*').catch(()=>({data:[]}))
-      backup[t]=data||[]
+    try {
+      const tables=['products','categories','brands','suppliers','customers','orders','purchases','expenses','promotions','settings']
+      const backup={}
+      for(const t of tables){
+        const {data}=await supabase.from(t).select('*').catch(()=>({data:[]}))
+        backup[t]=data||[]
+      }
+      const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a')
+      a.href=url; a.download=`naqaa_auto_${new Date().toISOString().split('T')[0]}.json`
+      a.click(); URL.revokeObjectURL(url)
+      const now=new Date().toLocaleString('ar-DZ')
+      localStorage.setItem('nq_last_backup_date',new Date().toDateString())
+      localStorage.setItem('nq_last_backup',now)
+      setLastBackup(now)
+    } catch (err) {
+      console.error('❌ خطأ في النسخ الاحتياطي التلقائي:', err)
     }
-    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
-    const url=URL.createObjectURL(blob)
-    const a=document.createElement('a')
-    a.href=url; a.download=`naqaa_auto_${new Date().toISOString().split('T')[0]}.json`
-    a.click(); URL.revokeObjectURL(url)
-    const now=new Date().toLocaleString('ar-DZ')
-    localStorage.setItem('nq_last_backup_date',new Date().toDateString())
-    localStorage.setItem('nq_last_backup',now)
-    setLastBackup(now)
   }
 
   const toggleAuto=()=>{
@@ -3406,27 +3965,34 @@ function DataBackup({ showToast }) {
     localStorage.setItem('nq_auto_backup',v?'1':'0')
     showToast(v?'✅ سيتم النسخ الاحتياطي تلقائياً كل يوم':'⏸️ تم إيقاف النسخ التلقائي')
   }
+  
   const tables=['products','orders','customers','suppliers','brands','categories','purchases','coupons','expenses','notifications','settings']
 
   const backup=async()=>{
     setLoading(true)
-    const backup={}
-    for(const table of tables){
-      const {data}=await supabase.from(table).select('*')
-      backup[table]=data||[]
+    try {
+      const backup={}
+      for(const table of tables){
+        const {data}=await supabase.from(table).select('*')
+        backup[table]=data||[]
+      }
+      backup._date=new Date().toISOString()
+      const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a'); a.href=url; a.download=`naqaa_backup_${new Date().toISOString().split('T')[0]}.json`; a.click()
+      URL.revokeObjectURL(url)
+      await logActivity('نسخ احتياطي', 'تم إنشاء نسخة احتياطية')
+      showToast('✅ تم تحميل النسخة الاحتياطية')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setLoading(false)
     }
-    backup._date=new Date().toISOString()
-    const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
-    const url=URL.createObjectURL(blob)
-    const a=document.createElement('a'); a.href=url; a.download=`naqaa_backup_${new Date().toISOString().split('T')[0]}.json`; a.click()
-    URL.revokeObjectURL(url)
-    showToast('✅ تم تحميل النسخة الاحتياطية')
-    setLoading(false)
   }
 
   const restore=e=>{
     const file=e.target.files[0]; if(!file) return
-    if(!confirm('هذا سيستبدل البيانات الحالية. هل أنت متأكد؟')) return
+    if(!confirm('⚠️ هذا سيستبدل البيانات الحالية. هل أنت متأكد؟')) return
     const reader=new FileReader()
     reader.onload=async ev=>{
       try{
@@ -3438,8 +4004,11 @@ function DataBackup({ showToast }) {
             restored+=data[table].length
           }
         }
+        await logActivity('استعادة نسخة احتياطية', `تم استعادة ${restored} سجل`)
         showToast(`✅ تم استعادة ${restored} سجل`)
-      }catch(err){ showToast('خطأ في ملف النسخة الاحتياطية','error') }
+      }catch(err){ 
+        showToast('❌ خطأ في ملف النسخة الاحتياطية','error') 
+      }
     }
     reader.readAsText(file)
     e.target.value=''
@@ -3466,17 +4035,39 @@ function DataBackup({ showToast }) {
           ⚠️ <strong>تنبيه:</strong> استعادة النسخة الاحتياطية ستضيف البيانات للموجودة ولن تحذف شيئاً.
           يُنصح بعمل نسخة احتياطية أسبوعية.
         </div>
+        <div style={{marginTop:12,display:'flex',alignItems:'center',gap:12}}>
+          <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
+            <input type="checkbox" checked={autoBackup} onChange={toggleAuto} />
+            <span>🔄 نسخ احتياطي تلقائي يومي</span>
+          </label>
+          {lastBackup !== '—' && <span style={{fontSize:12,color:CLR.textSm}}>📅 آخر نسخ: {lastBackup}</span>}
+        </div>
       </div>
     </div>
   )
 }
 
-/* ══════════════════════════════════════════   🏢 من نحن
+/* ══════════════════════════════════════════
+   🏢 من نحن
 ══════════════════════════════════════════ */
 function AboutUs({ showToast }) {
   const [content,setContent]=useState(''); const [saving,setSaving]=useState(false)
-  useEffect(()=>{ supabase.from('settings').select('value').eq('key','about_us').maybeSingle().then(({data})=>setContent(data?.value||'نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة.')) },[])
-  const save=async()=>{ setSaving(true); await supabase.from('settings').upsert({key:'about_us',value:content}); showToast('✅ تم الحفظ'); setSaving(false) }
+  useEffect(()=>{ 
+    supabase.from('settings').select('value').eq('key','about_us').maybeSingle()
+      .then(({data})=>setContent(data?.value||'نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة.')) 
+  },[])
+  const save=async()=>{ 
+    setSaving(true)
+    try {
+      await supabase.from('settings').upsert({key:'about_us',value:content})
+      await logActivity('تحديث من نحن', 'تم تحديث صفحة من نحن')
+      showToast('✅ تم الحفظ')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🏢 من نحن</h1>
@@ -3485,7 +4076,10 @@ function AboutUs({ showToast }) {
         <textarea style={{...S.input,minHeight:200,resize:'vertical',marginBottom:14}} value={content} onChange={e=>setContent(e.target.value)} />
         <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ'}</button>
       </div>
-      {content&&<div style={S.card}><h3 style={{fontWeight:800,marginBottom:10}}>معاينة</h3><div style={{whiteSpace:'pre-wrap',lineHeight:1.8,color:CLR.textSm,fontSize:14}}>{content}</div></div>}
+      {content&&<div style={S.card}>
+        <h3 style={{fontWeight:800,marginBottom:10}}>معاينة</h3>
+        <div style={{whiteSpace:'pre-wrap',lineHeight:1.8,color:CLR.textSm,fontSize:14}}>{content}</div>
+      </div>}
     </div>
   )
 }
@@ -3495,28 +4089,44 @@ function AboutUs({ showToast }) {
 ══════════════════════════════════════════ */
 function ContactUs({ showToast }) {
   const [form,setForm]=useState({
-    contact_phone:'0696668065', contact_whatsapp:WA_DEFAULT,
-    contact_email:'', contact_address:'', contact_facebook:'', contact_instagram:'', contact_hours:'السبت–الخميس: 8ص–6م'
+    contact_phone:'0696668065',
+    contact_whatsapp:WA_DEFAULT,
+    contact_email:'',
+    contact_address:'',
+    contact_facebook:'',
+    contact_instagram:'',
+    contact_hours:'السبت–الخميس: 8ص–6م'
   })
   const [saving,setSaving]=useState(false)
+  
   useEffect(()=>{
     supabase.from('settings').select('*').then(({data})=>{
       if(data){const map={};data.forEach(r=>(map[r.key]=r.value));setForm(f=>({...f,...map}))}
     })
   },[])
+  
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
+  
   const save=async()=>{
     setSaving(true)
-    await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
-    showToast('✅ تم الحفظ');setSaving(false)
+    try {
+      await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
+      await logActivity('تحديث اتصل بنا', 'تم تحديث صفحة اتصل بنا')
+      showToast('✅ تم الحفظ')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
   }
+  
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📞 اتصل بنا</h1>
       <div style={S.card}>
         <div style={S.grid2}>
-          <div><label style={S.label}>📱 الهاتف</label><input style={S.input} value={form.contact_phone} onChange={F('contact_phone')} /></div>
-          <div><label style={S.label}>💬 واتساب</label><input style={S.input} value={form.contact_whatsapp} onChange={F('contact_whatsapp')} /></div>
+          <div><label style={S.label}>📱 الهاتف</label><PhoneInput value={form.contact_phone} onChange={F('contact_phone')} /></div>
+          <div><label style={S.label}>💬 واتساب</label><PhoneInput value={form.contact_whatsapp} onChange={F('contact_whatsapp')} /></div>
           <div><label style={S.label}>📧 البريد</label><input style={S.input} value={form.contact_email} onChange={F('contact_email')} /></div>
           <div><label style={S.label}>📍 العنوان</label><input style={S.input} value={form.contact_address} onChange={F('contact_address')} /></div>
           <div><label style={S.label}>📘 فيسبوك</label><input style={S.input} value={form.contact_facebook} onChange={F('contact_facebook')} /></div>
@@ -3534,8 +4144,22 @@ function ContactUs({ showToast }) {
 ══════════════════════════════════════════ */
 function ReturnPolicy({ showToast }) {
   const [content,setContent]=useState(''); const [saving,setSaving]=useState(false)
-  useEffect(()=>{ supabase.from('settings').select('value').eq('key','return_policy').maybeSingle().then(({data})=>setContent(data?.value||'يمكن للعميل استرجاع المنتج خلال 14 يوم من الاستلام بشرط أن يكون بحالته الأصلية.\n\nشروط الاسترجاع:\n• المنتج بدون استخدام\n• مع الفاتورة الأصلية\n• خلال 14 يوم')) },[])
-  const save=async()=>{ setSaving(true); await supabase.from('settings').upsert({key:'return_policy',value:content}); showToast('✅ تم الحفظ'); setSaving(false) }
+  useEffect(()=>{ 
+    supabase.from('settings').select('value').eq('key','return_policy').maybeSingle()
+      .then(({data})=>setContent(data?.value||'يمكن للعميل استرجاع المنتج خلال 14 يوم من الاستلام بشرط أن يكون بحالته الأصلية.\n\nشروط الاسترجاع:\n• المنتج بدون استخدام\n• مع الفاتورة الأصلية\n• خلال 14 يوم')) 
+  },[])
+  const save=async()=>{ 
+    setSaving(true)
+    try {
+      await supabase.from('settings').upsert({key:'return_policy',value:content})
+      await logActivity('تحديث سياسة الاسترجاع', 'تم تحديث سياسة الاسترجاع')
+      showToast('✅ تم الحفظ')
+    } catch (err) {
+      showToast('❌ خطأ: '+err.message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🔄 سياسة الاسترجاع</h1>
@@ -3547,111 +4171,170 @@ function ReturnPolicy({ showToast }) {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
-   🏠 المكوّن الرئيسي
+   🏠 المكوّن الرئيسي Admin
 ══════════════════════════════════════════ */
 export default function Admin() {
-  const [user,       setUser]       = useState(null)
-  const [section,    setSection]    = useState('dashboard')
-  const [showToast,  ToastUI]       = useToast()
-  const [collapsed,  setCollapsed]  = useState(false)
+  const [user, setUser] = useState(null)
+  const [section, setSection] = useState('dashboard')
+  const [showToast, ToastUI] = useToast()
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('nq_admin')
-    if (saved) try { setUser(JSON.parse(saved)) } catch {}
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        // ✅ تحويل الصلاحيات إذا كانت string
+        if (typeof parsed.permissions === 'string') {
+          try {
+            parsed.permissions = JSON.parse(parsed.permissions || '{}')
+          } catch {
+            parsed.permissions = {}
+          }
+        }
+        setUser(parsed)
+      } catch (err) {
+        console.error('❌ خطأ في استعادة الجلسة:', err)
+      }
+    }
   }, [])
 
-  const handleLogin  = u => { setUser(u); sessionStorage.setItem('nq_admin', JSON.stringify(u)) }
-  const handleLogout = () => { setUser(null); sessionStorage.removeItem('nq_admin') }
+  const handleLogin = (u) => {
+    setUser(u)
+    sessionStorage.setItem('nq_admin', JSON.stringify(u))
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+    sessionStorage.removeItem('nq_admin')
+    setSection('dashboard')
+  }
+
+  // ✅ دالة التحقق من الصلاحيات (مصححة)
+  const hasPermission = (permId, action = 'view') => {
+    if (!user) return false
+    if (user.role === 'admin') return true
+    const perms = user.permissions || {}
+    const permActions = perms[permId] || []
+    return permActions.includes(action)
+  }
 
   if (!user) return <LoginScreen onLogin={handleLogin} />
 
-  // ✅ تحقق من صلاحيات الموظف
-  const hasPermission = (permId, action = 'view') => {
-    if (user.role === 'admin') return true
-    const perms = user.permissions || {}
-    return (perms[permId] || []).includes(action)
-  }
-
+  // ✅ تعريف الأقسام مع الصلاحيات
   const sections = [
-    { id:'dashboard',     icon:'📊', label:'لوحة القيادة', perm:'dashboard' },
-    { id:'products',      icon:'📦', label:'المنتجات', perm:'products' },
-    { id:'categories',    icon:'📂', label:'الفئات', perm:'categories' },
-    { id:'brands',        icon:'🏷️', label:'العلامات التجارية', perm:'brands' },
-    { id:'suppliers',     icon:'🏭', label:'الموردون', perm:'suppliers' },
-    { id:'customers',     icon:'👥', label:'العملاء (M1/M2/M3)', perm:'customers' },
-    { id:'employees',     icon:'👔', label:'الموظفون', perm:'employees' },
-    { id:'coupons',       icon:'🎟️', label:'الكوبونات', perm:'coupons' },
-    { id:'purchases',     icon:'🛒', label:'المشتريات', perm:'purchases' },
-    { id:'inventory',     icon:'🗂️', label:'المخزون + Excel', perm:'inventory' },
-    { id:'orders',        icon:'📋', label:'الطلبيات', perm:'orders' },
-    { id:'promotions',    icon:'🎯', label:'إدارة العروض', perm:'promotions' },
-    { id:'notifications', icon:'🔔', label:'الإشعارات', perm:'notifications' },
-    { id:'reports',       icon:'📈', label:'التقارير', perm:'reports' },
-    { id:'expenses',      icon:'💸', label:'المصاريف', perm:'expenses' },
-    { id:'activityLog',   icon:'📋', label:'سجل النشاطات', perm:'activityLog' },
-    { id:'storeManager',  icon:'🎨', label:'إدارة المتجر', perm:'storeManager' },
-    { id:'backup',        icon:'💾', label:'نسخ احتياطي', perm:'backup' },
-    { id:'settings',      icon:'⚙️', label:'الإعدادات', perm:'settings' },
-    { id:'about',         icon:'🏢', label:'من نحن', perm:'about' },
-    { id:'contact',       icon:'📞', label:'اتصل بنا', perm:'contact' },
-    { id:'returnPolicy',  icon:'🔄', label:'سياسة الاسترجاع', perm:'returnPolicy' },
-    { id:'recycle',       icon:'🗑️', label:'سلة المهملات', perm:'recycle' },
+    { id: 'dashboard', icon: '📊', label: 'لوحة القيادة', perm: 'dashboard' },
+    { id: 'products', icon: '📦', label: 'المنتجات', perm: 'products' },
+    { id: 'categories', icon: '📂', label: 'الفئات', perm: 'categories' },
+    { id: 'brands', icon: '🏷️', label: 'العلامات التجارية', perm: 'brands' },
+    { id: 'suppliers', icon: '🏭', label: 'الموردون', perm: 'suppliers' },
+    { id: 'customers', icon: '👥', label: 'العملاء (M1/M2/M3)', perm: 'customers' },
+    { id: 'employees', icon: '👔', label: 'الموظفون', perm: 'employees' },
+    { id: 'coupons', icon: '🎟️', label: 'الكوبونات', perm: 'coupons' },
+    { id: 'purchases', icon: '🛒', label: 'المشتريات', perm: 'purchases' },
+    { id: 'inventory', icon: '🗂️', label: 'المخزون + Excel', perm: 'inventory' },
+    { id: 'orders', icon: '📋', label: 'الطلبيات', perm: 'orders' },
+    { id: 'promotions', icon: '🎯', label: 'إدارة العروض', perm: 'promotions' },
+    { id: 'notifications', icon: '🔔', label: 'الإشعارات', perm: 'notifications' },
+    { id: 'reports', icon: '📈', label: 'التقارير', perm: 'reports' },
+    { id: 'expenses', icon: '💸', label: 'المصاريف', perm: 'expenses' },
+    { id: 'activityLog', icon: '📋', label: 'سجل النشاطات', perm: 'activityLog' },
+    { id: 'storeManager', icon: '🎨', label: 'إدارة المتجر', perm: 'storeManager' },
+    { id: 'backup', icon: '💾', label: 'نسخ احتياطي', perm: 'backup' },
+    { id: 'settings', icon: '⚙️', label: 'الإعدادات', perm: 'settings' },
+    { id: 'about', icon: '🏢', label: 'من نحن', perm: 'about' },
+    { id: 'contact', icon: '📞', label: 'اتصل بنا', perm: 'contact' },
+    { id: 'returnPolicy', icon: '🔄', label: 'سياسة الاسترجاع', perm: 'returnPolicy' },
+    { id: 'recycle', icon: '🗑️', label: 'سلة المهملات', perm: 'recycle' },
   ]
 
+  // ✅ دالة عرض القسم مع التحقق من الصلاحيات
   const renderSection = () => {
     const currentSection = sections.find(s => s.id === section)
+    
+    // ✅ التحقق من صلاحية الوصول
     if (currentSection && !hasPermission(currentSection.perm)) {
       return (
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-          minHeight:300,gap:16,color:CLR.textSm}}>
-          <div style={{fontSize:56}}>🔒</div>
-          <h3 style={{fontWeight:800,color:CLR.text}}>لا تملك صلاحية الوصول</h3>
-          <p style={{fontSize:14}}>تواصل مع المدير لمنحك الصلاحية</p>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 300,
+          gap: 16,
+          color: CLR.textSm,
+          padding: 24
+        }}>
+          <div style={{ fontSize: 56 }}>🔒</div>
+          <h3 style={{ fontWeight: 800, color: CLR.text }}>لا تملك صلاحية الوصول</h3>
+          <p style={{ fontSize: 14, textAlign: 'center' }}>
+            {user.role === 'admin' 
+              ? 'أنت مدير، لديك صلاحية الوصول لكل شيء ✅' 
+              : 'تواصل مع المدير لمنحك الصلاحية'}
+          </p>
+          {user.role !== 'admin' && (
+            <div style={{
+              background: '#FEF9C3',
+              padding: '12px 18px',
+              borderRadius: 8,
+              fontSize: 13,
+              color: '#92400E',
+              textAlign: 'center',
+              maxWidth: 400
+            }}>
+              💡 الصلاحيات الممنوحة لك: {Object.keys(user.permissions || {}).length > 0
+                ? Object.keys(user.permissions).join(', ')
+                : 'لا توجد صلاحيات حالياً'}
+            </div>
+          )}
         </div>
       )
     }
-    switch(section) {
-      case 'dashboard':     return <Dashboard user={user} />
-      case 'products':      return <Products />
-      case 'categories':    return <Categories />
-      case 'brands':        return <Brands />
-      case 'suppliers':     return <Suppliers />
-      case 'customers':     return <Customers />
-      case 'employees':     return <Employees />
-      case 'coupons':       return <Coupons />
-      case 'purchases':     return <Purchases />
-      case 'inventory':     return <Inventory />
-      case 'orders':        return <Orders />
-      case 'promotions':    return <PromotionsManager />
+
+    // ✅ عرض الأقسام حسب الصلاحيات
+    switch (section) {
+      case 'dashboard': return <Dashboard user={user} showToast={showToast} />
+      case 'products': return <Products />
+      case 'categories': return <Categories />
+      case 'brands': return <Brands />
+      case 'suppliers': return <Suppliers />
+      case 'customers': return <Customers />
+      case 'employees': return <Employees />
+      case 'coupons': return <Coupons />
+      case 'purchases': return <Purchases />
+      case 'inventory': return <Inventory />
+      case 'orders': return <Orders />
+      case 'promotions': return <PromotionsManager />
       case 'notifications': return <Notifications />
-      case 'reports':       return <Reports />
-      case 'expenses':      return <Expenses />
-      case 'activityLog':   return <ActivityLog />
-      case 'storeManager':  return <StoreManager showToast={showToast} />
-      case 'backup':        return <DataBackup showToast={showToast} />
-      case 'settings':      return <Settings showToast={showToast} />
-      case 'about':         return <AboutUs showToast={showToast} />
-      case 'contact':       return <ContactUs showToast={showToast} />
-      case 'returnPolicy':  return <ReturnPolicy showToast={showToast} />
-      case 'recycle':       return <RecycleBin />
-      default:              return <Dashboard user={user} />
+      case 'reports': return <Reports />
+      case 'expenses': return <Expenses />
+      case 'activityLog': return <ActivityLog />
+      case 'storeManager': return <StoreManager showToast={showToast} />
+      case 'backup': return <DataBackup showToast={showToast} />
+      case 'settings': return <Settings showToast={showToast} />
+      case 'about': return <AboutUs showToast={showToast} />
+      case 'contact': return <ContactUs showToast={showToast} />
+      case 'returnPolicy': return <ReturnPolicy showToast={showToast} />
+      case 'recycle': return <RecycleBin />
+      default: return <Dashboard user={user} showToast={showToast} />
     }
   }
 
+  // ✅ مجموعات القائمة الجانبية
   const navGroups = [
-    { label:'الرئيسية', items:['dashboard'] },
-    { label:'المنتجات والمخزون', items:['products','categories','brands','inventory'] },
-    { label:'المبيعات', items:['orders','promotions','coupons'] },
-    { label:'الموارد', items:['purchases','suppliers','expenses'] },
-    { label:'العملاء', items:['customers','notifications'] },
-    { label:'الإدارة', items:['reports','employees','activityLog','storeManager','backup','settings','about','contact','returnPolicy','recycle'] },
+    { label: 'الرئيسية', items: ['dashboard'] },
+    { label: 'المنتجات والمخزون', items: ['products', 'categories', 'brands', 'inventory'] },
+    { label: 'المبيعات', items: ['orders', 'promotions', 'coupons'] },
+    { label: 'الموارد', items: ['purchases', 'suppliers', 'expenses'] },
+    { label: 'العملاء', items: ['customers', 'notifications'] },
+    { label: 'الإدارة', items: ['reports', 'employees', 'activityLog', 'storeManager', 'backup', 'settings', 'about', 'contact', 'returnPolicy', 'recycle'] },
   ]
 
   return (
-    <div dir="rtl" style={{ display:'flex', minHeight:'100vh', background:CLR.bg }}>
+    <div dir="rtl" style={{ display: 'flex', minHeight: '100vh', background: CLR.bg }}>
       {ToastUI}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;900&display=swap');
         body,*{font-family:'Tajawal',sans-serif!important}
@@ -3669,55 +4352,106 @@ export default function Admin() {
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:10px}
         .nq-tr:hover td{background:#FFF7ED!important}
+        .dark .nq-tr:hover td{background:#1e293b!important}
       `}</style>
 
+      {/* ═══ SIDEBAR ═══ */}
       <aside style={{
         width: collapsed ? 58 : 232,
         background: CLR.primary,
-        position: 'sticky', top: 0, height: '100vh',
-        display: 'flex', flexDirection: 'column',
-        flexShrink: 0, overflow: 'hidden',
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        flexShrink: 0,
+        overflow: 'hidden',
         transition: 'width .22s ease',
         boxShadow: '2px 0 16px rgba(0,0,0,.15)',
         zIndex: 100,
       }}>
-        <div style={{ padding: collapsed?'14px 9px':'14px 14px',
-          borderBottom: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:36,height:36,borderRadius:9,flexShrink:0,
-              background:'linear-gradient(135deg,#F97316,#EA6C0A)',
-              display:'flex',alignItems:'center',justifyContent:'center',fontSize:18 }}>🛍️</div>
-            {!collapsed && <div>
-              <div style={{ fontWeight:900, fontSize:15, color:'white', lineHeight:1.2 }}>نقاء</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,.45)' }}>لوحة الإدارة</div>
-            </div>}
+        {/* لوغو */}
+        <div style={{
+          padding: collapsed ? '14px 9px' : '14px 14px',
+          borderBottom: '1px solid rgba(255,255,255,.07)',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 9,
+              flexShrink: 0,
+              background: 'linear-gradient(135deg,#F97316,#EA6C0A)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 18
+            }}>🛍️</div>
+            {!collapsed && (
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 15, color: 'white', lineHeight: 1.2 }}>نقاء</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)' }}>لوحة الإدارة</div>
+              </div>
+            )}
           </div>
-          {!collapsed && <div style={{ marginTop:10, padding:'7px 10px',
-            background:'rgba(255,255,255,.07)', borderRadius:7,
-            fontSize:12, color:'rgba(255,255,255,.75)',
-            display:'flex', alignItems:'center', gap:6 }}>
-            <span>👤</span>
-            <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.name}</span>
-          </div>}
+          {!collapsed && (
+            <div style={{
+              marginTop: 10,
+              padding: '7px 10px',
+              background: 'rgba(255,255,255,.07)',
+              borderRadius: 7,
+              fontSize: 12,
+              color: 'rgba(255,255,255,.75)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}>
+              <span>👤</span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.name || 'المدير'}
+              </span>
+              {user.role === 'admin' && (
+                <span style={{
+                  fontSize: 8,
+                  background: 'rgba(239,68,68,.3)',
+                  padding: '1px 6px',
+                  borderRadius: 10,
+                  color: '#FCA5A5'
+                }}>مدير</span>
+              )}
+            </div>
+          )}
         </div>
 
-        <nav style={{ flex:1, overflowY:'auto', overflowX:'hidden', padding:'6px 0' }}>
+        {/* قائمة مجمّعة */}
+        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '6px 0' }}>
           {navGroups.map(group => (
             <div key={group.label}>
               {!collapsed && (
-                <div style={{ padding:'8px 14px 3px', fontSize:9, fontWeight:800,
-                  color:'rgba(255,255,255,.28)', letterSpacing:'0.9px', textTransform:'uppercase' }}>
+                <div style={{
+                  padding: '8px 14px 3px',
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: 'rgba(255,255,255,.28)',
+                  letterSpacing: '0.9px',
+                  textTransform: 'uppercase'
+                }}>
                   {group.label}
                 </div>
               )}
               {group.items.map(id => {
-                const s = sections.find(x=>x.id===id)
+                const s = sections.find(x => x.id === id)
                 if (!s) return null
                 // ✅ التحقق من صلاحية الموظف
                 if (!hasPermission(s.perm)) return null
                 return (
-                  <div key={s.id} className={`sitem${section===s.id?' on':''}`}
-                    onClick={()=>setSection(s.id)} title={collapsed?s.label:''}>
+                  <div
+                    key={s.id}
+                    className={`sitem${section === s.id ? ' on' : ''}`}
+                    onClick={() => setSection(s.id)}
+                    title={collapsed ? s.label : ''}
+                  >
                     <span className="ico">{s.icon}</span>
                     {!collapsed && <span>{s.label}</span>}
                   </div>
@@ -3727,59 +4461,145 @@ export default function Admin() {
           ))}
         </nav>
 
-        <div style={{ padding:'8px 6px', borderTop:'1px solid rgba(255,255,255,.07)', flexShrink:0 }}>
-          <a href="/" target="_blank"
-            style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:7,
-              color:'rgba(255,255,255,.5)',textDecoration:'none',fontSize:12,fontWeight:600,
-              transition:'.15s',marginBottom:3 }}
-            onMouseEnter={e=>{e.currentTarget.style.color='white';e.currentTarget.style.background='rgba(255,255,255,.06)'}}
-            onMouseLeave={e=>{e.currentTarget.style.color='rgba(255,255,255,.5)';e.currentTarget.style.background='none'}}>
-            <span>🛍️</span>{!collapsed&&<span>عرض المتجر</span>}
+        {/* أسفل القائمة */}
+        <div style={{
+          padding: '8px 6px',
+          borderTop: '1px solid rgba(255,255,255,.07)',
+          flexShrink: 0
+        }}>
+          <a
+            href="/"
+            target="_blank"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              borderRadius: 7,
+              color: 'rgba(255,255,255,.5)',
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 600,
+              transition: '.15s',
+              marginBottom: 3
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'white'
+              e.currentTarget.style.background = 'rgba(255,255,255,.06)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'rgba(255,255,255,.5)'
+              e.currentTarget.style.background = 'none'
+            }}
+          >
+            <span>🛍️</span>
+            {!collapsed && <span>عرض المتجر</span>}
           </a>
-          <button onClick={handleLogout}
-            style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:7,
-              color:'rgba(239,68,68,.7)',background:'none',border:'none',cursor:'pointer',
-              fontSize:12,fontWeight:600,width:'100%',textAlign:'right',fontFamily:'inherit' }}
-            onMouseEnter={e=>{e.currentTarget.style.color='#EF4444';e.currentTarget.style.background='rgba(239,68,68,.08)'}}
-            onMouseLeave={e=>{e.currentTarget.style.color='rgba(239,68,68,.7)';e.currentTarget.style.background='none'}}>
-            <span>🚪</span>{!collapsed&&<span>خروج</span>}
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              borderRadius: 7,
+              color: 'rgba(239,68,68,.7)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 600,
+              width: '100%',
+              textAlign: 'right',
+              fontFamily: 'inherit'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#EF4444'
+              e.currentTarget.style.background = 'rgba(239,68,68,.08)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'rgba(239,68,68,.7)'
+              e.currentTarget.style.background = 'none'
+            }}
+          >
+            <span>🚪</span>
+            {!collapsed && <span>خروج</span>}
           </button>
         </div>
       </aside>
 
-      <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
+      {/* ═══ MAIN CONTENT ═══ */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
-        <header style={{ background:'white', borderBottom:`1px solid ${CLR.border}`,
-          padding:'0 20px', height:52, display:'flex', alignItems:'center',
-          justifyContent:'space-between', position:'sticky', top:0, zIndex:150, flexShrink:0 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <button onClick={()=>setCollapsed(p=>!p)}
-              style={{ background:'none',border:'none',cursor:'pointer',
-                fontSize:16,color:CLR.textSm,padding:'4px 6px',borderRadius:6,
-                transition:'.15s' }}
-              onMouseEnter={e=>e.currentTarget.style.background=CLR.bg}
-              onMouseLeave={e=>e.currentTarget.style.background='none'}>
-              {collapsed?'☰':'✕'}
+        {/* TOP BAR */}
+        <header style={{
+          background: 'white',
+          borderBottom: `1px solid ${CLR.border}`,
+          padding: '0 20px',
+          height: 52,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 150,
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setCollapsed(p => !p)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 16,
+                color: CLR.textSm,
+                padding: '4px 6px',
+                borderRadius: 6,
+                transition: '.15s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = CLR.bg}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              {collapsed ? '☰' : '✕'}
             </button>
-            <div style={{ fontSize:14, fontWeight:700, color:CLR.text }}>
-              {sections.find(s=>s.id===section)?.icon} {sections.find(s=>s.id===section)?.label}
+            <div style={{ fontSize: 14, fontWeight: 700, color: CLR.text }}>
+              {sections.find(s => s.id === section)?.icon} {sections.find(s => s.id === section)?.label}
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:12,color:CLR.textSm,background:CLR.bg,
-              borderRadius:6,padding:'4px 10px',border:`1px solid ${CLR.border}`,fontWeight:600 }}>
-              {new Date().toLocaleDateString('ar-DZ',{day:'numeric',month:'short'})}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 12,
+              color: CLR.textSm,
+              background: CLR.bg,
+              borderRadius: 6,
+              padding: '4px 10px',
+              border: `1px solid ${CLR.border}`,
+              fontWeight: 600
+            }}>
+              {new Date().toLocaleDateString('ar-DZ', { day: 'numeric', month: 'short' })}
             </span>
-            <a href="/" target="_blank"
-              style={{ fontSize:12,color:CLR.accent,background:'#FFF7ED',
-                borderRadius:6,padding:'4px 10px',border:'1px solid #FED7AA',
-                textDecoration:'none',fontWeight:700 }}>
+            <a
+              href="/"
+              target="_blank"
+              style={{
+                fontSize: 12,
+                color: CLR.accent,
+                background: '#FFF7ED',
+                borderRadius: 6,
+                padding: '4px 10px',
+                border: '1px solid #FED7AA',
+                textDecoration: 'none',
+                fontWeight: 700
+              }}
+            >
               🛍️ المتجر
             </a>
           </div>
         </header>
 
-        <main style={{ flex:1, padding:22, overflowY:'auto' }}>
+        {/* CONTENT */}
+        <main style={{ flex: 1, padding: 22, overflowY: 'auto' }}>
           {renderSection()}
         </main>
       </div>
