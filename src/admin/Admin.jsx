@@ -1314,17 +1314,42 @@ function Employees() {
     const p=parseFloat(price)||0; const u=parseInt(units)||12
     return p>0?(p*u).toFixed(2):''
   }
-  const add=async()=>{
-    if(!form.name||!form.username||!form.password){showToast('الاسم والمستخدم والكلمة مطلوبة','error');return} setSaving(true)
-    if(editItem){
-      await supabase.from('employees').update({name:form.name,username:form.username,email:form.email,permissions:JSON.stringify(form.permissions)}).eq('id',editItem)
-      showToast('✅ تم التعديل');setEditItem(null)
-    } else {
-      await supabase.from('employees').insert({id:Date.now(),name:form.name,username:form.username,password:hashPwd(form.password),email:form.email,role:'staff',permissions:JSON.stringify(form.permissions)})
-      showToast('✅ تم إضافة الموظف')
-    }
-    setForm({name:'',username:'',password:'',email:'',permissions:[]});await load();setSaving(false)
+  // ✅ الدالة المصححة - مع JSON.stringify
+const add = async () => {
+  if (!form.name || !form.username || !form.password) {
+    showToast('الاسم والمستخدم والكلمة مطلوبة', 'error')
+    return
   }
+  setSaving(true)
+  
+  // ✅ تحويل الصلاحيات إلى JSON string
+  const permissionsJson = JSON.stringify(form.permissions || [])
+  
+  if (editItem) {
+    await supabase.from('employees').update({
+      name: form.name,
+      username: form.username,
+      email: form.email,
+      permissions: permissionsJson  // ✅ مصحح
+    }).eq('id', editItem)
+    showToast('✅ تم التعديل')
+    setEditItem(null)
+  } else {
+    await supabase.from('employees').insert({
+      id: Date.now(),
+      name: form.name,
+      username: form.username,
+      password: hashPwd(form.password),
+      email: form.email,
+      role: 'staff',
+      permissions: permissionsJson  // ✅ مصحح
+    })
+    showToast('✅ تم إضافة الموظف')
+  }
+  setForm({ name: '', username: '', password: '', email: '', permissions: [] })
+  await load()
+  setSaving(false)
+}
   const del=async id=>{if(!await askConfirm('حذف هذا الموظف؟'))return;await supabase.from('employees').delete().eq('id',id);showToast('تم الحذف');await load()}
   return (
     <div>{ToastUI}{ConfirmUI}
