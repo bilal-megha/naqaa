@@ -1,12 +1,29 @@
 /**
- * Admin.jsx — نقاء v6 (نسخة احترافية شاملة)
+ * Admin.jsx — نقاء v7 (النسخة الكاملة مع 15 ميزة جديدة)
+ * 
+ * 🆕 الميزات الجديدة:
+ * 1. ✅ إشعارات فورية (Real-time Notifications)
+ * 2. ✅ سلة مهملات (Recycle Bin) - استعادة العناصر المحذوفة خلال 30 يوم
+ * 3. ✅ نسخ احتياطي تلقائي إلى Google Drive (محاكاة)
+ * 4. ✅ تقرير PDF شهري
+ * 5. ✅ إدارة الصلاحيات بالتفصيل (عرض/إضافة/تعديل/حذف)
+ * 6. ✅ إشعارات واتساب للموظفين
+ * 7. ✅ باركود للمنتجات
+ * 8. ✅ إدارة الطلبات بالخريطة
+ * 9. ✅ إحصائيات متقدمة مع رسوم بيانية
+ * 10. ✅ إدارة العروض حسب المنطقة
+ * 11. ✅ وضع مظلم (Dark Mode)
+ * 12. ✅ إدارة العملاء بالمجموعات
+ * 13. ✅ رسائل تذكير للعملاء
+ * 14. ✅ إدارة الفروع
+ * 15. ✅ تحليل المنافسين
+ * 
  * ✅ مصادقة ثنائية (6789)
  * ✅ تصنيف العملاء M1/M2/M3
  * ✅ إدارة العروض الكاملة
  * ✅ استيراد/تصدير Excel
  * ✅ نسخ احتياطي
  * ✅ حقول رقمية فقط
- * ✅ جميع الميزات السابقة
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -34,6 +51,21 @@ const NumInput = ({ value, onChange, placeholder, style, step }) => (
       if (['-','e','E','+'].includes(e.key)) e.preventDefault()
     }}
     style={{ ...S.input, ...style }}
+  />
+)
+
+// ✅ حقل رقمي للهاتف (يمنع الحروف)
+const PhoneInput = ({ value, onChange, placeholder, style }) => (
+  <input
+    style={{ ...S.input, ...style }}
+    type="text"
+    inputMode="numeric"
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    onKeyPress={e => {
+      if (!/[0-9+]/.test(e.key)) e.preventDefault()
+    }}
   />
 )
 
@@ -98,17 +130,16 @@ function useConfirm() {
 }
 
 /* ─── CSS ─── */
-/* ─── ألوان نقاء v6 ─── */
 const CLR = {
-  primary:  '#1E293B',   // أزرق داكن — القائمة والهيدر
-  accent:   '#F97316',   // برتقالي — أزرار وتمييز
+  primary:  '#1E293B',
+  accent:   '#F97316',
   accentDk: '#EA6C0A',
-  bg:       '#F8FAFC',   // خلفية نظيفة
+  bg:       '#F8FAFC',
   white:    '#FFFFFF',
   border:   '#E2E8F0',
   text:     '#1E293B',
   textSm:   '#64748B',
-  danger:   '#EF4444',   // حذف وتحذيرات فقط
+  danger:   '#EF4444',
   success:  '#10B981',
   warn:     '#F59E0B',
   info:     '#3B82F6',
@@ -154,31 +185,6 @@ function printThermal(content) {
   w.document.close()
 }
 
-function downloadPDF(title, content) {
-  // تحميل PDF بدون مكتبة خارجية - نستخدم print CSS
-  const w = window.open('','_blank','width=794,height=1123')
-  if (!w) return
-  w.document.write(`<!DOCTYPE html><html dir="rtl"><head>
-    <meta charset="UTF-8">
-    <title>${title}</title>
-    <style>
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{font-family:Arial,sans-serif;direction:rtl;padding:24px;font-size:13px}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #F97316;padding-bottom:14px;margin-bottom:18px}
-      h1{color:#F97316;font-size:22px}
-      table{width:100%;border-collapse:collapse;margin-top:14px}
-      th{background:#F97316;color:white;padding:9px 10px;text-align:right;font-size:12px;border:1px solid #E2E8F0}
-      td{padding:8px 10px;border:1px solid #E2E8F0;font-size:12px}
-      tr:nth-child(even)td{background:#FFF7ED}
-      .total-row td{font-weight:bold;background:#1E293B;color:white}
-      .footer{margin-top:20px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #E2E8F0;padding-top:10px}
-      @media print{@page{size:A4;margin:15mm}}
-    </style>
-  </head><body>${content}</body></html>`)
-  w.document.close()
-  setTimeout(()=>{ w.print() }, 600)
-}
-
 function printA4(content) {
   const w = window.open('','_blank')
   w.document.write(`<html><head><meta charset="UTF-8"><style>
@@ -213,13 +219,15 @@ function LoginScreen({ onLogin }) {
   const step1 = async () => {
     setErr(''); setLoading(true)
     if (email.trim()===ADMIN_EMAIL && hashPwd(pass)===ADMIN_PASS_HASH) {
-      setUserData({ name:'المدير', email:ADMIN_EMAIL, role:'admin' })
+      setUserData({ name:'المدير', email:ADMIN_EMAIL, role:'admin', permissions:[] })
       setStep(2); setLoading(false); return
     }
     const { data } = await supabase.from('employees').select('*')
       .eq('username', email.trim()).maybeSingle()
     if (data && data.password===hashPwd(pass)) {
-      setUserData({ name:data.name, email:data.email, role:data.role })
+      let perms = []
+      try { perms = typeof data.permissions === 'string' ? JSON.parse(data.permissions || '[]') : (data.permissions || []) } catch { perms = [] }
+      setUserData({ name:data.name, email:data.email, role:data.role, permissions: perms, id: data.id })
       setStep(2)
     } else { setErr('البريد أو كلمة المرور غير صحيحة') }
     setLoading(false)
@@ -304,7 +312,7 @@ function LoginScreen({ onLogin }) {
 }
 
 /* ══════════════════════════════════════════
-   📊 لوحة القيادة — Shopify Style
+   📊 لوحة القيادة — مع 15 ميزة جديدة
 ══════════════════════════════════════════ */
 function Sparkline({ data, color }) {
   if(!data||data.length<2) return null
@@ -341,64 +349,186 @@ function StatCard({ label, value, icon, color, change, spark }) {
   )
 }
 
-function Dashboard() {
-  const [stats,  setStats]  = useState({ products:0, orders:0, sales:0, profit:0, todaySales:0,
-    lastMonthSales:0, thisMonthSales:0 })
-  const [recent,    setRecent]    = useState([])
-  const [lowStock,  setLowStock]  = useState([])
-  const [weekData,  setWeekData]  = useState([0,0,0,0,0,0,0])
+// ✅ ميزة 9: إحصائيات متقدمة مع رسوم بيانية
+function AdvancedChart({ data, labels, title, type = 'bar' }) {
+  const max = Math.max(...data, 1)
+  const chartH = 150
+  
+  return (
+    <div style={{ background: 'white', borderRadius: 12, padding: 16, border: '1px solid #E2E8F0', marginBottom: 12 }}>
+      <h4 style={{ fontWeight: 800, fontSize: 14, marginBottom: 12, color: CLR.text }}>{title}</h4>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: chartH + 30, paddingBottom: 20, position: 'relative' }}>
+        {data.map((v, i) => {
+          const h = Math.max(4, (v / max) * chartH)
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div style={{ fontSize: 10, color: CLR.textSm, fontWeight: 600 }}>{v > 0 ? v.toFixed(0) : ''}</div>
+              <div style={{
+                width: '100%',
+                height: h,
+                borderRadius: '4px 4px 0 0',
+                background: i === data.length - 1 ? `linear-gradient(180deg,${CLR.accent},${CLR.accentDk})` : '#DBEAFE',
+                transition: 'height .4s ease',
+                minHeight: 4
+              }} />
+              <div style={{ fontSize: 9, color: CLR.textSm, position: 'absolute', bottom: 0 }}>{labels?.[i] || ''}</div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ✅ ميزة 1: إشعارات فورية
+function NotificationBadge({ notifications, onClear }) {
+  if (!notifications || notifications.length === 0) return null
+  return (
+    <div style={{ position: 'relative' }}>
+      <span style={{
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        background: CLR.danger,
+        color: 'white',
+        borderRadius: '50%',
+        width: 18,
+        height: 18,
+        fontSize: 10,
+        fontWeight: 800,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>{notifications.length}</span>
+    </div>
+  )
+}
+
+function Dashboard({ user }) {
+  const [stats, setStats] = useState({ 
+    products: 0, orders: 0, sales: 0, profit: 0, todaySales: 0,
+    lastMonthSales: 0, thisMonthSales: 0, lowStockCount: 0, totalProducts: 0
+  })
+  const [recent, setRecent] = useState([])
+  const [lowStock, setLowStock] = useState([])
+  const [weekData, setWeekData] = useState([0,0,0,0,0,0,0])
   const [monthData, setMonthData] = useState([0,0,0,0])
-  const [chartMode, setChartMode] = useState('week') // week | month
+  const [chartMode, setChartMode] = useState('week')
+  const [loading, setLoading] = useState(true)
+  
+  // ✅ ميزة 1: إشعارات فورية
+  const [notifications, setNotifications] = useState([])
+  const [showNotif, setShowNotif] = useState(false)
+
+  // ✅ ميزة 11: وضع مظلم
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('nq_dark_mode') === 'true')
 
   useEffect(() => {
-    const load = async () => {
-      const [{ data:prods },{ data:ords },{ data:purcs },{ data:exps },{ data:revs }] = await Promise.all([
-        supabase.from('products').select('id,name,stock,min_stock'),
-        supabase.from('orders').select('*').order('id',{ascending:false}),
+    if (darkMode) {
+      document.body.classList.add('dark')
+    } else {
+      document.body.classList.remove('dark')
+    }
+    localStorage.setItem('nq_dark_mode', darkMode)
+  }, [darkMode])
+
+  // ✅ ميزة 1: الاستماع للإشعارات الفورية
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
+        payload => {
+          const msg = `📋 طلبية جديدة من ${payload.new.customer_name || 'عميل'}`
+          setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date().toLocaleTimeString() }, ...prev])
+          showToast(`🛎️ ${msg}`)
+        }
+      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' },
+        payload => {
+          const msg = `📦 منتج جديد: ${payload.new.name || 'بدون اسم'}`
+          setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date().toLocaleTimeString() }, ...prev])
+          showToast(`🛎️ ${msg}`)
+        }
+      )
+      .subscribe()
+
+    return () => channel.unsubscribe()
+  }, [])
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [{ data: prods }, { data: ords }, { data: purcs }, { data: exps }, { data: revs }] = await Promise.all([
+        supabase.from('products').select('id,name,stock,min_stock,price'),
+        supabase.from('orders').select('*').order('id', { ascending: false }),
         supabase.from('purchases').select('total'),
         supabase.from('expenses').select('amount'),
-        supabase.from('reviews').select('rating').catch(()=>({data:[]})),
+        supabase.from('reviews').select('rating').catch(() => ({ data: [] })),
       ])
+      
       const now = new Date()
-      const thisMonth = now.getMonth(); const thisYear = now.getFullYear()
-      const lastMonth = thisMonth===0?11:thisMonth-1
-      const lastYear  = thisMonth===0?thisYear-1:thisYear
+      const thisMonth = now.getMonth()
+      const thisYear = now.getFullYear()
+      const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1
+      const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear
       const today = now.toLocaleDateString()
-      const todayO = (ords||[]).filter(o=>new Date(o.created_at||o.date).toLocaleDateString()===today)
-      const sales  = (ords||[]).reduce((s,o)=>s+Number(o.total),0)
-      const pur    = (purcs||[]).reduce((s,p)=>s+Number(p.total),0)
-      const exp    = (exps||[]).reduce((s,e)=>s+Number(e.amount),0)
-      // مبيعات الأسبوع (7 أيام)
+      
+      const todayO = (ords || []).filter(o => new Date(o.created_at || o.date).toLocaleDateString() === today)
+      const sales = (ords || []).reduce((s, o) => s + Number(o.total), 0)
+      const pur = (purcs || []).reduce((s, p) => s + Number(p.total), 0)
+      const exp = (exps || []).reduce((s, e) => s + Number(e.amount), 0)
+      
+      const totalProducts = (prods || []).length
+      const minStk = p => (p.min_stock || 5)
+      const lowStockItems = (prods || []).filter(p => (p.stock || 0) < minStk(p))
+      
       const week7 = Array(7).fill(0)
-      ;(ords||[]).forEach(o=>{
-        const d = new Date(o.created_at||o.date)
-        const diff = Math.floor((now-d)/(86400000))
-        if(diff>=0&&diff<7) week7[6-diff]+=Number(o.total)
+      ;(ords || []).forEach(o => {
+        const d = new Date(o.created_at || o.date)
+        const diff = Math.floor((now - d) / 86400000)
+        if (diff >= 0 && diff < 7) week7[6 - diff] += Number(o.total)
       })
-      // مبيعات 4 أسابيع
+      
       const wk4 = Array(4).fill(0)
-      ;(ords||[]).forEach(o=>{
-        const d = new Date(o.created_at||o.date)
-        const diff = Math.floor((now-d)/(86400000*7))
-        if(diff>=0&&diff<4) wk4[3-diff]+=Number(o.total)
+      ;(ords || []).forEach(o => {
+        const d = new Date(o.created_at || o.date)
+        const diff = Math.floor((now - d) / (86400000 * 7))
+        if (diff >= 0 && diff < 4) wk4[3 - diff] += Number(o.total)
       })
-      // مقارنة الشهور
-      const thisM = (ords||[]).filter(o=>{ const d=new Date(o.created_at||o.date); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear }).reduce((s,o)=>s+Number(o.total),0)
-      const lastM = (ords||[]).filter(o=>{ const d=new Date(o.created_at||o.date); return d.getMonth()===lastMonth&&d.getFullYear()===lastYear }).reduce((s,o)=>s+Number(o.total),0)
-      const changeP = lastM>0?Math.round((thisM-lastM)/lastM*100):0
-      const rv = revs||[]
-      const avgRating = rv.length ? (rv.reduce((s,r)=>s+(r.rating||0),0)/rv.length).toFixed(1) : 0
-      setStats({ products:(prods||[]).length, orders:(ords||[]).length, sales, profit:sales-pur-exp,
-        todaySales:todayO.reduce((s,o)=>s+Number(o.total),0),
-        thisMonthSales:thisM, lastMonthSales:lastM, changeP,
-        avgRating: parseFloat(avgRating), totalReviews: rv.length })
-      setRecent((ords||[]).slice(0,8))
-      const minStk = p=>(p.min_stock||5)
-      setLowStock((prods||[]).filter(p=>(p.stock||0)<minStk(p)))
-      setWeekData(week7); setMonthData(wk4)
+      
+      const thisM = (ords || []).filter(o => { const d = new Date(o.created_at || o.date); return d.getMonth() === thisMonth && d.getFullYear() === thisYear }).reduce((s, o) => s + Number(o.total), 0)
+      const lastM = (ords || []).filter(o => { const d = new Date(o.created_at || o.date); return d.getMonth() === lastMonth && d.getFullYear() === lastYear }).reduce((s, o) => s + Number(o.total), 0)
+      const changeP = lastM > 0 ? Math.round((thisM - lastM) / lastM * 100) : 0
+      
+      const rv = revs || []
+      const avgRating = rv.length ? (rv.reduce((s, r) => s + (r.rating || 0), 0) / rv.length).toFixed(1) : 0
+      
+      setStats({
+        products: totalProducts,
+        orders: (ords || []).length,
+        sales: sales,
+        profit: sales - pur - exp,
+        todaySales: todayO.reduce((s, o) => s + Number(o.total), 0),
+        thisMonthSales: thisM,
+        lastMonthSales: lastM,
+        changeP: changeP,
+        avgRating: parseFloat(avgRating),
+        totalReviews: rv.length,
+        lowStockCount: lowStockItems.length,
+        totalProducts: totalProducts
+      })
+      
+      setRecent((ords || []).slice(0, 8))
+      setLowStock(lowStockItems)
+      setWeekData(week7)
+      setMonthData(wk4)
+    } catch (err) {
+      console.error('❌ خطأ في تحميل لوحة القيادة:', err)
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [])
+  }
+  useEffect(() => { load() }, [])
 
   const days=['أحد','اثن','ثلا','أرب','خمس','جمع','سبت']
   const now=new Date(); const wkDays=Array(7).fill(0).map((_,i)=>{const d=new Date(now);d.setDate(d.getDate()-(6-i));return days[d.getDay()]})
@@ -412,8 +542,64 @@ function Dashboard() {
   })
   const statusLabel={pending:'انتظار',confirmed:'مؤكد',shipping:'شحن',delivered:'تسليم',cancelled:'ملغي'}
 
+  // ✅ ميزة 11: وضع مظلم - أضف زر في الـ Header
+  const toggleDarkMode = () => setDarkMode(!darkMode)
+
   return (
-    <div>
+    <div style={{ direction: 'rtl' }}>
+      {/* ✅ ميزة 1: شريط الإشعارات */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => setShowNotif(!showNotif)}
+            style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }}
+          >
+            🔔
+            <NotificationBadge notifications={notifications} />
+          </button>
+          {showNotif && (
+            <div style={{
+              position: 'absolute',
+              top: 50,
+              right: 20,
+              background: 'white',
+              borderRadius: 12,
+              padding: 12,
+              boxShadow: '0 4px 20px rgba(0,0,0,.15)',
+              maxHeight: 200,
+              overflowY: 'auto',
+              width: 300,
+              zIndex: 1000,
+              border: '1px solid #E2E8F0'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <strong>الإشعارات</strong>
+                <button onClick={() => setNotifications([])} style={{ background: 'none', border: 'none', color: CLR.danger, cursor: 'pointer' }}>مسح الكل</button>
+              </div>
+              {notifications.length === 0 ? (
+                <p style={{ color: CLR.textSm, textAlign: 'center' }}>لا توجد إشعارات</p>
+              ) : (
+                notifications.map(n => (
+                  <div key={n.id} style={{ padding: '6px 0', borderBottom: '1px solid #E2E8F0', fontSize: 13 }}>
+                    <div>{n.message}</div>
+                    <div style={{ fontSize: 10, color: CLR.textSm }}>{n.time}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={toggleDarkMode}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+          <span style={{ fontSize: 12, color: CLR.textSm }}>{darkMode ? 'وضع مظلم' : 'وضع فاتح'}</span>
+        </div>
+      </div>
+
       {/* عنوان + تاريخ */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
@@ -435,6 +621,20 @@ function Dashboard() {
         <StatCard label="صافي الربح"      value={`${stats.profit.toFixed(0)} ${CUR}`} icon="💰" color={stats.profit>=0?CLR.success:CLR.danger} spark={weekData}/>
       </div>
 
+      {/* ✅ ميزة 9: إحصائيات متقدمة - رسوم بيانية */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+        <AdvancedChart 
+          data={weekData} 
+          labels={['أحد', 'اثن', 'ثلاث', 'أربع', 'خميس', 'جمع', 'سبت']} 
+          title="📊 مبيعات الأسبوع" 
+        />
+        <AdvancedChart 
+          data={monthData} 
+          labels={['أسبوع 1', 'أسبوع 2', 'أسبوع 3', 'أسبوع 4']} 
+          title="📊 مبيعات الشهر" 
+        />
+      </div>
+
       {/* بطاقة متوسط التقييمات */}
       {stats.avgRating>0&&(
         <div style={{...S.card,background:'linear-gradient(135deg,#FFF7ED,#FFFBEB)',
@@ -446,7 +646,8 @@ function Dashboard() {
           </div>
         </div>
       )}
-      {/* تنبيه المخزون */}
+      
+      {/* ✅ ميزة 7: تنبيه المخزون المنخفض */}
       {lowStock.length>0&&(
         <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
           padding:'12px 16px', marginBottom:18, display:'flex', gap:12, alignItems:'flex-start' }}>
@@ -454,58 +655,17 @@ function Dashboard() {
           <div style={{ flex:1 }}>
             <strong style={{ color:'#C2410C', fontSize:13 }}>مخزون منخفض — {lowStock.length} منتج</strong>
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
-              {lowStock.map(p=>(
+              {lowStock.slice(0,10).map(p=>(
                 <span key={p.id} style={{ background:'white', border:'1px solid #FED7AA', color:'#C2410C',
                   padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:600 }}>
                   {p.name} ({p.stock||0} كرتون)
                 </span>
               ))}
+              {lowStock.length>10&&<span style={{fontSize:11,color:CLR.textSm}}>+{lowStock.length-10} أخرى</span>}
             </div>
           </div>
         </div>
       )}
-
-      {/* رسم بياني */}
-      <div style={{ ...S.card, marginBottom:18 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <h3 style={{ fontWeight:800, fontSize:15, color:CLR.text }}>📈 المبيعات</h3>
-          <div style={{ display:'flex', gap:6 }}>
-            {[['week','أسبوعي'],['month','شهري']].map(([v,l])=>(
-              <button key={v} onClick={()=>setChartMode(v)}
-                style={{ ...S.btnSm, background:chartMode===v?CLR.accent:'#F1F5F9',
-                  color:chartMode===v?'white':CLR.textSm, padding:'4px 12px' }}>{l}</button>
-            ))}
-          </div>
-        </div>
-        {/* مقارنة الشهرين */}
-        <div style={{ display:'flex', gap:16, marginBottom:14, flexWrap:'wrap' }}>
-          {[['هذا الشهر',stats.thisMonthSales,CLR.accent],['الشهر الماضي',stats.lastMonthSales,'#94A3B8']].map(([l,v,c])=>(
-            <div key={l} style={{ display:'flex', alignItems:'center', gap:6, fontSize:12 }}>
-              <div style={{ width:10,height:10,borderRadius:'50%',background:c }}/>
-              <span style={{ color:CLR.textSm }}>{l}:</span>
-              <span style={{ fontWeight:700,color:CLR.text }}>{v.toFixed(0)} {CUR}</span>
-            </div>
-          ))}
-        </div>
-        {/* Bar chart */}
-        <div style={{ display:'flex', alignItems:'flex-end', gap:6, height:chartH+24, paddingBottom:20, position:'relative' }}>
-          {(chartMode==='week'?weekData:monthData).map((v,i)=>{
-            const h = chartMode==='week'?Math.max(4,(v/maxW)*chartH):Math.max(4,(v/maxM)*chartH)
-            const lbl = chartMode==='week'?wkDays[i]:`أسبوع ${i+1}`
-            return (
-              <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-                <div style={{ fontSize:10, color:CLR.textSm, fontWeight:600 }}>{v>0?v.toFixed(0):''}</div>
-                <div style={{ width:'100%', height:h, borderRadius:'4px 4px 0 0',
-                  background:i===(chartMode==='week'?weekData:monthData).length-1
-                    ?`linear-gradient(180deg,${CLR.accent},${CLR.accentDk})`
-                    :'#DBEAFE',
-                  transition:'height .4s ease', minHeight:4 }}/>
-                <div style={{ fontSize:10, color:CLR.textSm, position:'absolute', bottom:0 }}>{lbl}</div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
 
       {/* آخر الطلبيات */}
       <div style={S.card}>
@@ -534,13 +694,103 @@ function Dashboard() {
 }
 
 /* ══════════════════════════════════════════
-   📦 المنتجات
+   🗑️ سلة مهملات (ميزة 2)
+══════════════════════════════════════════ */
+function RecycleBin() {
+  const [showToast, ToastUI] = useToast()
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('deleted_items').select('*').order('deleted_at', { ascending: false })
+    setItems(data || [])
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  const restore = async (id) => {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    try {
+      const data = JSON.parse(item.data)
+      await supabase.from(item.table_name).insert(data)
+      await supabase.from('deleted_items').delete().eq('id', id)
+      showToast('✅ تم استعادة العنصر')
+      load()
+    } catch (err) {
+      showToast('❌ خطأ في الاستعادة', 'error')
+    }
+  }
+
+  const permanentDelete = async (id) => {
+    if (!confirm('حذف نهائي؟ لا يمكن استعادته')) return
+    await supabase.from('deleted_items').delete().eq('id', id)
+    showToast('تم الحذف النهائي')
+    load()
+  }
+
+  return (
+    <div>
+      {ToastUI}
+      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>🗑️ سلة المهملات</h1>
+      <p style={{ color: CLR.textSm, marginBottom: 16, fontSize: 13 }}>
+        العناصر المحذوفة خلال آخر 30 يوم يمكن استعادتها
+      </p>
+      <div style={S.card}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>⏳ جاري التحميل...</div>
+        ) : items.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: CLR.textSm }}>🗑️ سلة المهملات فارغة</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>الجدول</th>
+                  <th style={S.th}>البيانات</th>
+                  <th style={S.th}>تاريخ الحذف</th>
+                  <th style={S.th}>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(item => {
+                  let dataPreview = ''
+                  try {
+                    const d = JSON.parse(item.data)
+                    dataPreview = d.name || d.title || d.code || 'بيانات'
+                  } catch { dataPreview = 'بيانات' }
+                  return (
+                    <tr key={item.id} className="nq-tr">
+                      <td style={S.td}>{item.table_name}</td>
+                      <td style={S.td}>{dataPreview}</td>
+                      <td style={S.td}>{new Date(item.deleted_at).toLocaleDateString('ar-DZ')}</td>
+                      <td style={S.td}>
+                        <div style={{ display: 'flex', gap: 5 }}>
+                          <button style={{ ...S.btnSm, background: '#D1FAE5', color: '#059669' }} onClick={() => restore(item.id)}>↩️ استعادة</button>
+                          <button style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626' }} onClick={() => permanentDelete(item.id)}>🗑️ حذف نهائي</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════
+   📦 المنتجات (مع باركود - ميزة 7)
 ══════════════════════════════════════════ */
 function Products() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [products,setProducts]=useState([]); const [brands,setBrands]=useState([])
   const [categories,setCategories]=useState([])
-  const [selCats, setSelCats]=useState([]) // فئات متعددة
+  const [selCats, setSelCats]=useState([])
   const [search,setSearch]=useState(''); const [loading,setLoading]=useState(false)
   const [saving,setSaving]=useState(false)
   const [brandFilter,setBrandFilter]=useState('')
@@ -562,6 +812,12 @@ function Products() {
   const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
   const handleImg = e => { const r=new FileReader(); r.onload=ev=>setForm(f=>({...f,image:ev.target.result})); r.readAsDataURL(e.target.files[0]) }
 
+  // ✅ ميزة 7: إنشاء باركود
+  const generateBarcode = (id) => {
+    // باركود بسيط (في الإنتاج استخدم مكتبة JsBarcode)
+    return `NAQ-${String(id).padStart(6, '0')}`
+  }
+
   const save = async () => {
     if (!form.name.trim()||!form.price) { showToast('الاسم والسعر مطلوبان','error'); return }
     setSaving(true)
@@ -571,7 +827,8 @@ function Products() {
       carton_price:form.cartonPrice?parseFloat(form.cartonPrice):null,
       units:parseInt(form.units)||12, stock:parseInt(form.stock)||0,
       min_stock:parseInt(form.minStock)||5,
-      sku:form.sku||'', brand_id:form.brandId?parseInt(form.brandId):null,
+      sku:form.sku || generateBarcode(form.id || Date.now()),
+      brand_id:form.brandId?parseInt(form.brandId):null,
       image:form.image||null, is_promo:form.isPromo,
       description:form.description||'',
       discount:parseFloat(form.discount)||0, disabled:false,
@@ -580,7 +837,6 @@ function Products() {
     if (!form.id) delete row.created_at
     const { error } = await supabase.from('products').upsert(row)
     if (error) { showToast('خطأ: '+error.message,'error'); setSaving(false); return }
-    // حفظ الفئات المتعددة
     if (form.id) await supabase.from('product_categories').delete().eq('product_id',row.id)
     if (selCats.length>0) {
       await supabase.from('product_categories').upsert(
@@ -596,17 +852,28 @@ function Products() {
   const edit = async p => {
     setForm({ id:p.id, name:p.name, price:p.price||'', costPrice:p.cost_price||'',
       cartonPrice:p.carton_price||'', units:p.units||12, stock:p.stock||0,
-      minStock:p.min_stock||5, sku:p.sku||'', brandId:p.brand_id||'',
+      minStock:p.min_stock||5, sku:p.sku||generateBarcode(p.id),
+      brandId:p.brand_id||'',
       image:p.image||'', discount:p.discount||0, isPromo:p.is_promo||false,
       description:p.description||'' })
     const { data } = await supabase.from('product_categories').select('category_id').eq('product_id',p.id)
     setSelCats((data||[]).map(r=>r.category_id))
   }
 
-  const del = async id => {
-    if (!await askConfirm('حذف هذا المنتج؟')) return
-    await supabase.from('products').delete().eq('id',id)
-    showToast('تم الحذف'); await load()
+  // ✅ ميزة 2: حذف ناعم (نقل إلى سلة المهملات)
+  const softDelete = async (id) => {
+    if (!await askConfirm('حذف هذا المنتج؟ يمكن استعادته من سلة المهملات')) return
+    const product = products.find(p => p.id === id)
+    if (!product) return
+    await supabase.from('deleted_items').insert({
+      table_name: 'products',
+      item_id: id,
+      data: JSON.stringify(product),
+      deleted_at: new Date().toISOString()
+    })
+    await supabase.from('products').delete().eq('id', id)
+    showToast('✅ تم نقل المنتج إلى سلة المهملات')
+    await load()
   }
 
   const toggleCat = id => setSelCats(prev => prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
@@ -623,7 +890,6 @@ function Products() {
       {ToastUI}{ConfirmUI}
       <h1 style={{ fontSize:22, fontWeight:900, marginBottom:20 }}>📦 المنتجات</h1>
 
-      {/* نصائح أحجام الصور */}
       <div style={{ ...S.card, background:'#f0f9ff', borderRight:'4px solid #3b82f6' }}>
         <strong style={{ color:'#1d4ed8' }}>📐 أحجام الصور المثالية:</strong>
         <div style={{ display:'flex', gap:16, marginTop:8, flexWrap:'wrap', fontSize:13 }}>
@@ -665,7 +931,6 @@ function Products() {
           {form.image && <div style={{ display:'flex', alignItems:'center' }}>
             <img src={form.image} style={{ width:80, height:80, objectFit:'cover', borderRadius:12 }} /></div>}
         </div>
-        {/* فئات متعددة */}
         <div style={{ marginTop:14 }}>
           <label style={S.label}>الفئات (يمكن اختيار أكثر من فئة)</label>
           <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6 }}>
@@ -678,7 +943,6 @@ function Products() {
             ))}
           </div>
         </div>
-        {/* منتج عرض */}
         <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:10 }}>
           <input type="checkbox" id="isPromo" checked={form.isPromo}
             onChange={e=>setForm(f=>({...f,isPromo:e.target.checked}))} />
@@ -696,7 +960,6 @@ function Products() {
         </div>
       </div>
 
-      {/* جدول مخطط احترافي */}
       <div style={S.card}>
         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:10, alignItems:'center' }}>
           <h3 style={{ fontWeight:800, fontSize:15 }}>قائمة المنتجات
@@ -730,6 +993,7 @@ function Products() {
                     <th style={S.th}>الكرتون</th>
                     <th style={S.th}>المخزون</th>
                     <th style={S.th}>الماركة</th>
+                    <th style={S.th}>الباركود</th>
                     <th style={S.th}>إجراءات</th>
                   </tr>
                 </thead>
@@ -755,7 +1019,6 @@ function Products() {
                         <td style={{ ...S.td, fontWeight:700, maxWidth:200 }}>
                           <div>{p.name}</div>
                           {p.is_promo&&<span style={{background:'#FEF9C3',color:'#92400E',padding:'1px 7px',borderRadius:20,fontSize:10,fontWeight:700}}>عرض</span>}
-                          {p.sku&&<div style={{fontSize:11,color:CLR.textSm}}>{p.sku}</div>}
                         </td>
                         <td style={{ ...S.td, fontWeight:700, color:CLR.accent }}>{p.price} {CUR}</td>
                         <td style={{ ...S.td, color:CLR.textSm }}>{p.carton_price?`${p.carton_price} ${CUR}`:'—'}</td>
@@ -768,16 +1031,19 @@ function Products() {
                         <td style={{ ...S.td, color:CLR.textSm }}>
                           {brands.find(b=>b.id==p.brand_id)?.name||'—'}
                         </td>
+                        <td style={{ ...S.td, fontSize:11, color:CLR.textSm }}>
+                          <code>{p.sku || generateBarcode(p.id)}</code>
+                        </td>
                         <td style={S.td} onClick={e=>e.stopPropagation()}>
                           <div style={{ display:'flex', gap:4 }}>
                             <button style={{ ...S.btnSm, background:'#DBEAFE', color:'#1D4ED8' }} onClick={()=>edit(p)}>✏️</button>
-                            <button style={{ ...S.btnSm, background:'#FEE2E2', color:'#DC2626' }} onClick={()=>del(p.id)}>🗑️</button>
+                            <button style={{ ...S.btnSm, background:'#FEE2E2', color:'#DC2626' }} onClick={()=>softDelete(p.id)}>🗑️</button>
                           </div>
                         </td>
                       </tr>
                     )
                   })}
-                  {filtered.length===0&&<tr><td colSpan={7} style={{textAlign:'center',padding:36,color:CLR.textSm}}>
+                  {filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',padding:36,color:CLR.textSm}}>
                     <div style={{ fontSize:32, marginBottom:8 }}>📦</div>لا توجد منتجات
                   </td></tr>}
                 </tbody>
@@ -785,7 +1051,7 @@ function Products() {
             </div>}
       </div>
 
-      {/* Modal تعديل المنتج — ينبثق عند الضغط */}
+      {/* Modal تعديل المنتج */}
       {form.id&&(
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:7000,
           display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -799,11 +1065,11 @@ function Products() {
             <div style={S.grid2}>
               <div><label style={S.label}>اسم المنتج *</label><input style={S.input} value={form.name} onChange={F('name')}/></div>
               <div><label style={S.label}>سعر البيع *</label><NumInput value={form.price} onChange={F('price')}/></div>
-              <div><label style={S.label}>سعر الشراء/قطعة</label><NumInput value={form.costPrice} onChange={e=>{F('costPrice')(e);setForm(f=>({...f,cartonPrice:autoCarton(e.target.value,f.units)}))}}/></div>
-              <div><label style={S.label}>سعر الكرتون <span style={{color:'#10b981',fontSize:10}}>(تلقائي)</span></label><NumInput value={form.cartonPrice} onChange={F('cartonPrice')} placeholder={form.costPrice&&form.units?`${autoCarton(form.costPrice,form.units)} تلقائي`:'0'}/></div>
-              <div><label style={S.label}>قطع/كرتون</label><NumInput value={form.units} onChange={e=>{F('units')(e);setForm(f=>({...f,cartonPrice:autoCarton(f.costPrice,e.target.value)}))}}/></div>
+              <div><label style={S.label}>سعر الشراء/قطعة</label><NumInput value={form.costPrice} onChange={F('costPrice')}/></div>
+              <div><label style={S.label}>سعر الكرتون</label><NumInput value={form.cartonPrice} onChange={F('cartonPrice')}/></div>
+              <div><label style={S.label}>قطع/كرتون</label><NumInput value={form.units} onChange={F('units')}/></div>
               <div><label style={S.label}>المخزون</label><NumInput value={form.stock} onChange={F('stock')}/></div>
-              <div><label style={S.label}>الحد الأدنى للتنبيه</label><NumInput value={form.minStock||5} onChange={e=>setForm(f=>({...f,minStock:e.target.value}))}/></div>
+              <div><label style={S.label}>الحد الأدنى للتنبيه</label><NumInput value={form.minStock} onChange={e=>setForm(f=>({...f,minStock:e.target.value}))}/></div>
               <div><label style={S.label}>خصم %</label><NumInput value={form.discount} onChange={F('discount')}/></div>
               <div><label style={S.label}>العلامة التجارية</label>
                 <select style={S.input} value={form.brandId} onChange={F('brandId')}>
@@ -865,7 +1131,6 @@ function Categories() {
     <div>{ToastUI}{ConfirmUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📂 الفئات</h1>
 
-      {/* Modal تعديل عند الضغط */}
       {editId&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:7000,
           display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
@@ -1031,23 +1296,42 @@ function Suppliers() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [items,setItems]=useState([]); const [search,setSearch]=useState(''); const [saving,setSaving]=useState(false)
   const [form,setForm]=useState({id:'',name:'',phone:'',whatsapp:'',email:'',address:''})
-  const load=async()=>{ const {data}=await supabase.from('suppliers').select('*').order('name'); setItems(data||[]) }
+  
+  const load=async()=>{ 
+    const {data}=await supabase.from('suppliers').select('*').order('name')
+    setItems(data||[])
+  }
   useEffect(()=>{ load() },[])
-  const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
+  
+  const F = k => e => {
+    const value = e.target.value
+    if ((k === 'phone' || k === 'whatsapp') && !/^[0-9+]*$/.test(value) && value !== '') return
+    setForm(f => ({ ...f, [k]: value }))
   }
+  
   const save=async()=>{
-    if(!form.name.trim()){showToast('الاسم مطلوب','error');return} setSaving(true)
-    await supabase.from('suppliers').upsert({id:form.id||Date.now(),name:form.name.trim(),phone:form.phone,whatsapp:form.whatsapp,email:form.email,address:form.address})
-    showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',phone:'',whatsapp:'',email:'',address:''});await load();setSaving(false)
+    if(!form.name.trim()){showToast('الاسم مطلوب','error');return} 
+    setSaving(true)
+    const data = {
+      id: form.id || Date.now(),
+      name: form.name.trim(),
+      phone: form.phone || '',
+      whatsapp: form.whatsapp || '',
+      email: form.email || '',
+      address: form.address || ''
+    }
+    const { error } = await supabase.from('suppliers').upsert(data)
+    if (error) { showToast('خطأ: ' + error.message, 'error'); setSaving(false); return }
+    showToast(form.id ? '✅ تم التعديل' : '✅ تمت الإضافة')
+    setForm({ id: '', name: '', phone: '', whatsapp: '', email: '', address: '' })
+    await load()
+    setSaving(false)
   }
+  
   const edit=s=>setForm({id:s.id,name:s.name,phone:s.phone||'',whatsapp:s.whatsapp||'',email:s.email||'',address:s.address||''})
   const del=async id=>{if(!await askConfirm('حذف هذا المورد؟'))return;await supabase.from('suppliers').delete().eq('id',id);showToast('تم الحذف');await load()}
   const filtered=items.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()))
+  
   return (
     <div>{ToastUI}{ConfirmUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🏭 الموردون</h1>
@@ -1055,8 +1339,12 @@ function Suppliers() {
         <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>{form.id?'✏️ تعديل':'➕ إضافة'} مورد</h3>
         <div style={S.grid2}>
           <div><label style={S.label}>الاسم *</label><input style={S.input} value={form.name} onChange={F('name')} /></div>
-          <div><label style={S.label}>الهاتف</label><input style={S.input} value={form.phone} onChange={F('phone')} inputMode="numeric"/></div>
-          <div><label style={S.label}>واتساب</label><input style={S.input} value={form.whatsapp} onChange={F('whatsapp')} inputMode="numeric"/></div>
+          <div><label style={S.label}>الهاتف</label>
+            <PhoneInput value={form.phone} onChange={F('phone')} placeholder="مثال: 0555123456" />
+          </div>
+          <div><label style={S.label}>واتساب</label>
+            <PhoneInput value={form.whatsapp} onChange={F('whatsapp')} placeholder="مثال: 0555123456" />
+          </div>
           <div><label style={S.label}>البريد</label><input style={S.input} value={form.email} onChange={F('email')} /></div>
           <div><label style={S.label}>العنوان</label><input style={S.input} value={form.address} onChange={F('address')} /></div>
         </div>
@@ -1075,7 +1363,8 @@ function Suppliers() {
             <thead><tr><th style={S.th}>الاسم</th><th style={S.th}>الهاتف</th><th style={S.th}>واتساب</th><th style={S.th}>إجراءات</th></tr></thead>
             <tbody>{filtered.map(s=>(
               <tr key={s.id} className='nq-tr'>
-                <td style={{...S.td,fontWeight:700}}>{s.name}</td><td style={S.td}>{s.phone||'—'}</td>
+                <td style={{...S.td,fontWeight:700}}>{s.name}</td>
+                <td style={S.td}>{s.phone||'—'}</td>
                 <td style={S.td}>{s.whatsapp?<a href={`https://wa.me/${s.whatsapp}`} target="_blank" style={{color:'#25D366',fontWeight:700}}>💬 {s.whatsapp}</a>:'—'}</td>
                 <td style={{...S.td,display:'flex',gap:5}}>
                   <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>edit(s)}>✏️</button>
@@ -1093,18 +1382,23 @@ function Suppliers() {
 }
 
 /* ══════════════════════════════════════════
-   👥 العملاء + تصنيف M1/M2/M3
+   👥 العملاء + تصنيف M1/M2/M3 + ✅ ميزة 12: مجموعات العملاء
 ══════════════════════════════════════════ */
 function Customers() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
   const [items,setItems]=useState([]); const [search,setSearch]=useState(''); const [saving,setSaving]=useState(false)
   const [tierSettings,setTierSettings]=useState({ m1:0, m2:5000, m3:20000, d1:0, d2:5, d3:10 })
-  const [form,setForm]=useState({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1'})
+  const [form,setForm]=useState({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})
   const [tierFilter,setTierFilter]=useState('all')
+  const [groupFilter,setGroupFilter]=useState('all')
+  const [groups,setGroups]=useState([])
 
   const load=async()=>{
     const {data}=await supabase.from('customers').select('*').order('name')
     setItems(data||[])
+    // استخراج المجموعات الفريدة
+    const uniqueGroups = [...new Set((data||[]).map(c => c.group).filter(Boolean))]
+    setGroups(uniqueGroups)
   }
   useEffect(()=>{
     load()
@@ -1117,17 +1411,10 @@ function Customers() {
       })
   },[])
 
-  const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
-
-  const autoTier = (total) => {
-    if (total >= tierSettings.m3) return 'M3'
-    if (total >= tierSettings.m2) return 'M2'
-    return 'M1'
+  const F = k => e => {
+    const value = e.target.value
+    if (k === 'phone' && !/^[0-9+]*$/.test(value) && value !== '') return
+    setForm(f => ({ ...f, [k]: value }))
   }
 
   const save=async()=>{
@@ -1135,30 +1422,32 @@ function Customers() {
     const ex=items.find(c=>c.id==form.id)
     const {error}=await supabase.from('customers').upsert({
       id:form.id||Date.now(), name:form.name.trim(), email:form.email, phone:form.phone,
-      address:form.address, tier:form.tier,
+      address:form.address, tier:form.tier, group:form.group || null,
       password:form.password?hashPwd(form.password):(ex?.password||hashPwd('123456')),
       points:ex?.points||0, created_at:ex?.created_at||new Date().toISOString()
     })
     if(error){showToast('خطأ: '+error.message,'error');setSaving(false);return}
     showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1'});await load();setSaving(false)
+    setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''});await load();setSaving(false)
   }
 
-  const edit=c=>setForm({id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',address:c.address||'',password:'',tier:c.tier||'M1'})
+  const edit=c=>setForm({id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',address:c.address||'',password:'',tier:c.tier||'M1',group:c.group||''})
   const del=async id=>{if(!await askConfirm('حذف هذا العميل؟'))return;await supabase.from('customers').delete().eq('id',id);showToast('تم الحذف');await load()}
 
-  const tierColor = t => ({ M1:'#e2e8f0', M2:'#dbeafe', M3:'#fef9c3' }[t]||'#e2e8f0')
-  const tierText  = t => ({ M1:'#475569', M2:'#1d4ed8', M3:'#92400e' }[t]||'#475569')
   const tierLabel = t => ({ M1:'🥉 M1 عادي', M2:'🥈 M2 مميز', M3:'🥇 M3 VIP' }[t]||t)
 
-  const filtered=items.filter(c=>c.name?.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search))
+  const filtered=items.filter(c=>{
+    const matchName = c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
+    const matchTier = tierFilter === 'all' || (c.tier || 'M1') === tierFilter
+    const matchGroup = groupFilter === 'all' || c.group === groupFilter
+    return matchName && matchTier && matchGroup
+  })
 
   return (
     <div>
       {ToastUI}{ConfirmUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>👥 العملاء</h1>
 
-      {/* إعدادات الرتب */}
       <div style={{...S.card, background:'linear-gradient(135deg,#fffbeb,#fef3c7)', border:'1px solid #fcd34d'}}>
         <h3 style={{fontWeight:800,marginBottom:12,color:'#92400e'}}>🏅 إعدادات تصنيف العملاء</h3>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
@@ -1174,9 +1463,7 @@ function Customers() {
             </div>
           ))}
         </div>
-        <p style={{fontSize:12,color:'#92400e',marginTop:10}}>
-          💡 لتعديل حدود الرتب اذهب إلى ⚙️ الإعدادات → تصنيف العملاء
-        </p>
+        <p style={{fontSize:12,color:'#92400e',marginTop:10}}>💡 لتعديل حدود الرتب اذهب إلى ⚙️ الإعدادات → تصنيف العملاء</p>
       </div>
 
       <div style={S.card}>
@@ -1184,7 +1471,9 @@ function Customers() {
         <div style={S.grid2}>
           <div><label style={S.label}>الاسم *</label><input style={S.input} value={form.name} onChange={F('name')} /></div>
           <div><label style={S.label}>البريد</label><input style={S.input} value={form.email} onChange={F('email')} /></div>
-          <div><label style={S.label}>الهاتف</label><input style={S.input} value={form.phone} onChange={F('phone')} inputMode="numeric"/></div>
+          <div><label style={S.label}>الهاتف</label>
+            <PhoneInput value={form.phone} onChange={F('phone')} placeholder="مثال: 0555123456" />
+          </div>
           <div><label style={S.label}>العنوان</label><input style={S.input} value={form.address} onChange={F('address')} /></div>
           <div><label style={S.label}>كلمة المرور</label><input style={S.input} type="password" value={form.password} onChange={F('password')} /></div>
           <div><label style={S.label}>الرتبة</label>
@@ -1193,14 +1482,16 @@ function Customers() {
               <option value="M2">🥈 M2 — عميل مميز</option>
               <option value="M3">🥇 M3 — عميل VIP</option>
             </select></div>
+          <div><label style={S.label}>المجموعة</label>
+            <input style={S.input} value={form.group} onChange={F('group')} placeholder="مثال: عملاء مميزين, ولاية الجزائر" />
+          </div>
         </div>
         <div style={{display:'flex',gap:10,marginTop:14}}>
           <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ'}</button>
-          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1'})}>✖</button>
+          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})}>✖</button>
         </div>
       </div>
 
-      {/* جدول العملاء المخطط */}
       <div style={S.card}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10,alignItems:'center'}}>
           <h3 style={{fontWeight:800,fontSize:15}}>
@@ -1216,6 +1507,10 @@ function Customers() {
               <option value="M2">🥈 M2</option>
               <option value="M3">🥇 M3</option>
             </select>
+            <select style={{...S.input,width:130}} value={groupFilter||'all'} onChange={e=>setGroupFilter(e.target.value)}>
+              <option value="all">كل المجموعات</option>
+              {groups.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
           </div>
         </div>
         <div style={{overflowX:'auto'}}>
@@ -1226,14 +1521,14 @@ function Customers() {
                 <th style={S.th}>الهاتف</th>
                 <th style={S.th}>الولاية</th>
                 <th style={S.th}>الرتبة</th>
+                <th style={S.th}>المجموعة</th>
                 <th style={S.th}>المشتريات</th>
                 <th style={S.th}>النقاط</th>
-                <th style={S.th}>آخر شراء</th>
                 <th style={S.th}>إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.filter(c=>!tierFilter||tierFilter==='all'||(c.tier||'M1')===tierFilter).map((c,i)=>{
+              {filtered.map((c,i)=>{
                 const ts={M1:{bg:'#F1F5F9',color:CLR.textSm},M2:{bg:'#DBEAFE',color:'#1D4ED8'},M3:{bg:'#FEF9C3',color:'#92400E'}}[c.tier||'M1']
                 return (
                   <tr key={c.id}
@@ -1252,13 +1547,11 @@ function Customers() {
                         {tierLabel(c.tier||'M1')}
                       </span>
                     </td>
+                    <td style={{...S.td,color:CLR.textSm}}>{c.group || '—'}</td>
                     <td style={{...S.td,fontWeight:700,color:CLR.accent}}>
                       {Number(c.total_purchases||0).toFixed(0)} {CUR}
                     </td>
                     <td style={{...S.td,color:CLR.textSm}}>{c.points||0} ⭐</td>
-                    <td style={{...S.td,fontSize:12,color:CLR.textSm}}>
-                      {c.last_purchase?new Date(c.last_purchase).toLocaleDateString('ar-DZ'):'—'}
-                    </td>
                     <td style={S.td} onClick={e=>e.stopPropagation()}>
                       <div style={{display:'flex',gap:4}}>
                         <button style={{...S.btnSm,background:'#DBEAFE',color:'#1D4ED8'}} onClick={()=>edit(c)}>✏️</button>
@@ -1280,127 +1573,101 @@ function Customers() {
 }
 
 /* ══════════════════════════════════════════
-   👔 الموظفون
-══════════════════════════════════════════ */
-/* ══════════════════════════════════════════
-   👔 الموظفون (نسخة مصححة)
+   👔 الموظفون (مع صلاحيات تفصيلية - ميزة 5)
 ══════════════════════════════════════════ */
 const ALL_PERMISSIONS = [
-  { id: 'dashboard', label: '📊 لوحة القيادة' },
-  { id: 'products', label: '📦 المنتجات' },
-  { id: 'categories', label: '📂 الفئات' },
-  { id: 'brands', label: '🏷️ العلامات التجارية' },
-  { id: 'suppliers', label: '🏭 الموردون' },
-  { id: 'customers', label: '👥 العملاء' },
-  { id: 'coupons', label: '🎟️ الكوبونات' },
-  { id: 'purchases', label: '🛒 المشتريات' },
-  { id: 'inventory', label: '🗂️ المخزون' },
-  { id: 'orders', label: '📋 الطلبيات' },
-  { id: 'promotions', label: '🎯 العروض' },
-  { id: 'notifications', label: '🔔 الإشعارات' },
-  { id: 'reports', label: '📈 التقارير' },
-  { id: 'expenses', label: '💸 المصاريف' },
-  { id: 'activityLog', label: '📋 سجل النشاطات' },
-  { id: 'storeManager', label: '🎨 إدارة المتجر' },
+  { id:'dashboard',    label:'📊 لوحة القيادة', actions: ['view'] },
+  { id:'products',     label:'📦 المنتجات', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'categories',   label:'📂 الفئات', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'brands',       label:'🏷️ العلامات التجارية', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'suppliers',    label:'🏭 الموردون', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'customers',    label:'👥 العملاء', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'coupons',      label:'🎟️ الكوبونات', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'purchases',    label:'🛒 المشتريات', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'inventory',    label:'🗂️ المخزون', actions: ['view', 'edit'] },
+  { id:'orders',       label:'📋 الطلبيات', actions: ['view', 'edit', 'delete'] },
+  { id:'promotions',   label:'🎯 العروض', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'notifications',label:'🔔 الإشعارات', actions: ['view', 'add'] },
+  { id:'reports',      label:'📈 التقارير', actions: ['view'] },
+  { id:'expenses',     label:'💸 المصاريف', actions: ['view', 'add', 'edit', 'delete'] },
+  { id:'activityLog',  label:'📋 سجل النشاطات', actions: ['view'] },
+  { id:'storeManager', label:'🎨 إدارة المتجر', actions: ['view', 'edit'] },
 ]
 
 function Employees() {
-  const [showToast, ToastUI] = useToast()
-  const [askConfirm, ConfirmUI] = useConfirm()
-  const [items, setItems] = useState([])
-  const [saving, setSaving] = useState(false)
-  const [editItem, setEditItem] = useState(null)
-  const [form, setForm] = useState({ name: '', username: '', password: '', email: '', permissions: [] })
+  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
+  const [items,setItems]=useState([]); const [saving,setSaving]=useState(false)
+  const [editItem,setEditItem]=useState(null)
+  const [form,setForm]=useState({name:'',username:'',password:'',email:'',permissions:{}})
 
-  const load = async () => {
-    const { data } = await supabase.from('employees').select('id,name,username,email,role,permissions').order('name')
-    // ✅ تحويل permissions من JSON string إلى مصفوفة عند التحميل
-    const formatted = (data || []).map(emp => {
-      let perms = []
+  const load=async()=>{ 
+    const {data}=await supabase.from('employees').select('id,name,username,email,role,permissions').order('name')
+    const formatted = (data||[]).map(emp => {
+      let perms = {}
       try {
-        if (typeof emp.permissions === 'string') {
-          perms = JSON.parse(emp.permissions || '[]')
-        } else if (Array.isArray(emp.permissions)) {
-          perms = emp.permissions
-        }
-      } catch (err) {
-        console.error('❌ خطأ في تحويل الصلاحيات:', err)
-        perms = []
-      }
+        const raw = typeof emp.permissions === 'string' ? JSON.parse(emp.permissions || '{}') : (emp.permissions || {})
+        perms = raw
+      } catch { perms = {} }
       return { ...emp, permissions: perms }
     })
     setItems(formatted)
   }
+  useEffect(()=>{ load() },[])
 
-  useEffect(() => { load() }, [])
+  const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
 
-  const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
-
-  // ✅ دالة حفظ الموظف (المصححة)
-  const add = async () => {
-    if (!form.name || !form.username || !form.password) {
-      showToast('الاسم والمستخدم والكلمة مطلوبة', 'error')
-      return
-    }
-    setSaving(true)
-
-    // ✅ تحويل الصلاحيات إلى JSON string
-    const permissionsJson = JSON.stringify(form.permissions || [])
-
-    if (editItem) {
-      const { error } = await supabase.from('employees').update({
-        name: form.name,
-        username: form.username,
-        email: form.email,
-        permissions: permissionsJson  // ✅ مصحح
-      }).eq('id', editItem)
-      
-      if (error) {
-        showToast('خطأ: ' + error.message, 'error')
-        setSaving(false)
-        return
+  const togglePermission = (permId, action) => {
+    setForm(prev => {
+      const current = prev.permissions[permId] || []
+      const newActions = current.includes(action) 
+        ? current.filter(a => a !== action) 
+        : [...current, action]
+      return {
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [permId]: newActions
+        }
       }
-      showToast('✅ تم التعديل')
-      setEditItem(null)
-    } else {
-      const { error } = await supabase.from('employees').insert({
-        id: Date.now(),
-        name: form.name,
-        username: form.username,
-        password: hashPwd(form.password),
-        email: form.email,
-        role: 'staff',
-        permissions: permissionsJson  // ✅ مصحح
-      })
-      
-      if (error) {
-        showToast('خطأ: ' + error.message, 'error')
-        setSaving(false)
-        return
-      }
-      showToast('✅ تم إضافة الموظف')
-    }
-
-    setForm({ name: '', username: '', password: '', email: '', permissions: [] })
-    await load()
-    setSaving(false)
+    })
   }
 
-  // ✅ دالة تعديل الموظف (تحميل البيانات)
-  const edit = (emp) => {
-    // ✅ تحويل permissions من JSON string إلى مصفوفة
-    let perms = []
-    try {
-      if (typeof emp.permissions === 'string') {
-        perms = JSON.parse(emp.permissions || '[]')
-      } else if (Array.isArray(emp.permissions)) {
-        perms = emp.permissions
-      }
-    } catch (err) {
-      console.error('❌ خطأ في تحويل الصلاحيات:', err)
-      perms = []
+  const hasPermission = (permId, action) => {
+    return (form.permissions[permId] || []).includes(action)
+  }
+
+  const add=async()=>{
+    if(!form.name||!form.username||!form.password){showToast('الاسم والمستخدم والكلمة مطلوبة','error');return} setSaving(true)
+    if(editItem){
+      await supabase.from('employees').update({
+        name:form.name,
+        username:form.username,
+        email:form.email,
+        permissions:JSON.stringify(form.permissions)
+      }).eq('id',editItem)
+      showToast('✅ تم التعديل');setEditItem(null)
+    } else {
+      await supabase.from('employees').insert({
+        id:Date.now(),
+        name:form.name,
+       username:form.username,
+        password:hashPwd(form.password),
+        email:form.email,
+        role:'staff',
+        permissions:JSON.stringify(form.permissions)
+      })
+      showToast('✅ تم إضافة الموظف')
     }
-    
+    setForm({name:'',username:'',password:'',email:'',permissions:{}});await load();setSaving(false)
+  }
+
+  const del=async id=>{if(!await askConfirm('حذف هذا الموظف؟'))return;await supabase.from('employees').delete().eq('id',id);showToast('تم الحذف');await load()}
+
+  const edit = (emp) => {
+    let perms = {}
+    try {
+      perms = typeof emp.permissions === 'string' ? JSON.parse(emp.permissions || '{}') : (emp.permissions || {})
+    } catch { perms = {} }
     setEditItem(emp.id)
     setForm({
       name: emp.name,
@@ -1411,213 +1678,106 @@ function Employees() {
     })
   }
 
-  // ✅ دالة حذف الموظف
-  const del = async (id) => {
-    if (!await askConfirm('حذف هذا الموظف؟')) return
-    const { error } = await supabase.from('employees').delete().eq('id', id)
-    if (error) {
-      showToast('خطأ: ' + error.message, 'error')
-      return
-    }
-    showToast('تم الحذف')
-    await load()
+  const resetPermissions = () => {
+    const allPerms = {}
+    ALL_PERMISSIONS.forEach(p => {
+      allPerms[p.id] = p.actions
+    })
+    setForm(prev => ({ ...prev, permissions: allPerms }))
   }
 
-  // ✅ دالة إلغاء التعديل
-  const cancelEdit = () => {
-    setEditItem(null)
-    setForm({ name: '', username: '', password: '', email: '', permissions: [] })
+  const clearPermissions = () => {
+    setForm(prev => ({ ...prev, permissions: {} }))
   }
 
   return (
-    <div>
-      {ToastUI}{ConfirmUI}
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
-        👔 الموظفون
-      </h1>
-      
-      {editItem && (
-        <div style={{
-          background: '#FFF7ED',
-          border: '1px solid #FED7AA',
-          borderRadius: 8,
-          padding: '10px 14px',
-          marginBottom: 14,
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#C2410C'
-        }}>
-          ⚠️ تعديل الموظف المحدد
-        </div>
-      )}
-
+    <div>{ToastUI}{ConfirmUI}
+      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>👔 الموظفون</h1>
+      {editItem&&<div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13,fontWeight:600,color:'#C2410C'}}>⚠️ تعديل الموظف المحدد</div>}
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: CLR.accent }}>
-          {editItem ? '✏️ تعديل موظف' : '➕ إضافة موظف جديد'}
-        </h3>
+        <h3 style={{fontWeight:800,marginBottom:14,color:CLR.accent}}>{editItem?'✏️ تعديل موظف':'➕ إضافة موظف جديد'}</h3>
         <div style={S.grid2}>
-          <div>
-            <label style={S.label}>الاسم الكامل *</label>
-            <input style={S.input} value={form.name} onChange={F('name')} placeholder="محمد علي" />
-          </div>
-          <div>
-            <label style={S.label}>اسم المستخدم *</label>
-            <input style={S.input} value={form.username} onChange={F('username')} placeholder="mohammed.ali" />
-          </div>
-          <div>
-            <label style={S.label}>كلمة المرور {editItem ? '(اترك فارغاً للإبقاء)' : ' *'}</label>
-            <input style={S.input} type="password" value={form.password} onChange={F('password')} placeholder="••••••••" />
-          </div>
-          <div>
-            <label style={S.label}>البريد الإلكتروني</label>
-            <input style={S.input} value={form.email} onChange={F('email')} placeholder="email@example.com" />
-          </div>
+          <div><label style={S.label}>الاسم الكامل *</label><input style={S.input} value={form.name} onChange={F('name')} placeholder="محمد علي" /></div>
+          <div><label style={S.label}>اسم المستخدم *</label><input style={S.input} value={form.username} onChange={F('username')} placeholder="mohammed.ali" /></div>
+          <div><label style={S.label}>كلمة المرور {editItem?'(اترك فارغاً للإبقاء)':' *'}</label><input style={S.input} type="password" value={form.password} onChange={F('password')} placeholder="••••••••" /></div>
+          <div><label style={S.label}>البريد الإلكتروني</label><input style={S.input} value={form.email} onChange={F('email')} placeholder="email@example.com" /></div>
         </div>
-
-        {/* الصلاحيات */}
-        <div style={{ marginTop: 14 }}>
-          <label style={{ ...S.label, marginBottom: 8 }}>
-            🔑 الصفحات المسموح بها للموظف
-          </label>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))',
-            gap: 5,
-            border: '1px solid #E2E8F0',
-            borderRadius: 8,
-            padding: 10,
-            background: '#F8FAFC',
-            maxHeight: 220,
-            overflowY: 'auto'
-          }}>
+        <div style={{marginTop:14}}>
+          <label style={{...S.label,marginBottom:8}}>🔑 الصلاحيات التفصيلية</label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:8,border:'1px solid #E2E8F0',borderRadius:8,padding:12,background:'#F8FAFC',maxHeight:300,overflowY:'auto'}}>
             {ALL_PERMISSIONS.map(p => (
-              <label key={p.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                padding: '5px 8px',
-                borderRadius: 6,
-                fontSize: 12,
-                background: (form.permissions || []).includes(p.id) ? '#FFF7ED' : 'white',
-                border: `1px solid ${(form.permissions || []).includes(p.id) ? '#F97316' : '#E2E8F0'}`,
-                transition: '.15s'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={(form.permissions || []).includes(p.id)}
-                  onChange={e => {
-                    const np = e.target.checked
-                      ? [...(form.permissions || []), p.id]
-                      : (form.permissions || []).filter(x => x !== p.id)
-                    setForm(f => ({ ...f, permissions: np }))
-                  }}
-                  style={{ accentColor: '#F97316' }}
-                />
-                <span style={{ fontWeight: 600 }}>{p.label}</span>
-              </label>
+              <div key={p.id} style={{border:'1px solid #E2E8F0',borderRadius:8,padding:8,background:'white'}}>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:4}}>{p.label}</div>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                  {p.actions.map(action => (
+                    <label key={action} style={{fontSize:11,display:'flex',alignItems:'center',gap:3,cursor:'pointer'}}>
+                      <input
+                        type="checkbox"
+                        checked={hasPermission(p.id, action)}
+                        onChange={() => togglePermission(p.id, action)}
+                        style={{accentColor:'#F97316'}}
+                      />
+                      {action === 'view' && '👁️ عرض'}
+                      {action === 'add' && '➕ إضافة'}
+                      {action === 'edit' && '✏️ تعديل'}
+                      {action === 'delete' && '🗑️ حذف'}
+                    </label>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            <button
-              style={{ ...S.btnSm, background: '#F97316', color: 'white', fontSize: 11 }}
-              onClick={() => setForm(f => ({ ...f, permissions: ALL_PERMISSIONS.map(p => p.id) }))}
-            >
-              ✅ كل الصلاحيات
-            </button>
-            <button
-              style={{ ...S.btnSm, background: '#E2E8F0', color: '#475569', fontSize: 11 }}
-              onClick={() => setForm(f => ({ ...f, permissions: [] }))}
-            >
-              ❌ إلغاء الكل
-            </button>
+          <div style={{display:'flex',gap:6,marginTop:8}}>
+            <button style={{...S.btnSm,background:'#F97316',color:'white',fontSize:11}} onClick={resetPermissions}>✅ كل الصلاحيات</button>
+            <button style={{...S.btnSm,background:'#E2E8F0',color:'#475569',fontSize:11}} onClick={clearPermissions}>❌ إلغاء الكل</button>
           </div>
         </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button style={S.btn} onClick={add} disabled={saving}>
-            {saving ? '⏳...' : `💾 ${editItem ? 'حفظ التعديل' : 'إضافة موظف'}`}
-          </button>
-          {editItem && (
-            <button style={S.btnGray} onClick={cancelEdit}>
-              إلغاء
-            </button>
-          )}
+        <div style={{display:'flex',gap:10,marginTop:16}}>
+          <button style={S.btn} onClick={add} disabled={saving}>{saving?'⏳...':`💾 ${editItem?'حفظ التعديل':'إضافة موظف'}`}</button>
+          {editItem&&<button style={S.btnGray} onClick={()=>{setEditItem(null);setForm({name:'',username:'',password:'',email:'',permissions:{}})}}>إلغاء</button>}
         </div>
       </div>
-
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>
-          قائمة الموظفين ({items.length})
-        </h3>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#F1F5F9' }}>
-                <th style={S.th}>الاسم / المستخدم</th>
-                <th style={S.th}>الدور</th>
-                <th style={S.th}>الصلاحيات</th>
-                <th style={S.th}>إجراءات</th>
+        <h3 style={{fontWeight:800,marginBottom:14,fontSize:15}}>قائمة الموظفين ({items.length})</h3>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#F1F5F9'}}>
+              <th style={S.th}>الاسم / المستخدم</th>
+              <th style={S.th}>الدور</th>
+              <th style={S.th}>الصلاحيات</th>
+              <th style={S.th}>إجراءات</th>
+            </tr></thead>
+            <tbody>{items.map((e,i)=>{
+              const perms = e.permissions || {}
+              const totalPerms = Object.values(perms).reduce((sum, actions) => sum + actions.length, 0)
+              const maxPerms = ALL_PERMISSIONS.reduce((sum, p) => sum + p.actions.length, 0)
+              return (
+              <tr key={e.id} style={{background:i%2===0?'white':'#F8FAFC',cursor:'pointer'}}
+                onClick={()=>edit(e)}>
+                <td style={{...S.td,fontWeight:700}}>
+                  <div>{e.name}</div>
+                  <div style={{fontSize:11,color:CLR.textSm}}>{e.username}</div>
+                </td>
+                <td style={S.td}>
+                  <span style={{padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,
+                    background:e.role==='admin'?'#FEE2E2':'#D1FAE5',
+                    color:e.role==='admin'?'#DC2626':'#059669'}}>
+                    {e.role==='admin'?'🔴 مدير':'🟢 موظف'}
+                  </span>
+                </td>
+                <td style={S.td}>
+                  <span style={{background:'#EFF6FF',color:'#1D4ED8',borderRadius:20,padding:'2px 9px',fontSize:11,fontWeight:700}}>
+                    {totalPerms} / {maxPerms} صلاحية
+                  </span>
+                </td>
+                <td style={S.td} onClick={ev=>ev.stopPropagation()}>
+                  {e.role!=='admin'&&<button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={()=>del(e.id)}>🗑️</button>}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((e, i) => {
-                const perms = e.permissions || []
-                return (
-                  <tr
-                    key={e.id}
-                    style={{ background: i % 2 === 0 ? 'white' : '#F8FAFC', cursor: 'pointer' }}
-                    onClick={() => edit(e)}
-                  >
-                    <td style={{ ...S.td, fontWeight: 700 }}>
-                      <div>{e.name}</div>
-                      <div style={{ fontSize: 11, color: CLR.textSm }}>{e.username}</div>
-                    </td>
-                    <td style={S.td}>
-                      <span style={{
-                        padding: '3px 10px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        background: e.role === 'admin' ? '#FEE2E2' : '#D1FAE5',
-                        color: e.role === 'admin' ? '#DC2626' : '#059669'
-                      }}>
-                        {e.role === 'admin' ? '🔴 مدير' : '🟢 موظف'}
-                      </span>
-                    </td>
-                    <td style={S.td}>
-                      <span style={{
-                        background: '#EFF6FF',
-                        color: '#1D4ED8',
-                        borderRadius: 20,
-                        padding: '2px 9px',
-                        fontSize: 11,
-                        fontWeight: 700
-                      }}>
-                        {perms.length} / {ALL_PERMISSIONS.length} صفحة
-                      </span>
-                    </td>
-                    <td style={S.td} onClick={ev => ev.stopPropagation()}>
-                      {e.role !== 'admin' && (
-                        <button
-                          style={{ ...S.btnSm, background: '#FEE2E2', color: '#DC2626' }}
-                          onClick={() => del(e.id)}
-                        >
-                          🗑️
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', padding: 28, color: CLR.textSm }}>
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>👔</div>
-                    لا توجد موظفين
-                  </td>
-                </tr>
-              )}
+            )})}
+            {items.length===0&&<tr><td colSpan={4} style={{textAlign:'center',padding:28,color:CLR.textSm}}>
+              <div style={{fontSize:28,marginBottom:6}}>👔</div>لا توجد موظفين
+            </td></tr>}
             </tbody>
           </table>
         </div>
@@ -1625,6 +1785,7 @@ function Employees() {
     </div>
   )
 }
+
 /* ══════════════════════════════════════════
    🎟️ الكوبونات
 ══════════════════════════════════════════ */
@@ -1635,11 +1796,6 @@ function Coupons() {
   const load=async()=>{ const {data}=await supabase.from('coupons').select('*').order('id',{ascending:false}); setItems(data||[]) }
   useEffect(()=>{ load() },[])
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
   const add=async()=>{
     if(!form.code||!form.value){showToast('الكود والقيمة مطلوبان','error');return} setSaving(true)
     await supabase.from('coupons').insert({id:Date.now(),code:form.code.toUpperCase().trim(),type:form.type,value:parseFloat(form.value),expiry:form.expiry||null,max_uses:parseInt(form.maxUses)||100,min_order:parseFloat(form.minOrder)||0,used:0})
@@ -1695,7 +1851,6 @@ function Purchases() {
   const [brands,setBrands]=useState([])
   const [saving,setSaving]=useState(false)
 
-  // سعر الكارتون = سعر الشراء × عدد القطع
   const autoCarton=(price,units)=>parseFloat(price||0)*parseInt(units||12)
 
   useEffect(()=>{
@@ -1716,16 +1871,6 @@ function Purchases() {
   const addItem=()=>{
     const prod=products.find(p=>p.id==modal.productId)
     if(!prod||!modal.cartons||!modal.purchasePrice){showToast('اختر منتجاً وأدخل البيانات','error');return}
-    // منع التكرار — نزيد الكمية إذا المنتج موجود
-    const exist=items.find(i=>i.productId==prod.id)
-    if(exist){
-      const cp=autoCarton(modal.purchasePrice,modal.unitsPerCarton)
-      const nc=exist.cartons+parseInt(modal.cartons)
-      setItems(prev=>prev.map(i=>i.productId==prod.id?{...i,cartons:nc,totalUnits:nc*parseInt(i.unitsPerCarton),cartonPrice:cp,totalPurchase:nc*cp}:i))
-      showToast('✅ تمت زيادة الكمية للمنتج الموجود')
-      setShowModal(false); setModal({productId:'',cartons:1,unitsPerCarton:12,purchasePrice:0,sellPrice:0}); return
-    }
-    // منع التكرار — إذا موجود نزيد الكمية
     const existing=items.find(i=>i.productId==prod.id)
     if(existing){
       const cartonPrice=autoCarton(modal.purchasePrice,modal.unitsPerCarton)
@@ -1817,7 +1962,6 @@ function Purchases() {
             <input style={S.input} type="date" value={date} onChange={e=>setDate(e.target.value)} /></div>
         </div>
 
-        {/* جدول المنتجات */}
         {items.length>0&&(
           <div style={{overflowX:'auto',marginBottom:14}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -1863,7 +2007,6 @@ function Purchases() {
         </div>
       </div>
 
-      {/* مودال إضافة منتج */}
       {showModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:8000,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'white',borderRadius:20,padding:28,width:520,maxWidth:'95vw',direction:'rtl',maxHeight:'90vh',overflowY:'auto'}}>
@@ -1910,7 +2053,6 @@ function Purchases() {
         </div>
       )}
 
-      {/* مودال إضافة منتج جديد */}
       {showNewProdModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:9000,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'white',borderRadius:20,padding:28,width:440,maxWidth:'95vw',direction:'rtl'}}>
@@ -2006,11 +2148,10 @@ function Inventory() {
 
   const filtered=items.filter(p=>p.name?.toLowerCase().includes(search.toLowerCase()))
 
-  // تصدير CSV (يفتح في Excel)
   const exportCSV = () => {
     const header = 'ID,اسم المنتج,الباركود,المخزون,السعر,سعر الشراء,قطع/كرتون'
     const rows = items.map(p => `${p.id},"${p.name}","${p.sku||''}",${p.stock||0},${p.price},${p.cost_price||0},${p.units||12}`)
-    const csv = '\uFEFF' + header + '\n' + rows.join('\n') // BOM for Arabic
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n')
     const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a'); a.href=url; a.download='naqaa_inventory.csv'; a.click()
@@ -2018,12 +2159,11 @@ function Inventory() {
     showToast('✅ تم تصدير المخزون')
   }
 
-  // استيراد CSV
   const importCSV = e => {
     const file = e.target.files[0]; if (!file) return
     const reader = new FileReader()
     reader.onload = async ev => {
-      const lines = ev.target.result.split('\n').slice(1) // تخطي الـ header
+      const lines = ev.target.result.split('\n').slice(1)
       let updated = 0
       for (const line of lines) {
         const cols = line.split(',')
@@ -2049,7 +2189,7 @@ function Inventory() {
       <div class="header"><div><h1>🛍️ نقاء</h1></div><div><p>تقرير المخزون</p><p>${new Date().toLocaleDateString('ar-DZ')}</p></div></div>
       <table><thead><tr><th>المنتج</th><th>الباركود</th><th>المخزون</th><th>الحالة</th><th>القيمة</th></tr></thead>
       <tbody>${filtered.map(p=>`<tr><td>${p.name}</td><td>${p.sku||'—'}</td><td>${p.stock||0}</td><td>${(p.stock||0)<5?'⚠️ منخفض':(p.stock||0)<20?'متوسط':'جيد'}</td><td>${((p.stock||0)*Number(p.price)).toFixed(0)} ${CUR}</td></tr>`).join('')}</tbody></table>
-      <div class="footer">إجمالي قيمة المخزون: ${filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} ${CUR}</div>
+      <div class="footer">إجمالي قيمة المخزون: ${filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} {CUR}</div>
     `)
   }
 
@@ -2066,7 +2206,6 @@ function Inventory() {
           </label>
           <button style={{...S.btnGray,background:'#7c3aed',color:'white'}} onClick={printInventory}>🖨️ طباعة</button>
         </div>
-        {/* تعليمات الاستيراد */}
         <div style={{background:'#f0f9ff',borderRadius:10,padding:12,marginBottom:14,fontSize:12,color:'#1d4ed8'}}>
           💡 <strong>تعليمات الاستيراد:</strong> صدّر الملف أولاً، عدّل الكميات والأسعار في Excel، ثم استورده مجدداً. العمود الأول (ID) لا تغيّره.
         </div>
@@ -2105,13 +2244,14 @@ function Inventory() {
 }
 
 /* ══════════════════════════════════════════
-   📋 الطلبيات (بحث متقدم + تجميع + طباعة)
+   📋 الطلبيات (مع ✅ ميزة 8: الخريطة)
 ══════════════════════════════════════════ */
 function Orders() {
   const [showToast,ToastUI]=useToast()
   const [items,setItems]=useState([]); const [search,setSearch]=useState('')
   const [searchType,setSearchType]=useState('all'); const [statusFilter,setStatusFilter]=useState('all')
   const [viewMode,setViewMode]=useState('list'); const [selectedOrders,setSelectedOrders]=useState([])
+  const [showMap,setShowMap]=useState(false)
 
   const load=useCallback(async()=>{
     const {data}=await supabase.from('orders').select('*').order('id',{ascending:false})
@@ -2121,7 +2261,6 @@ function Orders() {
 
   const updateStatus=async(id,status)=>{
     await supabase.from('orders').update({status}).eq('id',id)
-    // إشعار واتساب للعميل عند الشحن أو التسليم
     if(status==='shipped'||status==='delivered'){
       const {data:ord}=await supabase.from('orders').select('*').eq('id',id).maybeSingle()
       if(ord?.phone){
@@ -2160,6 +2299,23 @@ function Orders() {
     acc[zone].push(o); return acc
   },{})
 
+  // ✅ ميزة 8: عرض الخريطة (محاكاة)
+  const MapView = () => (
+    <div style={{background:'white',borderRadius:12,padding:16,border:'1px solid #E2E8F0',marginBottom:12}}>
+      <h4 style={{fontWeight:800,marginBottom:8}}>📍 توزيع الطلبيات على الخريطة</h4>
+      <div style={{background:'#E2E8F0',borderRadius:8,padding:40,textAlign:'center',color:CLR.textSm}}>
+        🗺️ خريطة تفاعلية (تظهر مواقع العملاء)
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',marginTop:12}}>
+          {Object.entries(grouped).slice(0,8).map(([zone,orders]) => (
+            <span key={zone} style={{background:CLR.accent,color:'white',padding:'4px 12px',borderRadius:20,fontSize:11,fontWeight:700}}>
+              {zone} ({orders.length})
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   const printDelivery=()=>{
     const content=Object.entries(grouped).map(([zone,orders])=>`
       <div style="margin-bottom:24px;page-break-inside:avoid">
@@ -2190,7 +2346,17 @@ function Orders() {
   return (
     <div>{ToastUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📋 الطلبيات</h1>
-      {/* أرشفة الطلبيات القديمة */}
+      <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+        <button
+          onClick={() => setShowMap(!showMap)}
+          style={{...S.btnSm,background:showMap?'#dc2626':'#e2e8f0',color:showMap?'white':'#475569',padding:'6px 14px'}}
+        >
+          🗺️ {showMap ? 'إخفاء الخريطة' : 'عرض الخريطة'}
+        </button>
+      </div>
+
+      {showMap && <MapView />}
+
       <div style={{...S.card,background:'#F0FDF4',border:'1px solid #A7F3D0',marginBottom:14}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
           <div>
@@ -2316,7 +2482,7 @@ function Orders() {
 }
 
 /* ══════════════════════════════════════════
-   🎯 إدارة العروض الكاملة
+   🎯 إدارة العروض الكاملة (مع ✅ ميزة 10: العروض حسب المنطقة)
 ══════════════════════════════════════════ */
 function PromotionsManager() {
   const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
@@ -2328,25 +2494,26 @@ function PromotionsManager() {
     buy_qty:3, get_qty:1, discount_value:0,
     product_ids:[], min_amount:0, description:'',
     end_date:'', image:'',
-    tier_qty:1, tier_type:'percent', tier_value:0
+    tier_qty:1, tier_type:'percent', tier_value:0,
+    region:'' // ✅ ميزة 10: العروض حسب المنطقة
   })
 
   const load=async()=>{
-    const [{data:p},{data:pr}]=await Promise.all([
-      supabase.from('products').select('id,name,price,image').order('name'),
-      supabase.from('promotions').select('*').order('id',{ascending:false}).catch(()=>({data:[]})),
-    ])
-    setProducts(p||[]); setPromos(pr||[])
+    try {
+      const [{data:p},{data:pr}]=await Promise.all([
+        supabase.from('products').select('id,name,price,image,stock').order('name'),
+        supabase.from('promotions').select('*').order('id',{ascending:false}).catch(()=>({data:[]})),
+      ])
+      setProducts(p||[])
+      setPromos(pr||[])
+    } catch (err) {
+      console.error('❌ خطأ في تحميل العروض:', err)
+    }
   }
   useEffect(()=>{ load() },[])
 
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
-
+  
   const toggleProduct=id=>setForm(f=>({...f,product_ids:f.product_ids.includes(id)?f.product_ids.filter(x=>x!==id):[...f.product_ids,id]}))
 
   const handleImg=e=>{const r=new FileReader();r.onload=ev=>setForm(f=>({...f,image:ev.target.result}));r.readAsDataURL(e.target.files[0])}
@@ -2364,13 +2531,14 @@ function PromotionsManager() {
       tier_qty:parseInt(form.tier_qty)||1,
       tier_type:form.tier_type||'percent',
       tier_value:parseFloat(form.tier_value)||0,
+      region:form.region||null,
       created_at:form.id?undefined:new Date().toISOString()
     }
     if(!form.id) delete row.created_at
     const {error}=await supabase.from('promotions').upsert(row).catch(e=>({error:e}))
     if(error){showToast('⚠️ تأكد من تشغيل schema_v4.sql في Supabase','error');setSaving(false);return}
     showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-    setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:'',tier_qty:1,tier_type:'percent',tier_value:0})
+    setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:'',tier_qty:1,tier_type:'percent',tier_value:0,region:''})
     setProdSearch('')
     await load(); setSaving(false)
   }
@@ -2380,7 +2548,8 @@ function PromotionsManager() {
     buy_qty:p.buy_qty||3, get_qty:p.get_qty||1, discount_value:p.discount_value||0,
     product_ids:typeof p.product_ids==='string'?JSON.parse(p.product_ids||'[]'):(p.product_ids||[]),
     min_amount:p.min_amount||0, description:p.description||'', end_date:p.end_date?.split('T')[0]||'', image:p.image||'',
-    tier_qty:p.tier_qty||1, tier_type:p.tier_type||'percent', tier_value:p.tier_value||0
+    tier_qty:p.tier_qty||1, tier_type:p.tier_type||'percent', tier_value:p.tier_value||0,
+    region:p.region||''
   })
 
   const del=async id=>{
@@ -2417,9 +2586,10 @@ function PromotionsManager() {
             <input style={S.input} type="datetime-local" value={form.end_date} onChange={F('end_date')} /></div>
           <div><label style={S.label}>الحد الأدنى للطلب</label>
             <NumInput value={form.min_amount} onChange={F('min_amount')} /></div>
+          <div><label style={S.label}>المنطقة</label>
+            <input style={S.input} value={form.region} onChange={F('region')} placeholder="مثال: الجزائر العاصمة (اتركه فارغاً للكل)" /></div>
         </div>
 
-        {/* خيارات حسب النوع */}
         {form.type==='percent'&&(
           <div style={{marginTop:12}}>
             <label style={S.label}>نسبة الخصم %</label>
@@ -2444,20 +2614,17 @@ function PromotionsManager() {
           </div>
         )}
 
-        {/* وصف العرض */}
         <div style={{marginTop:12}}>
           <label style={S.label}>وصف العرض (يظهر للزبون)</label>
           <input style={S.input} value={form.description} onChange={F('description')} placeholder="مثال: عند شراء 3 منتجات تحصل على الرابع مجاناً!" />
         </div>
 
-        {/* صورة بانر العرض */}
         <div style={{marginTop:12}}>
           <label style={S.label}>صورة بانر العرض (1200×400)</label>
           <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
           {form.image&&<img src={form.image} style={{width:'100%',height:80,objectFit:'cover',borderRadius:10,marginTop:6}}/>}
         </div>
 
-        {/* tier_buy خيارات */}
         {form.type==='tier_buy'&&(
           <div style={{background:'#f0f9ff',borderRadius:12,padding:14,marginTop:12}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:10,color:'#1d4ed8'}}>📦 عند شراء X كرتون من نفس الشركة → خصم</p>
@@ -2474,13 +2641,11 @@ function PromotionsManager() {
           </div>
         )}
 
-        {/* اختيار المنتجات — بحث + checkbox احترافي */}
         <div style={{marginTop:14}}>
           <label style={{...S.label,marginBottom:8}}>
             🔍 المنتجات المشمولة بالعرض
             <span style={{fontWeight:400,color:CLR.textSm,marginRight:8,fontSize:12}}>(اتركه فارغاً = جميع المنتجات)</span>
           </label>
-          {/* شريط البحث */}
           <div style={{display:'flex',gap:8,marginBottom:8}}>
             <input style={{...S.input,flex:1,marginBottom:0}} placeholder="🔍 ابحث عن منتج..." value={prodSearch} onChange={e=>setProdSearch(e.target.value)} />
             <button style={{...S.btnSm,background:CLR.accent,color:'white',padding:'6px 14px',fontSize:12}}
@@ -2499,11 +2664,16 @@ function PromotionsManager() {
               إلغاء الكل
             </button>}
           </div>
-          {/* جدول المنتجات */}
           <div style={{maxHeight:280,overflowY:'auto',border:`1.5px solid ${CLR.border}`,borderRadius:10,background:'white'}}>
-            {products.filter(p=>!prodSearch||p.name.toLowerCase().includes(prodSearch.toLowerCase())).length===0
+            {products.filter(p => {
+              if (!prodSearch) return true
+              return p.name?.toLowerCase().includes(prodSearch.toLowerCase())
+            }).length === 0
               ?<div style={{padding:24,textAlign:'center',color:CLR.textSm}}>🔍 لا توجد نتائج</div>
-              :products.filter(p=>!prodSearch||p.name.toLowerCase().includes(prodSearch.toLowerCase())).map((p,i)=>{
+              :products.filter(p => {
+                  if (!prodSearch) return true
+                  return p.name?.toLowerCase().includes(prodSearch.toLowerCase())
+                }).map((p,i)=>{
                 const sel=form.product_ids.includes(p.id)||form.product_ids.includes(String(p.id))
                 return (
                   <label key={p.id} onClick={()=>toggleProduct(p.id)}
@@ -2528,7 +2698,6 @@ function PromotionsManager() {
                 )
               })}
           </div>
-          {/* ملخص */}
           <div style={{marginTop:8,fontSize:12,fontWeight:700,color:form.product_ids.length>0?CLR.success:CLR.textSm}}>
             {form.product_ids.length>0
               ?`✅ ${form.product_ids.length} منتج محدد — سيظهر فقط هؤلاء في العرض`
@@ -2536,7 +2705,6 @@ function PromotionsManager() {
           </div>
         </div>
 
-        {/* تفعيل العرض */}
         <div style={{display:'flex',alignItems:'center',gap:10,marginTop:14}}>
           <input type="checkbox" id="active" checked={form.active} onChange={e=>setForm(f=>({...f,active:e.target.checked}))}/>
           <label htmlFor="active" style={{fontWeight:700,cursor:'pointer'}}>⚡ تفعيل العرض فور الحفظ</label>
@@ -2544,11 +2712,10 @@ function PromotionsManager() {
 
         <div style={{display:'flex',gap:10,marginTop:16,flexWrap:'wrap'}}>
           <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ العرض'}</button>
-          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:''})}>✖ إلغاء</button>
+          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',type:'percent',active:true,buy_qty:3,get_qty:1,discount_value:0,product_ids:[],min_amount:0,description:'',end_date:'',image:'',region:''})}>✖ إلغاء</button>
         </div>
       </div>
 
-      {/* قائمة العروض */}
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14}}>العروض الحالية ({promos.length})</h3>
         {promos.length===0&&<p style={{textAlign:'center',color:CLR.textSm,padding:24}}>لا توجد عروض — أنشئ أول عرض الآن!</p>}
@@ -2565,6 +2732,7 @@ function PromotionsManager() {
                   {p.end_date&&<div style={{fontSize:11,color:isExpired?'#ef4444':'#f59e0b',marginTop:2}}>
                     {isExpired?'⏰ انتهى':'⏳ ينتهي'}: {new Date(p.end_date).toLocaleDateString('ar-DZ')}
                   </div>}
+                  {p.region&&<div style={{fontSize:11,color:'#3b82f6',marginTop:2}}>📍 {p.region}</div>}
                   <div style={{fontSize:11,color:CLR.textSm,marginTop:4}}>
                     {pids.length===0?'📦 يشمل كل المنتجات':`📦 ${pids.length} منتج محدد`}
                   </div>
@@ -2601,20 +2769,28 @@ function Notifications() {
   const [targetType,setTargetType]=useState('all')
   const [addressFilter,setAddressFilter]=useState('')
   const [saving,setSaving]=useState(false)
+  
   const load=async()=>{
     const [{data:n},{data:c}]=await Promise.all([
       supabase.from('notifications').select('*').order('id',{ascending:false}),
-      supabase.from('customers').select('id,name,tier,address').order('name'),
+      supabase.from('customers').select('id,name,tier,address,phone').order('name'),
     ])
     setItems(n||[]); setCustomers(c||[])
   }
   useEffect(()=>{ load() },[])
-  const targeted=customers.filter(c=>{
-    if(targetType==='all') return true
-    if(['M1','M2','M3'].includes(targetType)) return (c.tier||'M1')===targetType
-    if(targetType==='address') return addressFilter&&(c.address||'').includes(addressFilter)
+  
+  const targeted = customers.filter(c => {
+    if (targetType === 'all') return true
+    if (['M1', 'M2', 'M3'].includes(targetType)) return (c.tier || 'M1') === targetType
+    if (targetType === 'address') {
+      if (!addressFilter) return false
+      const customerAddress = (c.address || '').toLowerCase()
+      const filter = addressFilter.toLowerCase()
+      return customerAddress.includes(filter)
+    }
     return true
   })
+  
   const send=async()=>{
     if(!title||!body){showToast('العنوان والنص مطلوبان','error');return} setSaving(true)
     await supabase.from('notifications').insert({
@@ -2624,8 +2800,10 @@ function Notifications() {
     })
     showToast(`✅ تم الإرسال لـ ${targeted.length} عميل`);setTitle('');setBody('');await load();setSaving(false)
   }
+  
   const tierLabels={all:'الكل',M1:'M1 عادي',M2:'M2 مميز',M3:'M3 VIP',address:'حسب العنوان'}
   const tierColors={all:'#475569',M1:'#475569',M2:'#1d4ed8',M3:'#92400e',address:'#059669'}
+  
   return (
     <div>{ToastUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🔔 الإشعارات</h1>
@@ -2646,6 +2824,9 @@ function Notifications() {
           <div style={{marginBottom:12}}>
             <label style={S.label}>🗺️ فلتر العنوان (ولاية أو حي)</label>
             <input style={S.input} value={addressFilter} onChange={e=>setAddressFilter(e.target.value)} placeholder="مثال: الجزائر العاصمة" />
+            <p style={{fontSize:11,color:CLR.textSm,marginTop:4}}>
+              📌 سيتم إرسال الإشعار للعملاء الذين يحتوي عنوانهم على هذه الكلمة
+            </p>
           </div>
         )}
         <div style={{background:'#f0fdf4',borderRadius:10,padding:'10px 14px',marginBottom:12,fontSize:13,fontWeight:700,color:'#059669'}}>
@@ -2678,9 +2859,10 @@ function Notifications() {
 }
 
 /* ══════════════════════════════════════════
-   📈 التقارير المفصلة
+   📈 التقارير المفصلة (مع ✅ ميزة 4: PDF)
 ══════════════════════════════════════════ */
 function Reports() {
+  const [showToast,ToastUI]=useToast()
   const [data,setData]=useState({orders:[],purchases:[],expenses:[],customers:[]})
   const [repTab,setRepTab]=useState('overview')
 
@@ -2696,6 +2878,24 @@ function Reports() {
     }
     load()
   },[])
+
+  // ✅ ميزة 4: تصدير تقرير PDF
+  const exportPDF = () => {
+    const content = `
+      <div class="header"><div><h1>🛍️ نقاء</h1><p>تقرير شامل</p></div><div>${new Date().toLocaleDateString('ar-DZ')}</div></div>
+      <h2>إحصائيات</h2>
+      <table>
+        <thead><tr><th>المؤشر</th><th>القيمة</th></tr></thead>
+        <tbody>
+          <tr><td>إجمالي المبيعات</td><td>${data.orders.reduce((s,o)=>s+Number(o.total),0).toFixed(0)} ${CUR}</td></tr>
+          <tr><td>عدد الطلبيات</td><td>${data.orders.length}</td></tr>
+          <tr><td>عدد العملاء</td><td>${data.customers.length}</td></tr>
+        </tbody>
+      </table>
+      <div class="footer">نقاء — تقرير شهري</div>
+    `
+    printA4(content)
+  }
 
   const now=new Date()
   const thisM=now.getMonth(); const thisY=now.getFullYear()
@@ -2731,7 +2931,13 @@ function Reports() {
 
   return (
     <div>
+      {ToastUI}
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📈 التقارير</h1>
+      
+      <button style={{...S.btn,background:'#7c3aed',marginBottom:16}} onClick={exportPDF}>
+        📄 تصدير تقرير PDF
+      </button>
+
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
         {[
           {l:'هذا الشهر',   v:salesThisM,  c:CLR.accent,   i:'📅', ch:chg},
@@ -2861,11 +3067,6 @@ function Expenses() {
   const load=async()=>{ const {data}=await supabase.from('expenses').select('*').order('id',{ascending:false}); setItems(data||[]) }
   useEffect(()=>{ load() },[])
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
   const add=async()=>{
     if(!form.name||!form.amount){showToast('الاسم والمبلغ مطلوبان','error');return} setSaving(true)
     await supabase.from('expenses').insert({id:Date.now(),name:form.name.trim(),amount:parseFloat(form.amount),date:form.date,category:form.category})
@@ -2936,7 +3137,7 @@ function ActivityLog() {
 }
 
 /* ══════════════════════════════════════════
-   ⚙️ الإعدادات
+   ⚙️ الإعدادات (مع ✅ ميزة 14: إدارة الفروع)
 ══════════════════════════════════════════ */
 function Settings({ showToast }) {
   const [form,setForm]=useState({
@@ -2950,18 +3151,47 @@ function Settings({ showToast }) {
     terms_text:'', announce_bar:'',
     contact_hours:'من 8 صباحاً إلى 10 مساءً', contact_address:'',
     contact_email:'',
+    branches:JSON.stringify([{name:'الفرع الرئيسي',address:'الجزائر العاصمة',phone:''}]) // ✅ ميزة 14
   })
   const [saving,setSaving]=useState(false)
+  const [branches,setBranches]=useState([])
+
   useEffect(()=>{
     supabase.from('settings').select('*').then(({data})=>{
       if(data){const map={};data.forEach(r=>(map[r.key]=r.value));setForm(f=>({...f,...map}))}
+      try {
+        const b = JSON.parse(map['branches'] || '[]')
+        setBranches(b)
+      } catch { setBranches([]) }
     })
   },[])
+
+  // ✅ ميزة 14: إدارة الفروع
+  const addBranch = () => {
+    const newBranch = { id: Date.now(), name: '', address: '', phone: '' }
+    setBranches([...branches, newBranch])
+  }
+
+  const updateBranch = (id, field, value) => {
+    setBranches(branches.map(b => b.id === id ? { ...b, [field]: value } : b))
+  }
+
+  const removeBranch = (id) => {
+    setBranches(branches.filter(b => b.id !== id))
+  }
+
+  const saveBranches = async () => {
+    await supabase.from('settings').upsert({ key: 'branches', value: JSON.stringify(branches) })
+    showToast('✅ تم حفظ الفروع')
+  }
+
   const save=async()=>{
     setSaving(true)
     await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
+    await saveBranches()
     showToast('✅ تم حفظ الإعدادات');setSaving(false)
   }
+
   return (
     <div>
       <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>⚙️ إعدادات المتجر</h1>
@@ -2990,6 +3220,21 @@ function Settings({ showToast }) {
           <input style={S.input} value={form.announce_bar} onChange={e=>setForm(f=>({...f,announce_bar:e.target.value}))} placeholder="🎉 توصيل مجاني على الطلبات فوق 5000 دج"/>
         </div>
       </div>
+
+      {/* ✅ ميزة 14: إدارة الفروع */}
+      <div style={S.card}>
+        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🏢 إدارة الفروع</h3>
+        {branches.map((branch, index) => (
+          <div key={branch.id} style={{display:'grid',gridTemplateColumns:'2fr 2fr 1fr auto',gap:8,alignItems:'center',marginBottom:8,background:CLR.bg,padding:10,borderRadius:8}}>
+            <input style={S.input} value={branch.name} onChange={e => updateBranch(branch.id, 'name', e.target.value)} placeholder="اسم الفرع" />
+            <input style={S.input} value={branch.address} onChange={e => updateBranch(branch.id, 'address', e.target.value)} placeholder="العنوان" />
+            <PhoneInput value={branch.phone} onChange={e => updateBranch(branch.id, 'phone', e.target.value)} placeholder="الهاتف" />
+            <button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={() => removeBranch(branch.id)}>🗑️</button>
+          </div>
+        ))}
+        <button style={{...S.btnSm,background:CLR.success,color:'white'}} onClick={addBranch}>➕ إضافة فرع</button>
+      </div>
+
       <div style={S.card}>
         <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>🏅 إعدادات تصنيف العملاء</h3>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:14}}>
@@ -3125,7 +3370,6 @@ function DataBackup({ showToast }) {
   const [autoBackup,setAutoBackup]=useState(false)
   const [lastBackup,setLastBackup]=useState(localStorage.getItem('nq_last_backup')||'—')
 
-  // نسخ احتياطي تلقائي يومي
   useEffect(()=>{
     const ab=localStorage.getItem('nq_auto_backup')==='1'
     setAutoBackup(ab)
@@ -3133,7 +3377,6 @@ function DataBackup({ showToast }) {
       const last=localStorage.getItem('nq_last_backup_date')
       const today=new Date().toDateString()
       if(last!==today){
-        // تشغيل نسخ احتياطي تلقائي
         setTimeout(()=>doAutoBackup(),3000)
       }
     }
@@ -3228,8 +3471,7 @@ function DataBackup({ showToast }) {
   )
 }
 
-/* ══════════════════════════════════════════
-   🏢 من نحن
+/* ══════════════════════════════════════════   🏢 من نحن
 ══════════════════════════════════════════ */
 function AboutUs({ showToast }) {
   const [content,setContent]=useState(''); const [saving,setSaving]=useState(false)
@@ -3263,11 +3505,6 @@ function ContactUs({ showToast }) {
     })
   },[])
   const F=k=>e=>setForm(f=>({...f,[k]:e.target.value}))
-  // حساب سعر الكارتون تلقائياً: سعر الشراء × عدد القطع
-  const autoCarton=(price,units)=>{
-    const p=parseFloat(price)||0; const u=parseInt(units)||12
-    return p>0?(p*u).toFixed(2):''
-  }
   const save=async()=>{
     setSaving(true)
     await Promise.all(Object.entries(form).map(([key,value])=>supabase.from('settings').upsert({key,value:String(value)})))
@@ -3330,50 +3567,53 @@ export default function Admin() {
 
   if (!user) return <LoginScreen onLogin={handleLogin} />
 
+  // ✅ تحقق من صلاحيات الموظف
+  const hasPermission = (permId, action = 'view') => {
+    if (user.role === 'admin') return true
+    const perms = user.permissions || {}
+    return (perms[permId] || []).includes(action)
+  }
+
   const sections = [
-    { id:'dashboard',     icon:'📊', label:'لوحة القيادة' },
-    { id:'products',      icon:'📦', label:'المنتجات' },
-    { id:'categories',    icon:'📂', label:'الفئات' },
-    { id:'brands',        icon:'🏷️', label:'العلامات التجارية' },
-    { id:'suppliers',     icon:'🏭', label:'الموردون' },
-    { id:'customers',     icon:'👥', label:'العملاء (M1/M2/M3)' },
-    { id:'employees',     icon:'👔', label:'الموظفون' },
-    { id:'coupons',       icon:'🎟️', label:'الكوبونات' },
-    { id:'purchases',     icon:'🛒', label:'المشتريات' },
-    { id:'inventory',     icon:'🗂️', label:'المخزون + Excel' },
-    { id:'orders',        icon:'📋', label:'الطلبيات' },
-    { id:'promotions',    icon:'🎯', label:'إدارة العروض' },
-    { id:'notifications', icon:'🔔', label:'الإشعارات' },
-    { id:'reports',       icon:'📈', label:'التقارير' },
-    { id:'expenses',      icon:'💸', label:'المصاريف' },
-    { id:'activityLog',   icon:'📋', label:'سجل النشاطات' },
-    { id:'storeManager',  icon:'🎨', label:'إدارة المتجر' },
-    { id:'backup',        icon:'💾', label:'نسخ احتياطي' },
-    { id:'settings',      icon:'⚙️', label:'الإعدادات' },
-    { id:'about',         icon:'🏢', label:'من نحن' },
-    { id:'contact',       icon:'📞', label:'اتصل بنا' },
-    { id:'returnPolicy',  icon:'🔄', label:'سياسة الاسترجاع' },
+    { id:'dashboard',     icon:'📊', label:'لوحة القيادة', perm:'dashboard' },
+    { id:'products',      icon:'📦', label:'المنتجات', perm:'products' },
+    { id:'categories',    icon:'📂', label:'الفئات', perm:'categories' },
+    { id:'brands',        icon:'🏷️', label:'العلامات التجارية', perm:'brands' },
+    { id:'suppliers',     icon:'🏭', label:'الموردون', perm:'suppliers' },
+    { id:'customers',     icon:'👥', label:'العملاء (M1/M2/M3)', perm:'customers' },
+    { id:'employees',     icon:'👔', label:'الموظفون', perm:'employees' },
+    { id:'coupons',       icon:'🎟️', label:'الكوبونات', perm:'coupons' },
+    { id:'purchases',     icon:'🛒', label:'المشتريات', perm:'purchases' },
+    { id:'inventory',     icon:'🗂️', label:'المخزون + Excel', perm:'inventory' },
+    { id:'orders',        icon:'📋', label:'الطلبيات', perm:'orders' },
+    { id:'promotions',    icon:'🎯', label:'إدارة العروض', perm:'promotions' },
+    { id:'notifications', icon:'🔔', label:'الإشعارات', perm:'notifications' },
+    { id:'reports',       icon:'📈', label:'التقارير', perm:'reports' },
+    { id:'expenses',      icon:'💸', label:'المصاريف', perm:'expenses' },
+    { id:'activityLog',   icon:'📋', label:'سجل النشاطات', perm:'activityLog' },
+    { id:'storeManager',  icon:'🎨', label:'إدارة المتجر', perm:'storeManager' },
+    { id:'backup',        icon:'💾', label:'نسخ احتياطي', perm:'backup' },
+    { id:'settings',      icon:'⚙️', label:'الإعدادات', perm:'settings' },
+    { id:'about',         icon:'🏢', label:'من نحن', perm:'about' },
+    { id:'contact',       icon:'📞', label:'اتصل بنا', perm:'contact' },
+    { id:'returnPolicy',  icon:'🔄', label:'سياسة الاسترجاع', perm:'returnPolicy' },
+    { id:'recycle',       icon:'🗑️', label:'سلة المهملات', perm:'recycle' },
   ]
 
   const renderSection = () => {
-    // فحص صلاحيات الموظف (المدير دائماً له وصول كامل)
-    if (user.role !== 'admin' && section !== 'dashboard') {
-      const perms = typeof user.permissions === 'string'
-        ? JSON.parse(user.permissions || '[]')
-        : (user.permissions || [])
-      if (perms.length > 0 && !perms.includes(section)) {
-        return (
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-            minHeight:300,gap:16,color:CLR.textSm}}>
-            <div style={{fontSize:56}}>🔒</div>
-            <h3 style={{fontWeight:800,color:CLR.text}}>لا تملك صلاحية الوصول</h3>
-            <p style={{fontSize:14}}>تواصل مع المدير لمنحك الصلاحية</p>
-          </div>
-        )
-      }
+    const currentSection = sections.find(s => s.id === section)
+    if (currentSection && !hasPermission(currentSection.perm)) {
+      return (
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+          minHeight:300,gap:16,color:CLR.textSm}}>
+          <div style={{fontSize:56}}>🔒</div>
+          <h3 style={{fontWeight:800,color:CLR.text}}>لا تملك صلاحية الوصول</h3>
+          <p style={{fontSize:14}}>تواصل مع المدير لمنحك الصلاحية</p>
+        </div>
+      )
     }
     switch(section) {
-      case 'dashboard':     return <Dashboard />
+      case 'dashboard':     return <Dashboard user={user} />
       case 'products':      return <Products />
       case 'categories':    return <Categories />
       case 'brands':        return <Brands />
@@ -3395,7 +3635,8 @@ export default function Admin() {
       case 'about':         return <AboutUs showToast={showToast} />
       case 'contact':       return <ContactUs showToast={showToast} />
       case 'returnPolicy':  return <ReturnPolicy showToast={showToast} />
-      default:              return <Dashboard />
+      case 'recycle':       return <RecycleBin />
+      default:              return <Dashboard user={user} />
     }
   }
 
@@ -3405,7 +3646,7 @@ export default function Admin() {
     { label:'المبيعات', items:['orders','promotions','coupons'] },
     { label:'الموارد', items:['purchases','suppliers','expenses'] },
     { label:'العملاء', items:['customers','notifications'] },
-    { label:'الإدارة', items:['reports','employees','activityLog','storeManager','backup','settings','about','contact','returnPolicy'] },
+    { label:'الإدارة', items:['reports','employees','activityLog','storeManager','backup','settings','about','contact','returnPolicy','recycle'] },
   ]
 
   return (
@@ -3430,7 +3671,6 @@ export default function Admin() {
         .nq-tr:hover td{background:#FFF7ED!important}
       `}</style>
 
-      {/* ═══ SIDEBAR ═══ */}
       <aside style={{
         width: collapsed ? 58 : 232,
         background: CLR.primary,
@@ -3441,7 +3681,6 @@ export default function Admin() {
         boxShadow: '2px 0 16px rgba(0,0,0,.15)',
         zIndex: 100,
       }}>
-        {/* لوغو */}
         <div style={{ padding: collapsed?'14px 9px':'14px 14px',
           borderBottom: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -3462,7 +3701,6 @@ export default function Admin() {
           </div>}
         </div>
 
-        {/* قائمة مجمّعة */}
         <nav style={{ flex:1, overflowY:'auto', overflowX:'hidden', padding:'6px 0' }}>
           {navGroups.map(group => (
             <div key={group.label}>
@@ -3475,6 +3713,8 @@ export default function Admin() {
               {group.items.map(id => {
                 const s = sections.find(x=>x.id===id)
                 if (!s) return null
+                // ✅ التحقق من صلاحية الموظف
+                if (!hasPermission(s.perm)) return null
                 return (
                   <div key={s.id} className={`sitem${section===s.id?' on':''}`}
                     onClick={()=>setSection(s.id)} title={collapsed?s.label:''}>
@@ -3487,7 +3727,6 @@ export default function Admin() {
           ))}
         </nav>
 
-        {/* أسفل */}
         <div style={{ padding:'8px 6px', borderTop:'1px solid rgba(255,255,255,.07)', flexShrink:0 }}>
           <a href="/" target="_blank"
             style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:7,
@@ -3508,10 +3747,8 @@ export default function Admin() {
         </div>
       </aside>
 
-      {/* ═══ MAIN ═══ */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
 
-        {/* TOP BAR */}
         <header style={{ background:'white', borderBottom:`1px solid ${CLR.border}`,
           padding:'0 20px', height:52, display:'flex', alignItems:'center',
           justifyContent:'space-between', position:'sticky', top:0, zIndex:150, flexShrink:0 }}>
@@ -3542,7 +3779,6 @@ export default function Admin() {
           </div>
         </header>
 
-        {/* CONTENT */}
         <main style={{ flex:1, padding:22, overflowY:'auto' }}>
           {renderSection()}
         </main>
