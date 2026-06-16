@@ -7,7 +7,7 @@
  * ✅ زر واتساب بارز
  * ✅ الطلب بالكارتون فقط
  * ✅ حقول رقمية فقط
- * ✅ تأكيد الطلب بكود
+ * ✅ تأكيد الطلب بكود عبر واتساب
  * ✅ صور متحركة للفئات والماركات
  * ✅ نظام تقييمات المنتجات
  * ✅ الطلب السريع
@@ -634,102 +634,247 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   )
 }
 
+// ✅ CheckoutModal المعدل - إرسال كود التأكيد عبر واتساب
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
-  const [form, setForm] = useState({name:'',phone:'',address:''})
+  const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
-  const [otp,  setOtp]  = useState('')
+  const [otp, setOtp] = useState('')
   const [genOtp, setGenOtp] = useState('')
-  const [digits, setDigits] = useState(['','','',''])
-  const refs = [useRef(null),useRef(null),useRef(null),useRef(null)]
+  const [digits, setDigits] = useState(['', '', '', ''])
+  const refs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const [loading, setLoading] = useState(false)
-  const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
+  const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
+  // ✅ دالة إرسال الكود عبر واتساب
+  const sendCodeViaWhatsApp = (phone, name, code) => {
+    let waNumber = phone.replace(/^0/, '213')
+    waNumber = waNumber.replace(/[^0-9]/g, '')
+    
+    const message = `🔐 كود تأكيد الطلبية - ${storeName || 'نقاء'}\n\nمرحباً ${name}،\nكود تأكيد طلبيتك هو: *${code}*\n\nأدخل هذا الكود لإتمام طلبك.`
+    
+    // فتح واتساب مع الرسالة
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank')
+  }
+
+  // ✅ توليد وإرسال الكود
   const goToOtp = () => {
-    if (!form.name||!form.phone) { showToast('الاسم والهاتف مطلوبان',true); return }
-    const code = String(Math.floor(1000+Math.random()*9000))
-    setGenOtp(code); setStep(3)
-    showToast(`كود التأكيد: ${code}`)
+    if (!form.name || !form.phone) {
+      showToast('الاسم والهاتف مطلوبان', true)
+      return
+    }
+
+    const code = String(Math.floor(1000 + Math.random() * 9000))
+    setGenOtp(code)
+    
+    // ✅ إرسال الكود عبر واتساب (بدلاً من عرضه)
+    sendCodeViaWhatsApp(form.phone, form.name, code)
+    
+    // ✅ إعلام العميل أنه سيستلم الكود على واتساب
+    showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب`)
+    
+    setStep(3)
   }
 
   const handleDigit = (i, v) => {
-    const nd=[...digits]; nd[i]=v.replace(/\D/,''); setDigits(nd)
-    if (nd[i]&&i<3) refs[i+1].current?.focus()
-    if (!nd[i]&&i>0) refs[i-1].current?.focus()
+    const nd = [...digits]
+    nd[i] = v.replace(/\D/, '')
+    setDigits(nd)
+    if (nd[i] && i < 3) refs[i + 1].current?.focus()
+    if (!nd[i] && i > 0) refs[i - 1].current?.focus()
     setOtp(nd.join(''))
   }
 
+  // ✅ إعادة إرسال الكود
+  const resendCode = () => {
+    const newCode = String(Math.floor(1000 + Math.random() * 9000))
+    setGenOtp(newCode)
+    sendCodeViaWhatsApp(form.phone, form.name, newCode)
+    showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone}`)
+  }
+
   const confirmOrder = async () => {
-    if (otp!==genOtp) { showToast('الكود غير صحيح',true); return }
+    // ✅ التحقق من الكود
+    if (otp !== genOtp) {
+      showToast('❌ الكود غير صحيح، حاول مرة أخرى', true)
+      setDigits(['', '', '', ''])
+      setOtp('')
+      // تركيز على أول حقل
+      refs[0].current?.focus()
+      return
+    }
+    
     setLoading(true)
+    
     const order = {
-      id:Date.now(), customer_name:form.name, customer_phone:form.phone,
-      customer_address:form.address,
-      date:new Date().toLocaleString('ar-DZ'),
-      items:JSON.stringify(cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price}))),
-      total:finalTotal, status:'processing'
+      id: Date.now(),
+      customer_name: form.name,
+      customer_phone: form.phone,
+      customer_address: form.address,
+      date: new Date().toLocaleString('ar-DZ'),
+      items: JSON.stringify(cart.map(i => ({ id: i.id, name: i.name, quantity: i.qty, price: i.price }))),
+      total: finalTotal,
+      status: 'processing'
     }
-    const {error}=await supabase.from('orders').insert(order)
-    if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
+    
+    const { error } = await supabase.from('orders').insert(order)
+    if (error) {
+      showToast('خطأ: ' + error.message, true)
+      setLoading(false)
+      return
+    }
+    
+    // تحديث المخزون
     for (const item of cart) {
-      const {data:p}=await supabase.from('products').select('stock').eq('id',item.id).maybeSingle()
-      if (p) await supabase.from('products').update({stock:Math.max(0,(p.stock||0)-item.qty)}).eq('id',item.id)
+      const { data: p } = await supabase.from('products').select('stock').eq('id', item.id).maybeSingle()
+      if (p) {
+        await supabase.from('products').update({ stock: Math.max(0, (p.stock || 0) - item.qty) }).eq('id', item.id)
+      }
     }
-    if (waNum) {
-      const msg=`مرحباً ${form.name}، تم تأكيد طلبك رقم ${order.id} ✅\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً! — ${storeName}`
-      window.open(`https://wa.me/${form.phone.replace(/^0/,'213')}?text=${encodeURIComponent(msg)}`,'_blank')
-    }
+    
+    // ✅ إرسال رسالة تأكيد عبر واتساب
+    let waNumber = form.phone.replace(/^0/, '213')
+    waNumber = waNumber.replace(/[^0-9]/g, '')
+    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(confirmMsg)}`, '_blank')
+    
     onSuccess(order.id)
     setLoading(false)
   }
 
-  if (step===3) return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="msheet center">
-        <div className="mhead"><h3>🔐 تأكيد الطلبية</h3><button className="mclose" onClick={onClose}>×</button></div>
-        <div className="mbody" style={{textAlign:'center'}}>
-          <p style={{fontSize:14,color:'#7A6A5A',marginBottom:8}}>أدخل كود التأكيد المرسل إليك</p>
-          <p style={{fontWeight:700,color:'#FF6B35',marginBottom:16}}>{form.phone}</p>
-          <div className="otp-inputs">
-            {digits.map((d,i)=>(
-              <input key={i} ref={refs[i]} className="otp-input"
-                value={d} inputMode="numeric" maxLength={1}
-                onChange={e=>handleDigit(i,e.target.value)}
-                onKeyDown={e=>{if(e.key==='Backspace'&&!d&&i>0) refs[i-1].current?.focus()}} />
-            ))}
+  // ✅ واجهة إدخال الكود (بدون عرض الكود للعميل)
+  if (step === 3) {
+    return (
+      <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
+        <div className="msheet center">
+          <div className="mhead">
+            <h3>🔐 تأكيد الطلبية</h3>
+            <button className="mclose" onClick={onClose}>×</button>
           </div>
-          <div style={{background:'#fef9c3',borderRadius:12,padding:12,marginBottom:16,fontSize:13}}>
-            🔑 كودك: <strong style={{fontSize:20,color:'#dc2626'}}>{genOtp}</strong>
+          <div className="mbody" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
+            <p style={{ fontSize: 14, color: '#7A6A5A', marginBottom: 4 }}>
+              تم إرسال كود التأكيد إلى رقم هاتفك عبر واتساب
+            </p>
+            <p style={{ fontWeight: 700, color: '#FF6B35', marginBottom: 16, fontSize: 15 }}>
+              {form.phone}
+            </p>
+            
+            <div className="otp-inputs">
+              {digits.map((d, i) => (
+                <input
+                  key={i}
+                  ref={refs[i]}
+                  className="otp-input"
+                  value={d}
+                  inputMode="numeric"
+                  maxLength={1}
+                  autoFocus={i === 0}
+                  onChange={e => handleDigit(i, e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Backspace' && !d && i > 0) {
+                      refs[i - 1].current?.focus()
+                    }
+                  }}
+                />
+              ))}
+            </div>
+            
+            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
+              أدخل الكود المكون من 4 أرقام الذي تلقيته على واتساب
+            </p>
+            
+            <button
+              onClick={resendCode}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#FF6B35',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: 'inherit',
+                marginBottom: 16,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              🔄 لم يصلك الكود؟ أعد الإرسال
+            </button>
+            
+            <button
+              className="abtn green"
+              onClick={confirmOrder}
+              disabled={loading || otp.length < 4}
+            >
+              {loading ? '⏳ جاري التأكيد...' : '✅ تأكيد الطلبية'}
+            </button>
           </div>
-          <button className="abtn green" onClick={confirmOrder} disabled={loading||otp.length<4}>
-            {loading?'⏳...':'✅ تأكيد الطلبية'}
-          </button>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
+  // ✅ نموذج إدخال بيانات العميل
   return (
-    <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="msheet center">
-        <div className="mhead"><h3>📋 تأكيد الطلب</h3><button className="mclose" onClick={onClose}>×</button></div>
+        <div className="mhead">
+          <h3>📋 تأكيد الطلب</h3>
+          <button className="mclose" onClick={onClose}>×</button>
+        </div>
         <div className="mbody">
           <label className="fi-label">الاسم الكامل *</label>
-          <input className="fi" value={form.name} onChange={F('name')} autoComplete="name" />
+          <input className="fi" value={form.name} onChange={F('name')} autoComplete="name" placeholder="أدخل اسمك الكامل" />
+          
           <label className="fi-label">رقم الهاتف *</label>
-          <input className="fi" type="tel" value={form.phone} onChange={F('phone')}
-            inputMode="numeric" autoComplete="tel"
-            onKeyPress={e=>{if(!/[0-9+]/.test(e.key)) e.preventDefault()}} />
+          <input
+            className="fi"
+            type="tel"
+            value={form.phone}
+            onChange={F('phone')}
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="مثال: 0555123456"
+            onKeyPress={e => { if (!/[0-9+]/.test(e.key)) e.preventDefault() }}
+          />
+          <p style={{ fontSize: 11, color: '#94a3b8', marginTop: -8, marginBottom: 12 }}>
+            📱 سيُرسل كود التأكيد إلى هذا الرقم عبر واتساب
+          </p>
+          
           <label className="fi-label">العنوان</label>
-          <textarea className="fi" rows="2" value={form.address} onChange={F('address')}
-            style={{resize:'none'}} autoComplete="street-address"></textarea>
-          <div style={{background:'#FFF0EB',borderRadius:14,padding:'12px 16px',
-            marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontWeight:700}}>إجمالي الطلب</span>
-            <span style={{fontWeight:900,color:'#FF6B35',fontSize:18}}>{finalTotal.toFixed(0)} {currency}</span>
+          <textarea
+            className="fi"
+            rows="2"
+            value={form.address}
+            onChange={F('address')}
+            style={{ resize: 'none' }}
+            autoComplete="street-address"
+            placeholder="أدخل عنوان التوصيل"
+          />
+          
+          <div style={{
+            background: '#FFF0EB',
+            borderRadius: 14,
+            padding: '12px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span style={{ fontWeight: 700 }}>إجمالي الطلب</span>
+            <span style={{ fontWeight: 900, color: '#FF6B35', fontSize: 18 }}>
+              {finalTotal.toFixed(0)} {currency}
+            </span>
           </div>
+          
           <button className="abtn" onClick={goToOtp}>
             <i className="fas fa-shield-alt"></i> التالي — تأكيد بكود
           </button>
+          
+          <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
+            🔒 سيتم إرسال كود تأكيد عبر واتساب للتحقق من هويتك
+          </p>
         </div>
       </div>
     </div>
