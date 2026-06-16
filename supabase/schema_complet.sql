@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- سجل النشاطات
 CREATE TABLE IF NOT EXISTS activity_log (
   id         bigint PRIMARY KEY,
-  user       text,
+  username       text,
   action     text,
   details    text,
   created_at timestamptz DEFAULT now()
