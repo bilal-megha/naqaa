@@ -1867,17 +1867,6 @@ export default function Store() {
 
   const tabs={home:<Home/>,search:<SearchTab/>,cats:<CatsTab/>,wish:<WishTab/>,promos:<PromosTab/>,quick:<QuickOrderTab/>}
 
-  if(loading) return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-      minHeight:'100vh',background:'#F7F3EF',gap:16}}>
-      <div style={{width:48,height:48,border:'4px solid #FF6B35',borderTopColor:'transparent',
-        borderRadius:'50%',animation:'spin 1s linear infinite'}}/>
-      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
-      <p style={{fontFamily:'Tajawal,sans-serif',fontWeight:700,color:'#FF6B35',fontSize:18}}>نقاء</p>
-      <p style={{fontFamily:'Tajawal,sans-serif',color:'#7A6A5A',fontSize:14}}>جاري تحميل المتجر...</p>
-    </div>
-  )
-
   return (
     <div dir="rtl">
       {/* HEADER */}
@@ -2026,7 +2015,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* WHATSAPP - بارز مثل Esmmar */}
+      {/* WHATSAPP - بارز مثل Esmmar */}}
       <div className="wa-float">
         <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
           <i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i>
@@ -2060,5 +2049,4 @@ export default function Store() {
       {modal==='thankyou'&&<ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null);setTab('home')}}/>}
     </div>
   )
-}
 }
