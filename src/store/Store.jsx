@@ -7,7 +7,7 @@
  * ✅ زر واتساب بارز
  * ✅ الطلب بالكارتون فقط
  * ✅ حقول رقمية فقط
- * ✅ تأكيد الطلب بكود عبر واتساب
+ * ✅ تأكيد الطلب بكود عبر واتساب (Supabase Edge Function + Fallback)
  * ✅ صور متحركة للفئات والماركات
  * ✅ نظام تقييمات المنتجات
  * ✅ الطلب السريع
@@ -289,13 +289,13 @@ body.dark .ci{border-color:#2d1a0a}
 .abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
 .abtn.green{background:linear-gradient(135deg,#10b981,#059669)}
 
-/* OTP */
-.otp-inputs{display:flex;gap:10px;justify-content:center;margin:16px 0}
-.otp-input{width:52px;height:58px;border:2px solid #E8DDD5;border-radius:12px;
-  text-align:center;font-size:22px;font-weight:900;font-family:inherit;
-  outline:none;background:#F7F3EF;-webkit-user-select:text;user-select:text}
-.otp-input:focus{border-color:#FF6B35}
-body.dark .otp-input{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
+/* OTP - Single Input */
+.otp-single-input{width:100%;max-width:280px;padding:14px 20px;font-size:24px;font-weight:900;
+  text-align:center;border:2px solid #E8DDD5;border-radius:14px;outline:none;
+  background:#F7F3EF;font-family:inherit;letter-spacing:8px;transition:border-color .3s;
+  margin:0 auto;display:block;direction:ltr}
+.otp-single-input:focus{border-color:#FF6B35}
+.otp-single-input.valid{border-color:#10b981}
 
 /* TOAST */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
@@ -634,30 +634,64 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   )
 }
 
-// ✅ CheckoutModal المعدل - إرسال كود التأكيد عبر واتساب
+// ✅ CheckoutModal المعدل - إرسال كود التأكيد عبر واتساب (خانة واحدة)
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
   const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
   const [otp, setOtp] = useState('')
   const [genOtp, setGenOtp] = useState('')
-  const [digits, setDigits] = useState(['', '', '', ''])
-  const refs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const [loading, setLoading] = useState(false)
+  const inputRef = useRef(null)
   const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  // ✅ دالة إرسال الكود عبر واتساب
-  const sendCodeViaWhatsApp = (phone, name, code) => {
+  // ✅ دالة إرسال الكود عبر Supabase Edge Function
+  const sendCodeViaWhatsApp = async (phone, name, code, type = 'otp') => {
+    try {
+      const response = await fetch(
+        'https://jxdqfcvkuuozwlbdbjblq.supabase.co/functions/v1/send-whatsapp',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ phone, name, code, type })
+        }
+      )
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        console.log('✅ تم إرسال الرسالة بنجاح')
+        return true
+      } else {
+        console.error('❌ فشل إرسال الرسالة:', result.error)
+        return sendCodeViaWhatsAppFallback(phone, name, code, type)
+      }
+    } catch (error) {
+      console.error('❌ خطأ في إرسال الرسالة:', error)
+      return sendCodeViaWhatsAppFallback(phone, name, code, type)
+    }
+  }
+
+  // ✅ طريقة بديلة (فتح واتساب في المتصفح)
+  const sendCodeViaWhatsAppFallback = (phone, name, code, type = 'otp') => {
     let waNumber = phone.replace(/^0/, '213')
     waNumber = waNumber.replace(/[^0-9]/g, '')
     
-    const message = `🔐 كود تأكيد الطلبية - ${storeName || 'نقاء'}\n\nمرحباً ${name}،\nكود تأكيد طلبيتك هو: *${code}*\n\nأدخل هذا الكود لإتمام طلبك.`
+    let message = ''
+    if (type === 'otp') {
+      message = `🔐 كود تأكيد الطلبية - ${storeName || 'نقاء'}\n\nمرحباً ${name}،\nكود تأكيد طلبيتك هو: *${code}*\n\nأدخل هذا الكود لإتمام طلبك.`
+    } else if (type === 'confirm') {
+      message = `✅ تم تأكيد طلبك رقم ${code} بنجاح!\n\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
+    }
     
-    // فتح واتساب مع الرسالة
     window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank')
+    return true
   }
 
   // ✅ توليد وإرسال الكود
-  const goToOtp = () => {
+  const goToOtp = async () => {
     if (!form.name || !form.phone) {
       showToast('الاسم والهاتف مطلوبان', true)
       return
@@ -666,40 +700,48 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
     const code = String(Math.floor(1000 + Math.random() * 9000))
     setGenOtp(code)
     
-    // ✅ إرسال الكود عبر واتساب (بدلاً من عرضه)
-    sendCodeViaWhatsApp(form.phone, form.name, code)
-    
-    // ✅ إعلام العميل أنه سيستلم الكود على واتساب
-    showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب`)
+    try {
+      const sent = await sendCodeViaWhatsApp(form.phone, form.name, code, 'otp')
+      if (sent) {
+        showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب`)
+      } else {
+        sendCodeViaWhatsAppFallback(form.phone, form.name, code, 'otp')
+        showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب (طريقة بديلة)`)
+      }
+    } catch (error) {
+      sendCodeViaWhatsAppFallback(form.phone, form.name, code, 'otp')
+      showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب (طريقة بديلة)`)
+    }
     
     setStep(3)
-  }
-
-  const handleDigit = (i, v) => {
-    const nd = [...digits]
-    nd[i] = v.replace(/\D/, '')
-    setDigits(nd)
-    if (nd[i] && i < 3) refs[i + 1].current?.focus()
-    if (!nd[i] && i > 0) refs[i - 1].current?.focus()
-    setOtp(nd.join(''))
+    setTimeout(() => inputRef.current?.focus(), 300)
   }
 
   // ✅ إعادة إرسال الكود
-  const resendCode = () => {
+  const resendCode = async () => {
     const newCode = String(Math.floor(1000 + Math.random() * 9000))
     setGenOtp(newCode)
-    sendCodeViaWhatsApp(form.phone, form.name, newCode)
-    showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone}`)
+    
+    try {
+      const sent = await sendCodeViaWhatsApp(form.phone, form.name, newCode, 'otp')
+      if (sent) {
+        showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone}`)
+      } else {
+        sendCodeViaWhatsAppFallback(form.phone, form.name, newCode, 'otp')
+        showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone} (طريقة بديلة)`)
+      }
+    } catch (error) {
+      sendCodeViaWhatsAppFallback(form.phone, form.name, newCode, 'otp')
+      showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone} (طريقة بديلة)`)
+    }
   }
 
+  // ✅ تأكيد الطلب
   const confirmOrder = async () => {
-    // ✅ التحقق من الكود
     if (otp !== genOtp) {
       showToast('❌ الكود غير صحيح، حاول مرة أخرى', true)
-      setDigits(['', '', '', ''])
       setOtp('')
-      // تركيز على أول حقل
-      refs[0].current?.focus()
+      inputRef.current?.focus()
       return
     }
     
@@ -723,7 +765,6 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       return
     }
     
-    // تحديث المخزون
     for (const item of cart) {
       const { data: p } = await supabase.from('products').select('stock').eq('id', item.id).maybeSingle()
       if (p) {
@@ -731,17 +772,20 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       }
     }
     
-    // ✅ إرسال رسالة تأكيد عبر واتساب
-    let waNumber = form.phone.replace(/^0/, '213')
-    waNumber = waNumber.replace(/[^0-9]/g, '')
-    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
-    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(confirmMsg)}`, '_blank')
+    try {
+      const sent = await sendCodeViaWhatsApp(form.phone, form.name, order.id, 'confirm')
+      if (!sent) {
+        sendCodeViaWhatsAppFallback(form.phone, form.name, order.id, 'confirm')
+      }
+    } catch (error) {
+      sendCodeViaWhatsAppFallback(form.phone, form.name, order.id, 'confirm')
+    }
     
     onSuccess(order.id)
     setLoading(false)
   }
 
-  // ✅ واجهة إدخال الكود (بدون عرض الكود للعميل)
+  // ✅ واجهة إدخال الكود (خانة واحدة)
   if (step === 3) {
     return (
       <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -759,29 +803,53 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
               {form.phone}
             </p>
             
-            <div className="otp-inputs">
-              {digits.map((d, i) => (
-                <input
-                  key={i}
-                  ref={refs[i]}
-                  className="otp-input"
-                  value={d}
-                  inputMode="numeric"
-                  maxLength={1}
-                  autoFocus={i === 0}
-                  onChange={e => handleDigit(i, e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Backspace' && !d && i > 0) {
-                      refs[i - 1].current?.focus()
-                    }
-                  }}
-                />
-              ))}
+            {/* ✅ خانة واحدة لإدخال الكود */}
+            <div style={{ marginBottom: 16 }}>
+              <input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={otp}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '')
+                  if (val.length <= 4) setOtp(val)
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && otp.length === 4) {
+                    confirmOrder()
+                  }
+                }}
+                placeholder="أدخل الكود المكون من 4 أرقام"
+                className="otp-single-input"
+                style={{
+                  width: '100%',
+                  maxWidth: 280,
+                  padding: '14px 20px',
+                  fontSize: 24,
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  border: `2px solid ${otp.length === 4 ? '#10b981' : '#E8DDD5'}`,
+                  borderRadius: 14,
+                  outline: 'none',
+                  background: '#F7F3EF',
+                  fontFamily: 'inherit',
+                  letterSpacing: 8,
+                  transition: 'border-color 0.3s',
+                  margin: '0 auto',
+                  display: 'block',
+                  direction: 'ltr'
+                }}
+                onFocus={e => e.target.style.borderColor = '#FF6B35'}
+                onBlur={e => e.target.style.borderColor = otp.length === 4 ? '#10b981' : '#E8DDD5'}
+                autoFocus
+              />
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+                {otp.length === 0 && '📝 أدخل الكود المكون من 4 أرقام'}
+                {otp.length > 0 && otp.length < 4 && `✅ ${otp.length}/4 أرقام`}
+                {otp.length === 4 && '✅ جاهز للتأكيد'}
+              </p>
             </div>
-            
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
-              أدخل الكود المكون من 4 أرقام الذي تلقيته على واتساب
-            </p>
             
             <button
               onClick={resendCode}
@@ -806,6 +874,10 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
               className="abtn green"
               onClick={confirmOrder}
               disabled={loading || otp.length < 4}
+              style={{
+                opacity: otp.length === 4 ? 1 : 0.5,
+                cursor: otp.length === 4 ? 'pointer' : 'not-allowed'
+              }}
             >
               {loading ? '⏳ جاري التأكيد...' : '✅ تأكيد الطلبية'}
             </button>
