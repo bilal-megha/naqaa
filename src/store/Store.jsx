@@ -1,5 +1,5 @@
 /**
- * Store.jsx — نقاء v6
+ * Store.jsx — نقاء v6 (النسخة الكاملة المصححة)
  * ✅ تسجيل دخول + تسجيل جديد مع OTP
  * ✅ عروض من قاعدة البيانات مع مؤقت
  * ✅ خصم تدريجي حسب الكمية
@@ -9,6 +9,10 @@
  * ✅ حقول رقمية فقط
  * ✅ تأكيد الطلب بكود
  * ✅ صور متحركة للفئات والماركات
+ * ✅ نظام تقييمات المنتجات
+ * ✅ الطلب السريع
+ * ✅ وضع الليل
+ * ✅ جميع الميزات السابقة
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -213,7 +217,7 @@ body.dark .bnav{background:#1e1208}
   align-items:center;justify-content:center;font-weight:800;border:2px solid white}
 body.dark .nbadge{border-color:#1e1208}
 
-/* WHATSAPP - prominent like Esmmar */
+/* WHATSAPP - prominent */
 .wa-float{position:fixed;bottom:90px;left:14px;z-index:400}
 .wa-btn{width:56px;height:56px;background:#25D366;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -249,7 +253,7 @@ body.dark .msheet{background:#1e1208}
 body.dark .mhandle{background:#3d2a1a}
 .mhead{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;
   border-bottom:1px solid #F7F3EF;position:sticky;top:0;background:white;z-index:2}
-body.dark .mhead{background:#1e1208;border-color:#2d1a0a}
+body.dark .mhead{background:#1e1208;border-color:#2d1a1a}
 .mhead h3{font-size:17px;font-weight:900;color:#1A0A00}
 body.dark .mhead h3{color:#F0E8E0}
 .mclose{width:32px;height:32px;border-radius:50%;background:#F7F3EF;border:none;
@@ -335,7 +339,7 @@ function useTimer(endTime) {
   const [tl, setTl] = useState({h:'00',m:'00',s:'00'})
   useEffect(() => {
     const tick = () => {
-      const diff = endTime - Date.now()
+      const diff = Math.max(0, (endTime || Date.now() + 3600000) - Date.now())
       if (diff<=0) { setTl({h:'00',m:'00',s:'00'}); return }
       setTl({
         h: String(Math.floor(diff/3600000)).padStart(2,'0'),
@@ -348,7 +352,7 @@ function useTimer(endTime) {
   return tl
 }
 
-/* ── MODALS (outside main to prevent re-mount on re-render) ── */
+/* ── MODALS ── */
 
 function LoginModal({ onClose, onLogin, onRegister }) {
   const [email, setEmail] = useState('')
@@ -509,9 +513,8 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   const changeQty  = (id,d) => setCart(p=>p.map(i=>i.id===id?{...i,qty:Math.max(1,i.qty+d)}:i))
   const remove     = id => setCart(p=>p.filter(i=>i.id!==id))
 
-  // حساب خصم اشتري X خذ Y
   const getBuy3Get1Discount = () => {
-    const buyPromo = promos.find(p=>p.active&&p.type==='buy_x_get_y')
+    const buyPromo = promos && promos.length > 0 ? promos.find(p=>p.active&&p.type==='buy_x_get_y') : null
     if (!buyPromo) return 0
     const pids = typeof buyPromo.product_ids==='string'?JSON.parse(buyPromo.product_ids||'[]'):(buyPromo.product_ids||[])
     const eligible = cart.filter(i=>pids.length===0||pids.includes(i.id))
@@ -523,9 +526,8 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
     return (cheapest?.price||0) * getQty
   }
   const buy3Disc = getBuy3Get1Discount()
-  const buyPromoActive = promos.find(p=>p.active&&p.type==='buy_x_get_y')
+  const buyPromoActive = promos && promos.length > 0 ? promos.find(p=>p.active&&p.type==='buy_x_get_y') : null
 
-  // خصم تدريجي (كلما اشتريت أكثر)
   const volTiers = [
     { min:500,  disc:5,  label:'خصم 5%' },
     { min:1000, disc:10, label:'خصم 10%' },
@@ -568,7 +570,6 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               ))}
 
-              {/* خصم اشتري X خذ Y */}
               {buy3Disc>0 && buyPromoActive && (
                 <div style={{background:'linear-gradient(135deg,#d1fae5,#a7f3d0)',borderRadius:14,padding:12,margin:'10px 0',textAlign:'center'}}>
                   <div style={{fontWeight:800,color:'#059669',fontSize:15}}>🎁 {buyPromoActive.name}</div>
@@ -576,8 +577,6 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               )}
 
-              {/* خصم تدريجي */}
-              {/* شريط التوصيل المجاني */}
               {cartTotal < freeShip && (
                 <div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:10,padding:'10px 12px',marginBottom:12}}>
                   <div style={{fontSize:13,fontWeight:700,color:'#C2410C',marginBottom:5}}>
@@ -616,7 +615,6 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               </div>
 
-              {/* الإجمالي */}
               {(buy3Disc>0||volDisc>0)&&(
                 <div style={{fontSize:13,color:'#94a3b8',textDecoration:'line-through',textAlign:'left',marginBottom:4}}>
                   {cartTotal.toFixed(0)} {currency}
@@ -638,8 +636,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
 
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
   const [form, setForm] = useState({name:'',phone:'',address:''})
-  const [step, setStep] = useState(1) // 1=form, 2=otp-choice, 3=otp
-  const [otpMethod, setOtpMethod] = useState('whatsapp')
+  const [step, setStep] = useState(1)
   const [otp,  setOtp]  = useState('')
   const [genOtp, setGenOtp] = useState('')
   const [digits, setDigits] = useState(['','','',''])
@@ -669,7 +666,7 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       customer_address:form.address,
       date:new Date().toLocaleString('ar-DZ'),
       items:JSON.stringify(cart.map(i=>({id:i.id,name:i.name,quantity:i.qty,price:i.price}))),
-      total:finalTotal, status:'processing' // تأكيد مباشر بعد OTP
+      total:finalTotal, status:'processing'
     }
     const {error}=await supabase.from('orders').insert(order)
     if (error) { showToast('خطأ: '+error.message,true); setLoading(false); return }
@@ -741,13 +738,11 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
 
 function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, currency, products, sevenAgo, onShowProduct, promos }) {
   if(!product) return null
-  if (!product) return null
   const p = product
   const disc = Number(p.discount)||0
   const finalPrice = disc>0 ? (p.price*(1-disc/100)).toFixed(0) : p.price
   const related = products.filter(r=>(r.category_id===p.category_id||r.brand_id===p.brand_id)&&r.id!==p.id&&!r.disabled).slice(0,6)
 
-  // خصم الكميات
   const volTiers=[{qty:6,disc:5},{qty:12,disc:10},{qty:24,disc:15}]
 
   return (
@@ -776,7 +771,6 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
           {(p.stock||0)>0&&(p.stock||0)<10&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
           {(p.stock||0)===0&&<p style={{color:'#ef4444',fontWeight:700,fontSize:13,marginBottom:8}}>❌ نفذ من المخزون</p>}
 
-          {/* جدول خصم الكميات */}
           <div style={{background:'linear-gradient(135deg,#f0fdf4,#dcfce7)',borderRadius:12,padding:12,marginBottom:12,border:'1px solid #10b981'}}>
             <div style={{fontWeight:800,color:'#059669',marginBottom:8,fontSize:13}}>📦 كلما اشتريت أكثر — وفّرت أكثر!</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
@@ -819,7 +813,6 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
               </div>
             </div>
           )}
-          {/* تقييمات المنتج */}
           <ReviewsSection productId={p.id} currency={currency}/>
         </div>
       </div>
@@ -847,16 +840,12 @@ function ReviewsSection({ productId, currency }) {
   },[productId])
 
   const avgR = reviews.length ? (reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length).toFixed(1) : 0
-  const cust = (() => { try{ return JSON.parse(localStorage.getItem('nq_customer')||'null') }catch{ return null } })()
-
-  const toast = (msg,err=false) => {
-    const d=document.createElement('div'); d.className='toast'+(err?' err':'')
-    d.textContent=msg; document.body.appendChild(d); setTimeout(()=>d.remove(),3000)
-  }
+  let cust = null
+  try { cust = JSON.parse(localStorage.getItem('nq_customer')||'null') } catch { cust = null }
 
   const submit = async () => {
-    if(!cust){ toast('سجّل دخولك لإضافة تقييم',true); return }
-    if(!rating){ toast('اختر عدد النجوم أولاً',true); return }
+    if(!cust){ showToast('سجّل دخولك لإضافة تقييم',true); return }
+    if(!rating){ showToast('اختر عدد النجوم أولاً',true); return }
     setSaving(true)
     await supabase.from('reviews').insert({
       id: Date.now(), product_id: productId,
@@ -866,14 +855,13 @@ function ReviewsSection({ productId, currency }) {
     }).catch(()=>{})
     const {data} = await supabase.from('reviews').select('*').eq('product_id',productId).order('id',{ascending:false}).limit(20)
     setReviews(data||[]); setRating(0); setComment(''); setSaving(false)
-    toast('✅ تم إضافة تقييمك')
+    showToast('✅ تم إضافة تقييمك')
   }
 
   if (!loaded) return null
 
   return (
     <div style={{borderTop:'1px solid #F1ECE8',padding:'16px 18px 0'}}>
-      {/* ملخص التقييم */}
       {reviews.length>0&&(
         <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,
           background:'#FFF7ED',borderRadius:12,padding:14}}>
@@ -903,7 +891,6 @@ function ReviewsSection({ productId, currency }) {
         </div>
       )}
       <h3 style={{fontWeight:800,marginBottom:12,fontSize:15}}>⭐ التقييمات ({reviews.length})</h3>
-      {/* نموذج إضافة تقييم */}
       {cust ? (
         <div style={{background:'#F7F3EF',borderRadius:12,padding:14,marginBottom:14}}>
           <p style={{fontSize:13,fontWeight:700,marginBottom:8,color:'#1A0A00'}}>🌟 أضف تقييمك</p>
@@ -937,7 +924,6 @@ function ReviewsSection({ productId, currency }) {
           🔐 <strong>سجّل دخولك</strong> لإضافة تقييم
         </p>
       )}
-      {/* قائمة التقييمات */}
       {reviews.map(r=>(
         <div key={r.id} style={{borderBottom:'1px solid #F1ECE8',padding:'12px 0'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
@@ -960,7 +946,6 @@ function ReviewsSection({ productId, currency }) {
     </div>
   )
 }
-
 
 function ThankyouModal({ orderId, storeName, onClose }) {
   return (
@@ -1030,7 +1015,6 @@ function TrackingModal({ onClose, currency }) {
               <p style={{fontWeight:700}}>لا توجد طلبيات بهذه البيانات</p>
             </div>
           )}
-          {/* عرض طلب واحد */}
           {res&&res.id&&(
             <div style={{marginTop:16,background:'#FFF7ED',borderRadius:14,padding:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -1053,7 +1037,6 @@ function TrackingModal({ onClose, currency }) {
               })}
             </div>
           )}
-          {/* عرض طلبيات متعددة */}
           {orders.length>0&&(
             <div style={{marginTop:16}}>
               <div style={{fontWeight:800,marginBottom:10,fontSize:14}}>طلبياتك ({orders.length})</div>
@@ -1079,7 +1062,7 @@ function TrackingModal({ onClose, currency }) {
 }
 
 function ContactModal({ settings, onClose }) {
-  const WA = settings['contact_whatsapp']||settings['whatsapp_number']||settings['admin_phone']||WA_NUM
+  const WA = settings?.contact_whatsapp || settings?.whatsapp_number || settings?.admin_phone || WA_NUM
   return (
     <div className="moverlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="msheet center">
@@ -1087,21 +1070,21 @@ function ContactModal({ settings, onClose }) {
         <div className="mbody">
           <div style={{textAlign:'center',marginBottom:20}}>
             <div style={{fontSize:40}}>🛍️</div>
-            <div style={{fontWeight:900,fontSize:18,marginTop:8}}>{settings['store_name']||'نقاء'}</div>
+            <div style={{fontWeight:900,fontSize:18,marginTop:8}}>{settings?.store_name || 'نقاء'}</div>
           </div>
-          {settings['contact_phone']&&<a href={`tel:${settings['contact_phone']}`}
+          {settings?.contact_phone && <a href={`tel:${settings.contact_phone}`}
             style={{display:'flex',alignItems:'center',gap:12,background:'#FFF0EB',borderRadius:14,padding:14,marginBottom:10,textDecoration:'none'}}>
-            <span style={{fontSize:28}}>📱</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>الهاتف</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings['contact_phone']}</div></div>
+            <span style={{fontSize:28}}>📱</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>الهاتف</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings.contact_phone}</div></div>
           </a>}
-          {WA&&<a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer"
+          {WA && <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer"
             style={{display:'flex',alignItems:'center',gap:12,background:'#f0fdf4',borderRadius:14,padding:14,marginBottom:10,textDecoration:'none'}}>
             <span style={{fontSize:28}}>💬</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>واتساب</div><div style={{fontSize:13,color:'#7A6A5A'}}>{WA}</div></div>
           </a>}
-          {settings['contact_address']&&<div style={{display:'flex',alignItems:'center',gap:12,background:'#f1f5f9',borderRadius:14,padding:14,marginBottom:10}}>
-            <span style={{fontSize:28}}>📍</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>العنوان</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings['contact_address']}</div></div>
+          {settings?.contact_address && <div style={{display:'flex',alignItems:'center',gap:12,background:'#f1f5f9',borderRadius:14,padding:14,marginBottom:10}}>
+            <span style={{fontSize:28}}>📍</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>العنوان</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings.contact_address}</div></div>
           </div>}
-          {settings['contact_hours']&&<div style={{display:'flex',alignItems:'center',gap:12,background:'#fef9c3',borderRadius:14,padding:14}}>
-            <span style={{fontSize:28}}>🕒</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>ساعات العمل</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings['contact_hours']}</div></div>
+          {settings?.contact_hours && <div style={{display:'flex',alignItems:'center',gap:12,background:'#fef9c3',borderRadius:14,padding:14}}>
+            <span style={{fontSize:28}}>🕒</span><div><div style={{fontWeight:800,color:'#1A0A00'}}>ساعات العمل</div><div style={{fontSize:13,color:'#7A6A5A'}}>{settings.contact_hours}</div></div>
           </div>}
         </div>
       </div>
@@ -1109,9 +1092,6 @@ function ContactModal({ settings, onClose }) {
   )
 }
 
-/* ═══════════════════════════════
-   MAIN STORE
-═══════════════════════════════ */
 /* Promo Countdown */
 function PromoCountdown({ endDate }) {
   const [t, setT] = useState({h:'00',m:'00',s:'00'})
@@ -1139,6 +1119,9 @@ function PromoCountdown({ endDate }) {
   )
 }
 
+/* ═══════════════════════════════════
+   MAIN STORE
+═══════════════════════════════════ */
 export default function Store() {
   const [customer,    setCustomer]    = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_customer')||'null')}catch{return null} })
   const [cart,        setCart]        = useState(()=>{ try{return JSON.parse(localStorage.getItem('nq_cart')||'[]')}catch{return []} })
@@ -1171,23 +1154,21 @@ export default function Store() {
   const flashEndRef = useRef(Date.now() + 24*3600*1000)
   const timer = useTimer(flashEndRef.current)
 
-  const SNAME    = settings['store_name']      || 'نقاء'
-  const CUR      = settings['store_currency']  || 'دج'
-  const WA       = settings['contact_whatsapp']||settings['whatsapp_number']||settings['admin_phone']||WA_NUM
-  const FREESHIP = parseFloat(settings['free_shipping_threshold'] || '5000')
-  const ANNOUNCE = settings['announce_bar']    || ''
-  const PROMO_TEXT= settings['promo_text']     || ''
+  const SNAME    = settings?.store_name || 'نقاء'
+  const CUR      = settings?.store_currency || 'دج'
+  const WA       = settings?.contact_whatsapp || settings?.whatsapp_number || settings?.admin_phone || WA_NUM
+  const FREESHIP = parseFloat(settings?.free_shipping_threshold || '5000')
+  const ANNOUNCE = settings?.announce_bar || ''
+  const PROMO_TEXT = settings?.promo_text || ''
 
   const cartTotal  = cart.reduce((s,i)=>s+(Number(i.price)||0)*(Number(i.qty)||1),0)
   const cartCount  = cart.reduce((s,i)=>s+i.qty,0)
   const sevenAgo   = new Date(); sevenAgo.setDate(sevenAgo.getDate()-7)
   const [bestSellers,  setBestSellers]  = useState([])
 
-
   /* load */
   useEffect(()=>{
     const load=async()=>{
-      // جلب البيانات مع معالجة الأخطاء
       const results = await Promise.allSettled([
         supabase.from('products').select('*').or('disabled.eq.false,disabled.is.null').order('created_at',{ascending:false}),
         supabase.from('brands').select('*').order('name'),
@@ -1206,7 +1187,7 @@ export default function Store() {
       try{setBanners(JSON.parse(map['store_banners']||'[]'))}catch{}
       setPromos((pr||[]).filter(px=>!px.end_date||new Date(px.end_date)>new Date()))
       setLoading(false)
-      // حساب الأكثر مبيعاً
+      // load best sellers
       try {
         const {data:ords} = await supabase.from('orders').select('items').limit(200)
         const counts={}
@@ -1235,28 +1216,25 @@ export default function Store() {
 
   /* banner */
   useEffect(()=>{
-    if(banners.length<2) return
+    if(!banners || banners.length<2) return
     const t=setInterval(()=>setBannerIdx(i=>(i+1)%banners.length),3800)
     return()=>clearInterval(t)
-  },[banners.length])
+  },[banners])
 
   /* persist */
   useEffect(()=>{ localStorage.setItem('nq_cart',JSON.stringify(cart)) },[cart])
   useEffect(()=>{ localStorage.setItem('nq_wish',JSON.stringify(wishlist)) },[wishlist])
 
-  // مزامنة المفضلة مع Supabase عند تسجيل الدخول
+  /* sync wishlist */
   useEffect(()=>{
     if(!customer||wishSynced) return
     const syncWish = async()=>{
-      // جلب المفضلة من Supabase
       const {data} = await supabase.from('wishlist').select('product_id').eq('customer_id',customer.id).catch(()=>({data:[]}))
       if(data&&data.length>0){
         const dbIds = data.map(r=>r.product_id)
-        // دمج localStorage مع Supabase
         const merged = [...new Set([...wishlist,...dbIds])]
         setWishlist(merged)
       } else if(wishlist.length>0){
-        // رفع localStorage إلى Supabase
         await Promise.all(wishlist.map(pid=>
           supabase.from('wishlist').upsert({id:Date.now()+Math.random()*1000|0,customer_id:customer.id,product_id:pid}).catch(()=>{})
         ))
@@ -1277,19 +1255,17 @@ export default function Store() {
       showToast('✅ تمت الإضافة للسلة')
       return [...prev,{id:p.id,name:p.name,price:Number(p.price),qty,image:p.image,unitsPerCarton:p.units||12}]
     })
-  },[showToast])
+  },[])
 
   const toggleWish=useCallback(id=>{
     setWishlist(prev=>{
       const removing = prev.includes(id)
       if(removing){
         showToast('تم الإزالة من المفضلة')
-        // حذف من Supabase
         if(customer) supabase.from('wishlist').delete().eq('customer_id',customer.id).eq('product_id',id).catch(()=>{})
         return prev.filter(x=>x!==id)
       }
       showToast('❤️ تمت الإضافة للمفضلة')
-      // إضافة لـ Supabase
       if(customer) supabase.from('wishlist').upsert({id:Date.now(),customer_id:customer.id,product_id:id}).catch(()=>{})
       return [...prev,id]
     })
@@ -1301,7 +1277,7 @@ export default function Store() {
   }
 
   /* products */
-  const allP    = products.filter(p=>p.disabled!==true)  // null أو false = مُفعَّل
+  const allP    = products.filter(p=>p.disabled!==true)
   const promoP = allP.filter(p=>{
     if(p.is_promo) return true
     if(!promos||promos.length===0) return false
@@ -1332,19 +1308,18 @@ export default function Store() {
   const PER=12; const PAGES=Math.ceil(filtered.length/PER)
   const paged=filtered.slice((page-1)*PER,page*PER)
 
-  /* PC — بطاقة المنتج مع شارة عرض خاص كالصورة */
+  /* PC — Product Card */
   const PC = ({ p }) => {
     if(!p) return null
     const isW=(wishlist||[]).includes(p.id)
     const isN=new Date(p.created_at)>=sevenAgo
     const disc=Number(p.discount)||0
-    // حساب سعر العرض من promos
-    const activePromo=promos.find(pr=>{
+    const activePromo=promos && promos.length > 0 ? promos.find(pr=>{
       if(!pr.active) return false
       if(pr.end_date&&new Date(pr.end_date)<new Date()) return false
       const ids=typeof pr.product_ids==='string'?JSON.parse(pr.product_ids||'[]'):(pr.product_ids||[])
       return ids.length===0||ids.includes(p.id)||ids.includes(String(p.id))
-    })
+    }) : null
     const hasPromo=!!activePromo
     let promoDisc=disc, promoPrice=disc>0?p.price*(1-disc/100):p.price
     if(activePromo){
@@ -1357,7 +1332,6 @@ export default function Store() {
     return (
       <div className="pc" onClick={()=>{setDetailProd(p);setModal('detail')}}>
         <div className="pc-img" style={{opacity:(p.stock||0)===0?0.45:1,filter:(p.stock||0)===0?'grayscale(60%)':'none',transition:'opacity .3s'}}>
-          {/* شارة عرض خاص — علوي أيمن كما في الصورة */}
           {hasPromo&&<div className="pc-promo-badge"><i className="fas fa-bullhorn" style={{fontSize:9}}/> عرض خاص</div>}
           {(p.stock||0)===0&&<div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',background:'rgba(0,0,0,.55)',color:'white',borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:800,zIndex:2,whiteSpace:'nowrap'}}>نفذ المخزون</div>}
           {p.image?<img src={p.image} alt={p.name} loading="lazy"/>:<div className="pc-noimg">🛍️</div>}
@@ -1367,7 +1341,6 @@ export default function Store() {
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
-        {/* السعر مشطوب + نسبة + السعر الجديد — كالصورة */}
         {hasDisc
           ? <div>
               <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2,flexWrap:'wrap'}}>
@@ -1398,32 +1371,27 @@ export default function Store() {
     )
   }
 
-  /* ACTIVE PROMO BANNER */
-  const activePromoBanner = promos.find(p=>p.image&&(p.type==='percent'||p.type==='buy_x_get_y'))
-  const flashPromo = promos.find(p=>p.end_date)
+  const activePromoBanner = promos && promos.length > 0 ? promos.find(p=>p.image&&(p.type==='percent'||p.type==='buy_x_get_y')) : null
+  const flashPromo = promos && promos.length > 0 ? promos.find(p=>p.end_date) : null
 
   /* ── HOME ── */
   const Home = () => {
     try { return (
     <>
-      {/* ANNOUNCE */}
       {ANNOUNCE&&<div className="announce">{ANNOUNCE}</div>}
 
-      {/* BANNER */}
       <div className="banner-wrap">
         <div className="banner-track" style={{transform:`translateX(${bannerIdx*100}%)`}}>
-          {banners.length>0
+          {banners && banners.length>0
             ? banners.map((b,i)=>(b.image?<img key={i} src={b.image} className="banner-slide" alt=""/>:
                 <div key={i} className="banner-fall"><span style={{fontSize:36}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:22}}>{b.title||SNAME}</span>{b.subtitle&&<span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>{b.subtitle}</span>}</div>))
             : <div className="banner-fall"><span style={{fontSize:40}}>🛍️</span><span style={{color:'white',fontWeight:900,fontSize:24}}>{SNAME}</span><span style={{color:'rgba(255,255,255,.8)',fontSize:14}}>أفضل المنتجات بأفضل الأسعار</span></div>}
         </div>
-        {banners.length>1&&<div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
+        {banners && banners.length>1&&<div className="bdots">{banners.map((_,i)=><button key={i} className={`bdot${bannerIdx===i?' on':''}`} onClick={()=>setBannerIdx(i)}/>)}</div>}
       </div>
 
-      {/* PROMO TEXT */}
       {PROMO_TEXT&&<div style={{background:'linear-gradient(135deg,#FFF0EB,#FFE4D6)',margin:'10px 14px 0',borderRadius:14,padding:'10px 16px',textAlign:'center',fontSize:13,fontWeight:800,color:'#FF6B35',border:'1px solid #FFD5C0'}}>{PROMO_TEXT}</div>}
 
-      {/* FLASH BAR from DB promos */}
       {flashPromo&&(
         <div className="flash-bar" onClick={()=>setTab('search')}>
           <div>
@@ -1440,8 +1408,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* ANIMATED BRANDS GRID */}
-      {brands.length>0&&(
+      {brands && brands.length>0&&(
         <div className="sec">
           <div className="sec-head">
             <span className="sec-title">⭐ أفضل الماركات</span>
@@ -1462,8 +1429,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* ANIMATED CATEGORIES */}
-      {categories.length>0&&(
+      {categories && categories.length>0&&(
         <div className="sec">
           <div className="sec-head">
             <span className="sec-title">📂 الفئات</span>
@@ -1483,13 +1449,12 @@ export default function Store() {
         </div>
       )}
 
-      {/* PROMO BOXES */}
       <div className="promo-strip">
         <div className="promo-box" style={{background:'linear-gradient(135deg,#10b981,#059669)'}}
           onClick={()=>{setSortSel('newest');setTab('search')}}>
           <div style={{fontSize:24}}>🎁</div>
           <div style={{color:'white',fontWeight:800,fontSize:13,marginTop:4}}>
-            {promos.find(p=>p.type==='buy_x_get_y')?promos.find(p=>p.type==='buy_x_get_y').name:'اشتري 3 خذ 4'}
+            {promos && promos.length > 0 && promos.find(p=>p.type==='buy_x_get_y') ? promos.find(p=>p.type==='buy_x_get_y').name : 'اشتري 3 خذ 4'}
           </div>
           <div style={{color:'rgba(255,255,255,.8)',fontSize:11}}>أرخص منتج مجاناً</div>
         </div>
@@ -1501,7 +1466,6 @@ export default function Store() {
         </div>
       </div>
 
-      {/* DAY DEAL */}
       {dayDeal&&(
         <div className="day-deal">
           <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',padding:'10px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -1523,7 +1487,6 @@ export default function Store() {
         </div>
       )}
 
-      {/* FLASH PRODUCTS */}
       {flashP.length>0&&(
         <div className="sec">
           <div className="sec-head"><span className="sec-title">⚡ عروض خاصة</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
@@ -1531,7 +1494,6 @@ export default function Store() {
         </div>
       )}
 
-      {/* NEW */}
       {newP.length>0&&(
         <div className="sec">
           <div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
@@ -1539,7 +1501,6 @@ export default function Store() {
         </div>
       )}
 
-      {/* الأكثر مبيعاً */}
       {bestSellers.length>0&&(()=>{
         const bsp=bestSellers.map(id=>allP.find(p=>String(p.id)===id)).filter(Boolean).slice(0,12)
         return bsp.length>0?(
@@ -1551,7 +1512,6 @@ export default function Store() {
         ):null
       })()}
 
-      {/* ALL */}
       {allP.length>0&&(
         <div className="sec">
           <div className="sec-head"><span className="sec-title">📦 جميع المنتجات</span><button className="sec-more" onClick={()=>setTab('search')}>عرض الكل</button></div>
@@ -1567,11 +1527,12 @@ export default function Store() {
       )}
 
       <div style={{textAlign:'center',color:'#94a3b8',fontSize:13,padding:'32px 0 8px',borderTop:'1px solid #e2e8f0',margin:'20px 14px 0'}}>
-        © 2025 {SNAME} — جميع الحقوق محفوظة
+        © 2026 {SNAME} — جميع الحقوق محفوظة
       </div>
     </>
   )
     } catch(e){ return <div style={{padding:40,textAlign:'center',color:'#94a3b8'}}>⚠️ خطأ في تحميل الصفحة الرئيسية</div> }
+  }
 
   /* SEARCH TAB */
   const SearchTab = () => {
@@ -1590,7 +1551,6 @@ export default function Store() {
           <button key={v} className={`chip${sortSel===v?' sel':''}`} onClick={()=>{setSortSel(v);setPage(1)}}>{l}</button>
         ))}
       </div>
-      {/* فلتر السعر */}
       <div style={{background:'white',borderRadius:14,padding:'12px 14px',marginBottom:12,
         boxShadow:'0 1px 6px rgba(0,0,0,.06)',border:'1.5px solid #F1ECE8'}}>
         <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,fontSize:13,fontWeight:700}}>
@@ -1675,7 +1635,7 @@ export default function Store() {
     )
   }
 
-  /* PROMOS TAB — عصري */
+  /* PROMOS TAB */
   const PromosTab = () => {
     try {
     const active = (promos||[]).filter(p=>p&&p.active)
@@ -1683,7 +1643,6 @@ export default function Store() {
     const typeColor={percent:'#FF6B35',fixed:'#7c3aed',buy_x_get_y:'#10b981',tier_buy:'#3b82f6'}
     return (
       <div style={{paddingBottom:80}}>
-        {/* Hero */}
         <div style={{background:'linear-gradient(135deg,#FF6B35,#7C3AED)',padding:'22px 18px 20px',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',top:'-40%',right:'-15%',width:180,height:180,background:'rgba(255,255,255,.07)',borderRadius:'50%'}}/>
           <div style={{position:'relative',zIndex:1}}>
@@ -1707,13 +1666,11 @@ export default function Store() {
               boxShadow:'0 4px 20px rgba(0,0,0,.08)',overflow:'hidden',border:'1.5px solid #F1ECE8'}}>
               {promo.image&&<img src={promo.image} style={{width:'100%',height:130,objectFit:'cover'}}/>}
               <div style={{padding:'16px 16px 10px'}}>
-                {/* شارة النوع */}
                 <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 12px',
                   borderRadius:30,fontSize:11,fontWeight:800,marginBottom:10,
                   background:col+'18',color:col}}>
                   {typeLabel[promo.type]||promo.type}
                 </div>
-                {/* قيمة الخصم بارزة */}
                 {(promo.type==='percent'||promo.type==='fixed')&&(
                   <div style={{background:'linear-gradient(135deg,#FF6B35,#E8430E)',color:'white',
                     borderRadius:50,padding:'5px 14px',fontSize:17,fontWeight:900,
@@ -1728,7 +1685,6 @@ export default function Store() {
                   📦 اشتري {promo.tier_qty} كرتون من نفس الشركة → خصم {promo.tier_value}{promo.tier_type==='percent'?'%':' '+CUR}
                 </p>}
               </div>
-              {/* صور المنتجات */}
               {promoProds.length>0&&(
                 <div style={{display:'flex',gap:8,overflowX:'auto',padding:'0 14px 14px'}}>
                   {promoProds.slice(0,6).map(pp=>(
@@ -1742,7 +1698,6 @@ export default function Store() {
                   ))}
                 </div>
               )}
-              {/* footer */}
               <div style={{padding:'10px 16px 14px',borderTop:'1px solid #F1ECE8',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 {promo.end_date
                   ?<PromoCountdown endDate={promo.end_date}/>
@@ -1846,18 +1801,17 @@ export default function Store() {
     )
   }
 
-
-  // وضع الصيانة
-  if (settings['maintenance_mode']==='1') return (
+  // maintenance mode
+  if (settings?.maintenance_mode==='1') return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',
       background:'linear-gradient(135deg,#1E293B 0%,#0F172A 100%)',flexDirection:'column',
       gap:20,padding:24,textAlign:'center',direction:'rtl'}}>
       <div style={{fontSize:72,animation:'pulse 2s infinite'}}>🔧</div>
       <h1 style={{color:'white',fontSize:28,fontWeight:900}}>نقاء</h1>
       <p style={{color:'rgba(255,255,255,.8)',fontSize:16,maxWidth:340,lineHeight:1.8}}>
-        {settings['maintenance_msg']||'المتجر في طور التحديث، سنعود قريباً 🔧'}
+        {settings?.maintenance_msg||'المتجر في طور التحديث، سنعود قريباً 🔧'}
       </p>
-      <a href={`https://wa.me/${settings['whatsapp_number']||settings['admin_phone']||'213696668065'}`} target="_blank"
+      <a href={`https://wa.me/${settings?.whatsapp_number||settings?.admin_phone||'213696668065'}`} target="_blank"
         style={{background:'#25D366',color:'white',padding:'14px 32px',borderRadius:30,
           textDecoration:'none',fontWeight:800,fontSize:16,display:'flex',alignItems:'center',gap:8}}>
         <i className="fab fa-whatsapp"></i> تواصل معنا
@@ -1914,7 +1868,7 @@ export default function Store() {
             {id:'home',  e:'🏠', l:'الرئيسية'},
             {id:'search',e:'🔍', l:'جميع المنتجات'},
             {id:'cats',  e:'📂', l:'الفئات والماركات'},
-            {id:'promos',e:'🎯', l:'العروض', b:promos.filter(x=>x.active).length},
+            {id:'promos',e:'🎯', l:'العروض', b:promos?promos.filter(x=>x.active).length:0},
             null,
             {id:'wish',  e:'❤️', l:'المفضلة', b:wishlist.length},
             {id:'cart-d',e:'🛒', l:'السلة', b:cartCount, a:()=>setModal('cart')},
@@ -1938,9 +1892,6 @@ export default function Store() {
         </div>
       </div>
 
-      {/* dark mode moved to drawer menu only */}
-
-      {/* customer badge */}
       {customer&&(
         <div style={{position:'fixed',top:78,left:58,zIndex:400,background:'rgba(255,107,53,.9)',color:'white',borderRadius:20,padding:'5px 10px',fontSize:11,fontWeight:700,display:'flex',gap:6,alignItems:'center'}}>
           <span>👤 {customer.name}</span>
@@ -1949,8 +1900,6 @@ export default function Store() {
         </div>
       )}
 
-
-      {/* PAGE */}
       <div className="page">{tabs[tab]||<Home/>}</div>
 
       {/* BOTTOM NAV */}
@@ -1958,7 +1907,7 @@ export default function Store() {
         {[
           {id:'home',  icon:'fas fa-home',            label:'الرئيسية'},
           {id:'search',icon:'fas fa-search',           label:'بحث'},
-          {id:'promos',icon:'fas fa-tag',              label:'العروض', badge:promos.filter(x=>x.active).length},
+          {id:'promos',icon:'fas fa-tag',              label:'العروض', badge:promos?promos.filter(x=>x.active).length:0},
           {id:'wish',  icon:'fas fa-heart',            label:'المفضلة',badge:wishlist.length},
           {id:'cart-m',icon:'fas fa-shopping-basket',  label:'السلة',  badge:cartCount,action:()=>setModal('cart')},
         ].map(b=>(
@@ -1979,7 +1928,7 @@ export default function Store() {
             <div className="mhead"><h3>📄 الشروط والأحكام</h3><button className="mclose" onClick={()=>setModal(null)}>✕</button></div>
             <div className="mbody">
               <div style={{fontSize:14,lineHeight:1.9,color:'#475569'}}>
-                {settings['terms_text']||`1. يُعدّ الطلب مؤكداً بعد التأكيد عبر واتساب فقط.
+                {settings?.terms_text || `1. يُعدّ الطلب مؤكداً بعد التأكيد عبر واتساب فقط.
 2. الأسعار قابلة للتغيير دون إشعار مسبق.
 3. الطلب بالكارتون الكامل فقط.
 4. التوصيل يتم خلال 24-48 ساعة داخل الولاية.
@@ -1999,7 +1948,7 @@ export default function Store() {
             <div className="mbody">
               {[
                 {q:'ما هو الحد الأدنى للطلب؟',a:'لا يوجد حد أدنى، يمكنك الطلب من كرتون واحد.'},
-                {q:'كم تكلفة التوصيل؟',a:`التوصيل ${settings['shipping_cost']||'500'} ${CUR}. مجاني للطلبات التي تتجاوز ${settings['free_shipping_threshold']||'500'} ${CUR}.`},
+                {q:'كم تكلفة التوصيل؟',a:`التوصيل ${settings?.shipping_cost||'500'} ${CUR}. مجاني للطلبات التي تتجاوز ${settings?.free_shipping_threshold||'500'} ${CUR}.`},
                 {q:'كيف أتتبع طلبي؟',a:'اضغط على "تتبع الطلب" في القائمة وأدخل رقم هاتفك.'},
                 {q:'كيف يتم التسليم؟',a:'يتواصل معك فريقنا عبر واتساب لتحديد موعد التسليم.'},
                 {q:'ما طرق الدفع المتاحة؟',a:'الدفع نقداً عند الاستلام.'},
@@ -2015,7 +1964,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* WHATSAPP - بارز مثل Esmmar */}
+      {/* WHATSAPP */}
       <div className="wa-float">
         <button className="wa-btn" onClick={()=>window.open(`https://wa.me/${WA}`,'_blank')}>
           <i className="fab fa-whatsapp" style={{fontSize:28,color:'white'}}></i>
@@ -2049,5 +1998,4 @@ export default function Store() {
       {modal==='thankyou'&&<ThankyouModal orderId={thankId} storeName={SNAME} onClose={()=>{setModal(null);setTab('home')}}/>}
     </div>
   )
-}
 }
