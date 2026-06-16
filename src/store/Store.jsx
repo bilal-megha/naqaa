@@ -843,7 +843,7 @@ function ReviewsSection({ productId, currency }) {
     supabase.from('reviews').select('*').eq('product_id', productId)
       .order('id',{ascending:false}).limit(20)
       .then(({data})=>{ setReviews(data||[]); setLoaded(true) })
-      .catch(()=>setLoaded(true))
+      .then(()=>{}).catch(()=>setLoaded(true))
   },[productId])
 
   const avgR = reviews.length ? (reviews.reduce((s,r)=>s+(r.rating||0),0)/reviews.length).toFixed(1) : 0
@@ -858,12 +858,14 @@ function ReviewsSection({ productId, currency }) {
     if(!cust){ toast('سجّل دخولك لإضافة تقييم',true); return }
     if(!rating){ toast('اختر عدد النجوم أولاً',true); return }
     setSaving(true)
-    await supabase.from('reviews').insert({
-      id: Date.now(), product_id: productId,
-      customer_id: cust.id, customer_name: cust.name,
-      rating, comment: comment.trim(),
-      created_at: new Date().toISOString()
-    }).catch(()=>{})
+    try {
+      await supabase.from('reviews').insert({
+        id: Date.now(), product_id: productId,
+        customer_id: cust.id, customer_name: cust.name,
+        rating, comment: comment.trim(),
+        created_at: new Date().toISOString()
+      })
+    } catch(e){ console.warn('review insert:', e) }
     const {data} = await supabase.from('reviews').select('*').eq('product_id',productId).order('id',{ascending:false}).limit(20)
     setReviews(data||[]); setRating(0); setComment(''); setSaving(false)
     toast('✅ تم إضافة تقييمك')
@@ -1248,19 +1250,19 @@ export default function Store() {
   useEffect(()=>{
     if(!customer||wishSynced) return
     const syncWish = async()=>{
-      // جلب المفضلة من Supabase
-      const {data} = await supabase.from('wishlist').select('product_id').eq('customer_id',customer.id).catch(()=>({data:[]}))
-      if(data&&data.length>0){
-        const dbIds = data.map(r=>r.product_id)
-        // دمج localStorage مع Supabase
-        const merged = [...new Set([...wishlist,...dbIds])]
-        setWishlist(merged)
-      } else if(wishlist.length>0){
-        // رفع localStorage إلى Supabase
-        await Promise.all(wishlist.map(pid=>
-          supabase.from('wishlist').upsert({id:Date.now()+Math.random()*1000|0,customer_id:customer.id,product_id:pid}).catch(()=>{})
-        ))
-      }
+      try {
+        // جلب المفضلة من Supabase
+        const {data} = await supabase.from('wishlist').select('product_id').eq('customer_id',customer.id)
+        if(data&&data.length>0){
+          const dbIds = data.map(r=>r.product_id)
+          const merged = [...new Set([...wishlist,...dbIds])]
+          setWishlist(merged)
+        } else if(wishlist.length>0){
+          await Promise.all(wishlist.map(pid=>
+            supabase.from('wishlist').upsert({id:Date.now()+Math.random()*1000|0,customer_id:customer.id,product_id:pid})
+          ))
+        }
+      } catch(e){ console.warn('wishlist sync:', e) }
       setWishSynced(true)
     }
     syncWish()
@@ -1285,12 +1287,12 @@ export default function Store() {
       if(removing){
         showToast('تم الإزالة من المفضلة')
         // حذف من Supabase
-        if(customer) supabase.from('wishlist').delete().eq('customer_id',customer.id).eq('product_id',id).catch(()=>{})
+        if(customer) supabase.from('wishlist').delete().eq('customer_id',customer.id).eq('product_id',id).then(()=>{}).catch(()=>{})
         return prev.filter(x=>x!==id)
       }
       showToast('❤️ تمت الإضافة للمفضلة')
       // إضافة لـ Supabase
-      if(customer) supabase.from('wishlist').upsert({id:Date.now(),customer_id:customer.id,product_id:id}).catch(()=>{})
+      if(customer) supabase.from('wishlist').upsert({id:Date.now(),customer_id:customer.id,product_id:id}).then(()=>{}).catch(()=>{})
       return [...prev,id]
     })
   },[customer])
@@ -1866,6 +1868,17 @@ export default function Store() {
   )
 
   const tabs={home:<Home/>,search:<SearchTab/>,cats:<CatsTab/>,wish:<WishTab/>,promos:<PromosTab/>,quick:<QuickOrderTab/>}
+
+  if(loading) return (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      minHeight:'100vh',background:'#F7F3EF',gap:16}}>
+      <div style={{width:48,height:48,border:'4px solid #FF6B35',borderTopColor:'transparent',
+        borderRadius:'50%',animation:'spin 1s linear infinite'}}/>
+      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+      <p style={{fontFamily:'Tajawal,sans-serif',fontWeight:700,color:'#FF6B35',fontSize:18}}>نقاء</p>
+      <p style={{fontFamily:'Tajawal,sans-serif',color:'#7A6A5A',fontSize:14}}>جاري تحميل المتجر...</p>
+    </div>
+  )
 
   return (
     <div dir="rtl">
