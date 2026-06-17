@@ -1,14 +1,9 @@
 /**
  * Admin.jsx — نقاء v7 (النسخة الكاملة المصححة)
  * 
- * ✅ جميع الميزات السابقة + 15 ميزة جديدة
- * ✅ إصلاح جميع المشاكل المذكورة
- * ✅ نظام التنقيط (النقاط)
- * ✅ تحديث المخزون تلقائياً
- * ✅ سلة المهملات تعمل
- * ✅ سجل النشاطات يعمل
- * ✅ العروض تحفظ بشكل صحيح
- * ✅ المنتجات تظهر في لوحة القيادة
+ * ✅ جميع عمليات الحذف → سلة المهملات
+ * ✅ لوحة القيادة تعرض الأرقام الصحيحة
+ * ✅ المنتجات منخفضة المخزون تظهر
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import CryptoJS from 'crypto-js'
@@ -40,6 +35,48 @@ const logActivity = async (action, details) => {
     console.error('❌ خطأ في تسجيل النشاط:', err)
   }
 }
+
+/* ─── دالة الحذف الناعم (لجميع الجداول) ─── */
+const softDelete = async (tableName, id, items, setItems, loadFunction, showToast, askConfirm) => {
+  if (!(await askConfirm(`⚠️ حذف هذا العنصر؟ يمكن استعادته من سلة المهملات`))) return;
+
+  try {
+    const item = items.find((i) => i.id === id);
+    if (!item) {
+      showToast("❌ العنصر غير موجود", "error");
+      return;
+    }
+
+    // ✅ نقل إلى سلة المهملات
+    const { error: insertError } = await supabase.from("deleted_items").insert({
+      table_name: tableName,
+      item_id: item.id,
+      data: JSON.stringify(item),
+      deleted_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      console.error("❌ خطأ في الإضافة إلى سلة المهملات:", insertError);
+      showToast("❌ خطأ: " + insertError.message, "error");
+      return;
+    }
+
+    // ✅ حذف من الجدول الأصلي
+    const { error: deleteError } = await supabase.from(tableName).delete().eq("id", id);
+    if (deleteError) {
+      console.error("❌ خطأ في حذف العنصر:", deleteError);
+      showToast("❌ خطأ في حذف العنصر", "error");
+      return;
+    }
+
+    await logActivity("حذف", `تم حذف عنصر من جدول ${tableName}`);
+    showToast("✅ تم نقل العنصر إلى سلة المهملات");
+    await loadFunction();
+  } catch (err) {
+    console.error("❌ خطأ:", err);
+    showToast("❌ حدث خطأ غير متوقع", "error");
+  }
+};
 
 /* ─── حقل رقمي فقط ─── */
 const NumInput = ({ value, onChange, placeholder, style, step }) => (
@@ -317,7 +354,7 @@ function LoginScreen({ onLogin }) {
 }
 
 /* ══════════════════════════════════════════
-   📊 لوحة القيادة
+   📊 لوحة القيادة (مصححة)
 ══════════════════════════════════════════ */
 function Sparkline({ data, color }) {
   if(!data||data.length<2) return null
@@ -450,11 +487,12 @@ function Dashboard({ user, showToast }) {
     return () => channel.unsubscribe()
   }, [showToast])
 
+  // ✅ دالة load مصححة - تجلب جميع البيانات بشكل صحيح
   const load = async () => {
     setLoading(true)
     try {
       const [{ data: prods }, { data: ords }, { data: purcs }, { data: exps }, { data: revs }] = await Promise.all([
-        supabase.from('products').select('id,name,stock,min_stock,price'),
+        supabase.from('products').select('id,name,stock,min_stock,price').order('name'),
         supabase.from('orders').select('*').order('id', { ascending: false }),
         supabase.from('purchases').select('total'),
         supabase.from('expenses').select('amount'),
@@ -468,15 +506,25 @@ function Dashboard({ user, showToast }) {
       const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear
       const today = now.toLocaleDateString()
       
-      const todayO = (ords || []).filter(o => new Date(o.created_at || o.date).toLocaleDateString() === today)
+      // ✅ مبيعات اليوم
+      const todayO = (ords || []).filter(o => {
+        const d = new Date(o.created_at || o.date)
+        return d.toLocaleDateString() === today
+      })
+      
+      // ✅ إجمالي المبيعات
       const sales = (ords || []).reduce((s, o) => s + Number(o.total), 0)
       const pur = (purcs || []).reduce((s, p) => s + Number(p.total), 0)
       const exp = (exps || []).reduce((s, e) => s + Number(e.amount), 0)
       
+      // ✅ عدد المنتجات
       const totalProducts = (prods || []).length
+      
+      // ✅ المنتجات منخفضة المخزون
       const minStk = p => (p.min_stock || 5)
       const lowStockItems = (prods || []).filter(p => (p.stock || 0) < minStk(p))
       
+      // ✅ مبيعات الأسبوع (7 أيام)
       const week7 = Array(7).fill(0)
       ;(ords || []).forEach(o => {
         const d = new Date(o.created_at || o.date)
@@ -484,6 +532,7 @@ function Dashboard({ user, showToast }) {
         if (diff >= 0 && diff < 7) week7[6 - diff] += Number(o.total)
       })
       
+      // ✅ مبيعات 4 أسابيع
       const wk4 = Array(4).fill(0)
       ;(ords || []).forEach(o => {
         const d = new Date(o.created_at || o.date)
@@ -491,10 +540,22 @@ function Dashboard({ user, showToast }) {
         if (diff >= 0 && diff < 4) wk4[3 - diff] += Number(o.total)
       })
       
-      const thisM = (ords || []).filter(o => { const d = new Date(o.created_at || o.date); return d.getMonth() === thisMonth && d.getFullYear() === thisYear }).reduce((s, o) => s + Number(o.total), 0)
-      const lastM = (ords || []).filter(o => { const d = new Date(o.created_at || o.date); return d.getMonth() === lastMonth && d.getFullYear() === lastYear }).reduce((s, o) => s + Number(o.total), 0)
+      // ✅ مبيعات هذا الشهر
+      const thisM = (ords || []).filter(o => { 
+        const d = new Date(o.created_at || o.date)
+        return d.getMonth() === thisMonth && d.getFullYear() === thisYear 
+      }).reduce((s, o) => s + Number(o.total), 0)
+      
+      // ✅ مبيعات الشهر الماضي
+      const lastM = (ords || []).filter(o => { 
+        const d = new Date(o.created_at || o.date)
+        return d.getMonth() === lastMonth && d.getFullYear() === lastYear 
+      }).reduce((s, o) => s + Number(o.total), 0)
+      
+      // ✅ نسبة التغيير
       const changeP = lastM > 0 ? Math.round((thisM - lastM) / lastM * 100) : 0
       
+      // ✅ التقييمات
       const rv = revs || []
       const avgRating = rv.length ? (rv.reduce((s, r) => s + (r.rating || 0), 0) / rv.length).toFixed(1) : 0
       
@@ -604,7 +665,7 @@ function Dashboard({ user, showToast }) {
         </div>
       </div>
 
-      {/* بطاقات إحصاء */}
+      {/* ✅ بطاقات إحصاء - تعرض الأرقام الصحيحة */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14, marginBottom:20 }}>
         <StatCard label="المنتجات"        value={stats.products}  icon="📦" color={CLR.info}    spark={[stats.products,stats.products]}/>
         <StatCard label="الطلبيات"        value={stats.orders}    icon="📋" color={CLR.success}  spark={weekData}/>
@@ -631,7 +692,7 @@ function Dashboard({ user, showToast }) {
         </div>
       )}
       
-      {/* تنبيه المخزون المنخفض */}
+      {/* ✅ تنبيه المخزون المنخفض */}
       {lowStock.length>0&&(
         <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
           padding:'12px 16px', marginBottom:18, display:'flex', gap:12, alignItems:'flex-start' }}>
@@ -674,7 +735,7 @@ function Dashboard({ user, showToast }) {
           </div>}
       </div>
 
-      {/* المنتجات الموشكة على النفاد */}
+      {/* ✅ المنتجات الموشكة على النفاد */}
       <div style={S.card}>
         <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15, color: '#dc2626' }}>
           ⚠️ المنتجات الموشكة على النفاد
@@ -759,162 +820,203 @@ function Dashboard({ user, showToast }) {
     </div>
   )
 }
-
 /* ══════════════════════════════════════════
-   📦 المنتجات (مصححة - useEffect)
+   📦 المنتجات (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function Products() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [products,setProducts]=useState([]); const [brands,setBrands]=useState([])
-  const [categories,setCategories]=useState([])
-  const [selCats, setSelCats]=useState([])
-  const [search,setSearch]=useState(''); const [loading,setLoading]=useState(false)
-  const [saving,setSaving]=useState(false)
-  const [brandFilter,setBrandFilter]=useState('')
-  const [stockFilter,setStockFilter]=useState('all')
-  const [form,setForm]=useState({ id:'',name:'',price:'',costPrice:'',cartonPrice:'',
-    units:12,stock:0,minStock:5,sku:'',brandId:'',image:'',discount:0,isPromo:false,description:'' })
+  const [showToast, ToastUI] = useToast();
+  const [askConfirm, ConfirmUI] = useConfirm();
+  const [products, setProducts] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selCats, setSelCats] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [brandFilter, setBrandFilter] = useState("");
+  const [stockFilter, setStockFilter] = useState("all");
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    price: "",
+    costPrice: "",
+    cartonPrice: "",
+    units: 12,
+    stock: 0,
+    minStock: 5,
+    sku: "",
+    brandId: "",
+    image: "",
+    discount: 0,
+    isPromo: false,
+    description: "",
+  });
 
   const load = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const [{data:p},{data:b},{data:c}] = await Promise.all([
-        supabase.from('products').select('*').order('name'),
-        supabase.from('brands').select('*').order('name'),
-        supabase.from('categories').select('*').order('name'),
-      ])
-      setProducts(p||[]); setBrands(b||[]); setCategories(c||[])
+      const [{ data: p }, { data: b }, { data: c }] = await Promise.all([
+        supabase.from("products").select("*").order("name"),
+        supabase.from("brands").select("*").order("name"),
+        supabase.from("categories").select("*").order("name"),
+      ]);
+      setProducts(p || []);
+      setBrands(b || []);
+      setCategories(c || []);
     } catch (err) {
-      console.error('❌ خطأ في تحميل المنتجات:', err)
-      showToast('❌ خطأ في تحميل المنتجات', 'error')
+      console.error("❌ خطأ في تحميل المنتجات:", err);
+      showToast("❌ خطأ في تحميل المنتجات", "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [showToast])
-  
-  // ✅ مصفوفة تبعيات فارغة = تحميل مرة واحدة فقط
-  useEffect(()=>{ load() }, [])
+  }, [showToast]);
 
-  const F = k => e => setForm(f=>({...f,[k]:e.target.value}))
-  const handleImg = e => { const r=new FileReader(); r.onload=ev=>setForm(f=>({...f,image:ev.target.result})); r.readAsDataURL(e.target.files[0]) }
+  useEffect(() => {
+    load();
+  }, []);
+
+  const F = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const handleImg = (e) => {
+    const r = new FileReader();
+    r.onload = (ev) => setForm((f) => ({ ...f, image: ev.target.result }));
+    r.readAsDataURL(e.target.files[0]);
+  };
 
   const generateBarcode = (id) => {
-    return `NAQ-${String(id).padStart(6, '0')}`
-  }
+    return `NAQ-${String(id).padStart(6, "0")}`;
+  };
 
   const save = async () => {
-    if (!form.name.trim()||!form.price) { showToast('الاسم والسعر مطلوبان','error'); return }
-    setSaving(true)
+    if (!form.name.trim() || !form.price) {
+      showToast("الاسم والسعر مطلوبان", "error");
+      return;
+    }
+    setSaving(true);
     try {
       const row = {
-        id:form.id||Date.now(), name:form.name.trim(),
-        price:parseFloat(form.price)||0, cost_price:parseFloat(form.costPrice)||0,
-        carton_price:form.cartonPrice?parseFloat(form.cartonPrice):null,
-        units:parseInt(form.units)||12, stock:parseInt(form.stock)||0,
-        min_stock:parseInt(form.minStock)||5,
-        sku:form.sku || generateBarcode(form.id || Date.now()),
-        brand_id:form.brandId?parseInt(form.brandId):null,
-        image:form.image||null, is_promo:form.isPromo,
-        description:form.description||'',
-        discount:parseFloat(form.discount)||0, disabled:false,
-        created_at:form.id?undefined:new Date().toISOString()
+        id: form.id || Date.now(),
+        name: form.name.trim(),
+        price: parseFloat(form.price) || 0,
+        cost_price: parseFloat(form.costPrice) || 0,
+        carton_price: form.cartonPrice ? parseFloat(form.cartonPrice) : null,
+        units: parseInt(form.units) || 12,
+        stock: parseInt(form.stock) || 0,
+        min_stock: parseInt(form.minStock) || 5,
+        sku: form.sku || generateBarcode(form.id || Date.now()),
+        brand_id: form.brandId ? parseInt(form.brandId) : null,
+        image: form.image || null,
+        is_promo: form.isPromo,
+        description: form.description || "",
+        discount: parseFloat(form.discount) || 0,
+        disabled: false,
+        created_at: form.id ? undefined : new Date().toISOString(),
+      };
+      if (!form.id) delete row.created_at;
+      const { error } = await supabase.from("products").upsert(row);
+      if (error) {
+        showToast("خطأ: " + error.message, "error");
+        return;
       }
-      if (!form.id) delete row.created_at
-      const { error } = await supabase.from('products').upsert(row)
-      if (error) { showToast('خطأ: '+error.message,'error'); return }
-      if (form.id) await supabase.from('product_categories').delete().eq('product_id',row.id)
-      if (selCats.length>0) {
-        await supabase.from('product_categories').upsert(
-          selCats.map(cid=>({ id:Date.now()+Math.random(), product_id:row.id, category_id:cid }))
-        ).catch(()=>{})
+      if (form.id)
+        await supabase.from("product_categories").delete().eq("product_id", row.id);
+      if (selCats.length > 0) {
+        await supabase
+          .from("product_categories")
+          .upsert(
+            selCats.map((cid) => ({
+              id: Date.now() + Math.random(),
+              product_id: row.id,
+              category_id: cid,
+            }))
+          )
+          .catch(() => {});
       }
-      
+
       await logActivity(
-        form.id ? 'تعديل منتج' : 'إضافة منتج',
-        `${form.id ? 'تم تعديل' : 'تم إضافة'} المنتج: ${form.name}`
-      )
-      
-      showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-      setForm({ id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false })
-      setSelCats([])
-      await load()
+        form.id ? "تعديل منتج" : "إضافة منتج",
+        `${form.id ? "تم تعديل" : "تم إضافة"} المنتج: ${form.name}`
+      );
+
+      showToast(form.id ? "✅ تم التعديل" : "✅ تمت الإضافة");
+      setForm({
+        id: "",
+        name: "",
+        price: "",
+        costPrice: "",
+        cartonPrice: "",
+        units: 12,
+        stock: 0,
+        minStock: 5,
+        sku: "",
+        brandId: "",
+        image: "",
+        discount: 0,
+        isPromo: false,
+        description: "",
+      });
+      setSelCats([]);
+      await load();
     } catch (err) {
-      console.error('❌ خطأ:', err)
-      showToast('❌ حدث خطأ غير متوقع', 'error')
+      console.error("❌ خطأ:", err);
+      showToast("❌ حدث خطأ غير متوقع", "error");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const edit = async p => {
-    setForm({ id:p.id, name:p.name, price:p.price||'', costPrice:p.cost_price||'',
-      cartonPrice:p.carton_price||'', units:p.units||12, stock:p.stock||0,
-      minStock:p.min_stock||5, sku:p.sku||generateBarcode(p.id),
-      brandId:p.brand_id||'',
-      image:p.image||'', discount:p.discount||0, isPromo:p.is_promo||false,
-      description:p.description||'' })
-    const { data } = await supabase.from('product_categories').select('category_id').eq('product_id',p.id)
-    setSelCats((data||[]).map(r=>r.category_id))
-  }
-  
-// ✅ softDelete مصحح (مع BIGSERIAL)
-const softDelete = async (id) => {
-  if (!(await askConfirm("⚠️ حذف هذا المنتج؟ يمكن استعادته من سلة المهملات"))) return;
-
-  try {
-    const product = products.find((p) => p.id === id);
-    if (!product) {
-      showToast("❌ المنتج غير موجود", "error");
-      return;
-    }
-
-    // ✅ إزالة id من البيانات (سيتم توليده تلقائياً)
-    const { error: insertError } = await supabase.from("deleted_items").insert({
-      table_name: "products",
-      item_id: product.id,
-      data: JSON.stringify(product),
-      deleted_at: new Date().toISOString(),
+  const edit = async (p) => {
+    setForm({
+      id: p.id,
+      name: p.name,
+      price: p.price || "",
+      costPrice: p.cost_price || "",
+      cartonPrice: p.carton_price || "",
+      units: p.units || 12,
+      stock: p.stock || 0,
+      minStock: p.min_stock || 5,
+      sku: p.sku || generateBarcode(p.id),
+      brandId: p.brand_id || "",
+      image: p.image || "",
+      discount: p.discount || 0,
+      isPromo: p.is_promo || false,
+      description: p.description || "",
     });
+    const { data } = await supabase
+      .from("product_categories")
+      .select("category_id")
+      .eq("product_id", p.id);
+    setSelCats((data || []).map((r) => r.category_id));
+  };
 
-    if (insertError) {
-      console.error("❌ خطأ في الإضافة إلى سلة المهملات:", insertError);
-      showToast("❌ خطأ: " + insertError.message, "error");
-      return;
-    }
+  // ✅ حذف المنتج → سلة المهملات
+  const del = async (id) => {
+    await softDelete("products", id, products, setProducts, load, showToast, askConfirm);
+  };
 
-    const { error: deleteError } = await supabase.from("products").delete().eq("id", id);
-    if (deleteError) {
-      console.error("❌ خطأ في حذف المنتج:", deleteError);
-      showToast("❌ خطأ في حذف المنتج", "error");
-      return;
-    }
+  const toggleCat = (id) =>
+    setSelCats((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
-    await logActivity("حذف منتج", `تم حذف المنتج: ${product.name}`);
-    showToast("✅ تم نقل المنتج إلى سلة المهملات");
-    await load();
-  } catch (err) {
-    console.error("❌ خطأ:", err);
-    showToast("❌ حدث خطأ غير متوقع", "error");
-  }
-};
-
-  const toggleCat = id => setSelCats(prev => prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
-
-  const filtered = products.filter(p=>{
-    const matchSearch=!search||p.name?.toLowerCase().includes(search.toLowerCase())
-    const matchBrand=!brandFilter||p.brand_id==brandFilter
-    const matchStock=stockFilter==='all'||(stockFilter==='low'&&(p.stock||0)<5)||(stockFilter==='ok'&&(p.stock||0)>=5)
-    return matchSearch&&matchBrand&&matchStock
-  })
+  const filtered = products.filter((p) => {
+    const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase());
+    const matchBrand = !brandFilter || p.brand_id == brandFilter;
+    const matchStock =
+      stockFilter === "all" ||
+      (stockFilter === "low" && (p.stock || 0) < 5) ||
+      (stockFilter === "ok" && (p.stock || 0) >= 5);
+    return matchSearch && matchBrand && matchStock;
+  });
 
   return (
     <div>
-      {ToastUI}{ConfirmUI}
-      <h1 style={{ fontSize:22, fontWeight:900, marginBottom:20 }}>📦 المنتجات</h1>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>📦 المنتجات</h1>
 
-      <div style={{ ...S.card, background:'#f0f9ff', borderRight:'4px solid #3b82f6' }}>
-        <strong style={{ color:'#1d4ed8' }}>📐 أحجام الصور المثالية:</strong>
-        <div style={{ display:'flex', gap:16, marginTop:8, flexWrap:'wrap', fontSize:13 }}>
+      <div style={{ ...S.card, background: "#f0f9ff", borderRight: "4px solid #3b82f6" }}>
+        <strong style={{ color: "#1d4ed8" }}>📐 أحجام الصور المثالية:</strong>
+        <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", fontSize: 13 }}>
           <span>📦 منتج: <strong>600×600</strong></span>
           <span>🏷️ ماركة: <strong>300×300</strong></span>
           <span>📂 فئة: <strong>400×300</strong></span>
@@ -923,703 +1025,1585 @@ const softDelete = async (id) => {
       </div>
 
       <div style={S.card}>
-        <h3 style={{ fontWeight:800, marginBottom:14, color:'#dc2626' }}>
-          {form.id?'✏️ تعديل':'➕ إضافة'} منتج
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          {form.id ? "✏️ تعديل" : "➕ إضافة"} منتج
         </h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>اسم المنتج *</label>
-            <input style={S.input} value={form.name} onChange={F('name')} placeholder="اسم المنتج" /></div>
-          <div><label style={S.label}>سعر البيع (قطعة) *</label>
-            <NumInput value={form.price} onChange={F('price')} placeholder="0" /></div>
-          <div><label style={S.label}>سعر الشراء (قطعة)</label>
-            <NumInput value={form.costPrice} onChange={F('costPrice')} /></div>
-          <div><label style={S.label}>سعر الكرتون</label>
-            <NumInput value={form.cartonPrice} onChange={F('cartonPrice')} /></div>
-          <div><label style={S.label}>قطع في الكرتون</label>
-            <NumInput value={form.units} onChange={F('units')} /></div>
-          <div><label style={S.label}>المخزون (قطعة)</label>
-            <NumInput value={form.stock} onChange={F('stock')} /></div>
-          <div><label style={S.label}>خصم % (0 = بدون خصم)</label>
-            <NumInput value={form.discount} onChange={F('discount')} placeholder="0" /></div>
-          <div><label style={S.label}>الباركود / SKU</label>
-            <input style={S.input} value={form.sku} onChange={F('sku')} placeholder="اختياري" /></div>
-          <div><label style={S.label}>العلامة التجارية</label>
-            <select style={S.input} value={form.brandId} onChange={F('brandId')}>
+          <div>
+            <label style={S.label}>اسم المنتج *</label>
+            <input style={S.input} value={form.name} onChange={F("name")} placeholder="اسم المنتج" />
+          </div>
+          <div>
+            <label style={S.label}>سعر البيع (قطعة) *</label>
+            <NumInput value={form.price} onChange={F("price")} placeholder="0" />
+          </div>
+          <div>
+            <label style={S.label}>سعر الشراء (قطعة)</label>
+            <NumInput value={form.costPrice} onChange={F("costPrice")} />
+          </div>
+          <div>
+            <label style={S.label}>سعر الكرتون</label>
+            <NumInput value={form.cartonPrice} onChange={F("cartonPrice")} />
+          </div>
+          <div>
+            <label style={S.label}>قطع في الكرتون</label>
+            <NumInput value={form.units} onChange={F("units")} />
+          </div>
+          <div>
+            <label style={S.label}>المخزون (قطعة)</label>
+            <NumInput value={form.stock} onChange={F("stock")} />
+          </div>
+          <div>
+            <label style={S.label}>خصم % (0 = بدون خصم)</label>
+            <NumInput value={form.discount} onChange={F("discount")} placeholder="0" />
+          </div>
+          <div>
+            <label style={S.label}>الباركود / SKU</label>
+            <input style={S.input} value={form.sku} onChange={F("sku")} placeholder="اختياري" />
+          </div>
+          <div>
+            <label style={S.label}>العلامة التجارية</label>
+            <select style={S.input} value={form.brandId} onChange={F("brandId")}>
               <option value="">-- بدون --</option>
-              {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-            </select></div>
-          <div><label style={S.label}>صورة المنتج (600×600)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={handleImg} /></div>
-          {form.image && <div style={{ display:'flex', alignItems:'center' }}>
-            <img src={form.image} style={{ width:80, height:80, objectFit:'cover', borderRadius:12 }} /></div>}
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={S.label}>صورة المنتج (600×600)</label>
+            <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
+          </div>
+          {form.image && (
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <img src={form.image} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 12 }} />
+            </div>
+          )}
         </div>
-        <div style={{ marginTop:14 }}>
+        <div style={{ marginTop: 14 }}>
           <label style={S.label}>الفئات (يمكن اختيار أكثر من فئة)</label>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:6 }}>
-            {categories.map(c=>(
-              <button key={c.id} onClick={()=>toggleCat(c.id)}
-                style={{ ...S.btnSm, background:selCats.includes(c.id)?'#dc2626':'#e2e8f0',
-                  color:selCats.includes(c.id)?'white':'#475569' }}>
-                {selCats.includes(c.id)?'✓ ':''}{c.name}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => toggleCat(c.id)}
+                style={{
+                  ...S.btnSm,
+                  background: selCats.includes(c.id) ? "#dc2626" : "#e2e8f0",
+                  color: selCats.includes(c.id) ? "white" : "#475569",
+                }}
+              >
+                {selCats.includes(c.id) ? "✓ " : ""}
+                {c.name}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ marginTop:12, display:'flex', alignItems:'center', gap:10 }}>
-          <input type="checkbox" id="isPromo" checked={form.isPromo}
-            onChange={e=>setForm(f=>({...f,isPromo:e.target.checked}))} />
-          <label htmlFor="isPromo" style={{ fontWeight:700, fontSize:14, cursor:'pointer' }}>
+        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
+          <input
+            type="checkbox"
+            id="isPromo"
+            checked={form.isPromo}
+            onChange={(e) => setForm((f) => ({ ...f, isPromo: e.target.checked }))}
+          />
+          <label htmlFor="isPromo" style={{ fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
             ⚡ منتج ضمن العروض الخاصة
           </label>
         </div>
-        <div style={{ display:'flex', gap:10, marginTop:16, flexWrap:'wrap' }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
           <button style={S.btn} onClick={save} disabled={saving}>
-            {saving?'⏳ حفظ...':'💾 حفظ المنتج'}</button>
-          <button style={S.btnGray} onClick={()=>{
-            setForm({id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false})
-            setSelCats([])
-          }}>✖ إلغاء</button>
+            {saving ? "⏳ حفظ..." : "💾 حفظ المنتج"}
+          </button>
+          <button
+            style={S.btnGray}
+            onClick={() => {
+              setForm({
+                id: "",
+                name: "",
+                price: "",
+                costPrice: "",
+                cartonPrice: "",
+                units: 12,
+                stock: 0,
+                minStock: 5,
+                sku: "",
+                brandId: "",
+                image: "",
+                discount: 0,
+                isPromo: false,
+                description: "",
+              });
+              setSelCats([]);
+            }}
+          >
+            ✖ إلغاء
+          </button>
         </div>
       </div>
 
       <div style={S.card}>
-        <div style={{ display:'flex', justifyContent:'space-between', marginBottom:14, flexWrap:'wrap', gap:10, alignItems:'center' }}>
-          <h3 style={{ fontWeight:800, fontSize:15 }}>قائمة المنتجات
-            <span style={{ marginRight:8, background:CLR.bg, border:'1px solid #E2E8F0', borderRadius:20,
-              padding:'2px 10px', fontSize:12, fontWeight:600, color:CLR.textSm }}>{filtered.length}</span>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 14,
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ fontWeight: 800, fontSize: 15 }}>
+            قائمة المنتجات
+            <span
+              style={{
+                marginRight: 8,
+                background: CLR.bg,
+                border: "1px solid #E2E8F0",
+                borderRadius: 20,
+                padding: "2px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: CLR.textSm,
+              }}
+            >
+              {filtered.length}
+            </span>
           </h3>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <input style={{ ...S.input, width:180 }} placeholder="🔍 بحث بالاسم..." value={search} onChange={e=>setSearch(e.target.value)} />
-            <select style={{...S.input,width:130}} value={brandFilter||''} onChange={e=>setBrandFilter(e.target.value)}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              style={{ ...S.input, width: 180 }}
+              placeholder="🔍 بحث بالاسم..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              style={{ ...S.input, width: 130 }}
+              value={brandFilter || ""}
+              onChange={(e) => setBrandFilter(e.target.value)}
+            >
               <option value="">كل الماركات</option>
-              {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
             </select>
-            <select style={{...S.input,width:120}} value={stockFilter||'all'} onChange={e=>setStockFilter(e.target.value)}>
+            <select
+              style={{ ...S.input, width: 120 }}
+              value={stockFilter || "all"}
+              onChange={(e) => setStockFilter(e.target.value)}
+            >
               <option value="all">كل المخزون</option>
               <option value="low">منخفض (&lt;5)</option>
               <option value="ok">متوفر</option>
             </select>
           </div>
         </div>
-        {loading
-          ? <div style={{ padding:40, textAlign:'center' }}>
-              {[1,2,3,4].map(i=><div key={i} style={{ height:48, background:'#F1F5F9', borderRadius:8, marginBottom:8, animation:'pulse 1.5s ease infinite' }}/>)}
-            </div>
-          : <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead>
-                  <tr style={{ background:CLR.bg }}>
-                    <th style={S.th}>الصورة</th>
-                    <th style={S.th}>الاسم</th>
-                    <th style={S.th}>السعر</th>
-                    <th style={S.th}>الكرتون</th>
-                    <th style={S.th}>المخزون</th>
-                    <th style={S.th}>الماركة</th>
-                    <th style={S.th}>الباركود</th>
-                    <th style={S.th}>إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((p,i)=>{
-                    const stockLvl=(p.stock||0)<5?'low':(p.stock||0)<20?'med':'ok'
-                    const stockStyle={
-                      low: {bg:'#FEE2E2',color:'#DC2626'},
-                      med: {bg:'#FEF9C3',color:'#92400E'},
-                      ok:  {bg:'#D1FAE5',color:'#059669'},
-                    }[stockLvl]
-                    return (
-                      <tr key={p.id}
-                        style={{ background:i%2===0?'white':CLR.bg, cursor:'pointer', transition:'background .15s' }}
-                        onMouseEnter={e=>e.currentTarget.style.background='#FFF7ED'}
-                        onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'white':CLR.bg}
-                        onClick={()=>edit(p)}>
-                        <td style={S.td}>
-                          {p.image
-                            ?<img src={p.image} style={{width:44,height:44,objectFit:'cover',borderRadius:8,border:'1px solid #E2E8F0'}}/>
-                            :<div style={{width:44,height:44,borderRadius:8,background:CLR.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>📦</div>}
-                        </td>
-                        <td style={{ ...S.td, fontWeight:700, maxWidth:200 }}>
-                          <div>{p.name}</div>
-                          {p.is_promo&&<span style={{background:'#FEF9C3',color:'#92400E',padding:'1px 7px',borderRadius:20,fontSize:10,fontWeight:700}}>عرض</span>}
-                        </td>
-                        <td style={{ ...S.td, fontWeight:700, color:CLR.accent }}>{p.price} {CUR}</td>
-                        <td style={{ ...S.td, color:CLR.textSm }}>{p.carton_price?`${p.carton_price} ${CUR}`:'—'}</td>
-                        <td style={S.td}>
-                          <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-                            background:stockStyle.bg, color:stockStyle.color }}>
-                            {p.stock||0} كرتون
-                          </span>
-                        </td>
-                        <td style={{ ...S.td, color:CLR.textSm }}>
-                          {brands.find(b=>b.id==p.brand_id)?.name||'—'}
-                        </td>
-                        <td style={{ ...S.td, fontSize:11, color:CLR.textSm }}>
-                          <code>{p.sku || generateBarcode(p.id)}</code>
-                        </td>
-                        <td style={S.td} onClick={e=>e.stopPropagation()}>
-                          <div style={{ display:'flex', gap:4 }}>
-                            <button style={{ ...S.btnSm, background:'#DBEAFE', color:'#1D4ED8' }} onClick={()=>edit(p)}>✏️</button>
-                            <button style={{ ...S.btnSm, background:'#FEE2E2', color:'#DC2626' }} onClick={()=>softDelete(p.id)}>🗑️</button>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: "center" }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                style={{
+                  height: 48,
+                  background: "#F1F5F9",
+                  borderRadius: 8,
+                  marginBottom: 8,
+                  animation: "pulse 1.5s ease infinite",
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>الصورة</th>
+                  <th style={S.th}>الاسم</th>
+                  <th style={S.th}>السعر</th>
+                  <th style={S.th}>الكرتون</th>
+                  <th style={S.th}>المخزون</th>
+                  <th style={S.th}>الماركة</th>
+                  <th style={S.th}>الباركود</th>
+                  <th style={S.th}>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p, i) => {
+                  const stockLvl = (p.stock || 0) < 5 ? "low" : (p.stock || 0) < 20 ? "med" : "ok";
+                  const stockStyle = {
+                    low: { bg: "#FEE2E2", color: "#DC2626" },
+                    med: { bg: "#FEF9C3", color: "#92400E" },
+                    ok: { bg: "#D1FAE5", color: "#059669" },
+                  }[stockLvl];
+                  return (
+                    <tr
+                      key={p.id}
+                      style={{
+                        background: i % 2 === 0 ? "white" : CLR.bg,
+                        cursor: "pointer",
+                        transition: "background .15s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#FFF7ED")}
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = i % 2 === 0 ? "white" : CLR.bg)
+                      }
+                      onClick={() => edit(p)}
+                    >
+                      <td style={S.td}>
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            style={{
+                              width: 44,
+                              height: 44,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              border: "1px solid #E2E8F0",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 8,
+                              background: CLR.bg,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 20,
+                            }}
+                          >
+                            📦
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',padding:36,color:CLR.textSm}}>
-                    <div style={{ fontSize:32, marginBottom:8 }}>📦</div>لا توجد منتجات
-                  </td></tr>}
-                </tbody>
-              </table>
-            </div>}
+                        )}
+                      </td>
+                      <td style={{ ...S.td, fontWeight: 700, maxWidth: 200 }}>
+                        <div>{p.name}</div>
+                        {p.is_promo && (
+                          <span
+                            style={{
+                              background: "#FEF9C3",
+                              color: "#92400E",
+                              padding: "1px 7px",
+                              borderRadius: 20,
+                              fontSize: 10,
+                              fontWeight: 700,
+                            }}
+                          >
+                            عرض
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ ...S.td, fontWeight: 700, color: CLR.accent }}>
+                        {p.price} {CUR}
+                      </td>
+                      <td style={{ ...S.td, color: CLR.textSm }}>
+                        {p.carton_price ? `${p.carton_price} ${CUR}` : "—"}
+                      </td>
+                      <td style={S.td}>
+                        <span
+                          style={{
+                            padding: "3px 10px",
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: stockStyle.bg,
+                            color: stockStyle.color,
+                          }}
+                        >
+                          {p.stock || 0} كرتون
+                        </span>
+                      </td>
+                      <td style={{ ...S.td, color: CLR.textSm }}>
+                        {brands.find((b) => b.id == p.brand_id)?.name || "—"}
+                      </td>
+                      <td style={{ ...S.td, fontSize: 11, color: CLR.textSm }}>
+                        <code>{p.sku || generateBarcode(p.id)}</code>
+                      </td>
+                      <td style={S.td} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button
+                            style={{ ...S.btnSm, background: "#DBEAFE", color: "#1D4ED8" }}
+                            onClick={() => edit(p)}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+                            onClick={() => del(p.id)}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: "center", padding: 36, color: CLR.textSm }}>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
+                      لا توجد منتجات
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal تعديل المنتج */}
-      {form.id&&(
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:7000,
-          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'white', borderRadius:16, padding:24, width:'100%', maxWidth:640,
-            maxHeight:'90vh', overflowY:'auto', direction:'rtl' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
-              <h3 style={{ fontWeight:900, fontSize:17 }}>✏️ تعديل: {form.name}</h3>
-              <button onClick={()=>{ setForm({id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false}); setSelCats([]) }}
-                style={{ background:CLR.bg, border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:16 }}>✕</button>
+      {form.id && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.5)",
+            zIndex: 7000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 16,
+              padding: 24,
+              width: "100%",
+              maxWidth: 640,
+              maxHeight: "90vh",
+              overflowY: "auto",
+              direction: "rtl",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 18,
+              }}
+            >
+              <h3 style={{ fontWeight: 900, fontSize: 17 }}>✏️ تعديل: {form.name}</h3>
+              <button
+                onClick={() => {
+                  setForm({
+                    id: "",
+                    name: "",
+                    price: "",
+                    costPrice: "",
+                    cartonPrice: "",
+                    units: 12,
+                    stock: 0,
+                    minStock: 5,
+                    sku: "",
+                    brandId: "",
+                    image: "",
+                    discount: 0,
+                    isPromo: false,
+                    description: "",
+                  });
+                  setSelCats([]);
+                }}
+                style={{
+                  background: CLR.bg,
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  cursor: "pointer",
+                  fontSize: 16,
+                }}
+              >
+                ✕
+              </button>
             </div>
             <div style={S.grid2}>
-              <div><label style={S.label}>اسم المنتج *</label><input style={S.input} value={form.name} onChange={F('name')}/></div>
-              <div><label style={S.label}>سعر البيع *</label><NumInput value={form.price} onChange={F('price')}/></div>
-              <div><label style={S.label}>سعر الشراء/قطعة</label><NumInput value={form.costPrice} onChange={F('costPrice')}/></div>
-              <div><label style={S.label}>سعر الكرتون</label><NumInput value={form.cartonPrice} onChange={F('cartonPrice')}/></div>
-              <div><label style={S.label}>قطع/كرتون</label><NumInput value={form.units} onChange={F('units')}/></div>
-              <div><label style={S.label}>المخزون</label><NumInput value={form.stock} onChange={F('stock')}/></div>
-              <div><label style={S.label}>الحد الأدنى للتنبيه</label><NumInput value={form.minStock} onChange={e=>setForm(f=>({...f,minStock:e.target.value}))}/></div>
-              <div><label style={S.label}>خصم %</label><NumInput value={form.discount} onChange={F('discount')}/></div>
-              <div><label style={S.label}>العلامة التجارية</label>
-                <select style={S.input} value={form.brandId} onChange={F('brandId')}>
+              <div>
+                <label style={S.label}>اسم المنتج *</label>
+                <input style={S.input} value={form.name} onChange={F("name")} />
+              </div>
+              <div>
+                <label style={S.label}>سعر البيع *</label>
+                <NumInput value={form.price} onChange={F("price")} />
+              </div>
+              <div>
+                <label style={S.label}>سعر الشراء/قطعة</label>
+                <NumInput value={form.costPrice} onChange={F("costPrice")} />
+              </div>
+              <div>
+                <label style={S.label}>سعر الكرتون</label>
+                <NumInput value={form.cartonPrice} onChange={F("cartonPrice")} />
+              </div>
+              <div>
+                <label style={S.label}>قطع/كرتون</label>
+                <NumInput value={form.units} onChange={F("units")} />
+              </div>
+              <div>
+                <label style={S.label}>المخزون</label>
+                <NumInput value={form.stock} onChange={F("stock")} />
+              </div>
+              <div>
+                <label style={S.label}>الحد الأدنى للتنبيه</label>
+                <NumInput
+                  value={form.minStock}
+                  onChange={(e) => setForm((f) => ({ ...f, minStock: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={S.label}>خصم %</label>
+                <NumInput value={form.discount} onChange={F("discount")} />
+              </div>
+              <div>
+                <label style={S.label}>العلامة التجارية</label>
+                <select style={S.input} value={form.brandId} onChange={F("brandId")}>
                   <option value="">-- بدون --</option>
-                  {brands.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-                </select></div>
-              <div><label style={S.label}>صورة جديدة</label><input style={S.input} type="file" accept="image/*" onChange={handleImg}/></div>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>صورة جديدة</label>
+                <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
+              </div>
             </div>
-            <div style={{ marginTop:12 }}>
+            <div style={{ marginTop: 12 }}>
               <label style={S.label}>الفئات</label>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
-                {categories.map(c=>(
-                  <button key={c.id} onClick={()=>toggleCat(c.id)}
-                    style={{ ...S.btnSm, background:selCats.includes(c.id)?CLR.accent:'#E2E8F0',
-                      color:selCats.includes(c.id)?'white':CLR.textSm }}>
-                    {selCats.includes(c.id)?'✓ ':''}{c.name}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => toggleCat(c.id)}
+                    style={{
+                      ...S.btnSm,
+                      background: selCats.includes(c.id) ? CLR.accent : "#E2E8F0",
+                      color: selCats.includes(c.id) ? "white" : CLR.textSm,
+                    }}
+                  >
+                    {selCats.includes(c.id) ? "✓ " : ""}
+                    {c.name}
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{ display:'flex', gap:10, marginTop:20 }}>
-              <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ التعديل'}</button>
-              <button style={S.btnGray} onClick={()=>{ setForm({id:'',name:'',price:'',costPrice:'',cartonPrice:'',units:12,stock:0,sku:'',brandId:'',image:'',discount:0,isPromo:false}); setSelCats([]) }}>إلغاء</button>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button style={S.btn} onClick={save} disabled={saving}>
+                {saving ? "⏳..." : "💾 حفظ التعديل"}
+              </button>
+              <button
+                style={S.btnGray}
+                onClick={() => {
+                  setForm({
+                    id: "",
+                    name: "",
+                    price: "",
+                    costPrice: "",
+                    cartonPrice: "",
+                    units: 12,
+                    stock: 0,
+                    minStock: 5,
+                    sku: "",
+                    brandId: "",
+                    image: "",
+                    discount: 0,
+                    isPromo: false,
+                    description: "",
+                  });
+                  setSelCats([]);
+                }}
+              >
+                إلغاء
+              </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
 
 /* ══════════════════════════════════════════
-   📂 الفئات
+   📂 الفئات (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function Categories() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [editId,setEditId]=useState(null)
-  const [name,setName]=useState(''); const [image,setImage]=useState('')
-  const load=async()=>{ 
-    const {data}=await supabase.from('categories').select('*').order('name'); 
-    setItems(data||[]) 
-  }
-  useEffect(()=>{ load() },[])
-  const save=async()=>{
-    if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    try {
-      if(editId){
-        await supabase.from('categories').update({name:name.trim(),image:image||null}).eq('id',editId)
-        await logActivity('تعديل فئة', `تم تعديل الفئة: ${name}`)
-        showToast('✅ تم التعديل'); setEditId(null)
-      } else {
-        await supabase.from('categories').insert({id:Date.now(),name:name.trim(),image:image||null})
-        await logActivity('إضافة فئة', `تم إضافة الفئة: ${name}`)
-        showToast('✅ تمت الإضافة')
-      }
-      setName(''); setImage(''); await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
-  const startEdit=c=>{ setEditId(c.id); setName(c.name); setImage(c.image||'') }
-  const cancel=()=>{ setEditId(null); setName(''); setImage('') }
-  const del=async id=>{
-    if(!await askConfirm('حذف هذه الفئة؟'))return
-    try {
-      await supabase.from('categories').delete().eq('id',id)
-      await logActivity('حذف فئة', `تم حذف الفئة` )
-      showToast('تم الحذف')
-      await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
-  return (
-    <div>{ToastUI}{ConfirmUI}
-      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>📂 الفئات</h1>
+  const [showToast, ToastUI] = useToast();
+  const [askConfirm, ConfirmUI] = useConfirm();
+  const [items, setItems] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
 
-      {editId&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:7000,
-          display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div style={{background:'white',borderRadius:14,padding:24,width:'100%',maxWidth:440,direction:'rtl'}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
-              <h3 style={{fontWeight:900,fontSize:16}}>✏️ تعديل الفئة</h3>
-              <button onClick={cancel} style={{background:CLR.bg,border:'none',borderRadius:'50%',width:30,height:30,cursor:'pointer',fontSize:14}}>✕</button>
+  const load = async () => {
+    const { data } = await supabase.from("categories").select("*").order("name");
+    setItems(data || []);
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    if (!name.trim()) {
+      showToast("الاسم مطلوب", "error");
+      return;
+    }
+    try {
+      if (editId) {
+        await supabase
+          .from("categories")
+          .update({ name: name.trim(), image: image || null })
+          .eq("id", editId);
+        await logActivity("تعديل فئة", `تم تعديل الفئة: ${name}`);
+        showToast("✅ تم التعديل");
+        setEditId(null);
+      } else {
+        await supabase
+          .from("categories")
+          .insert({ id: Date.now(), name: name.trim(), image: image || null });
+        await logActivity("إضافة فئة", `تم إضافة الفئة: ${name}`);
+        showToast("✅ تمت الإضافة");
+      }
+      setName("");
+      setImage("");
+      await load();
+    } catch (err) {
+      showToast("❌ خطأ: " + err.message, "error");
+    }
+  };
+
+  const startEdit = (c) => {
+    setEditId(c.id);
+    setName(c.name);
+    setImage(c.image || "");
+  };
+  const cancel = () => {
+    setEditId(null);
+    setName("");
+    setImage("");
+  };
+
+  // ✅ حذف الفئة → سلة المهملات
+  const del = async (id) => {
+    await softDelete("categories", id, items, setItems, load, showToast, askConfirm);
+  };
+
+  return (
+    <div>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        📂 الفئات
+      </h1>
+
+      {editId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.5)",
+            zIndex: 7000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 14,
+              padding: 24,
+              width: "100%",
+              maxWidth: 440,
+              direction: "rtl",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 16 }}>✏️ تعديل الفئة</h3>
+              <button
+                onClick={cancel}
+                style={{
+                  background: CLR.bg,
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                ✕
+              </button>
             </div>
             <label style={S.label}>الاسم *</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} />
-            <label style={{...S.label,marginTop:10}}>صورة جديدة (400×300)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/>
-            {image&&<img src={image} style={{width:'100%',height:60,objectFit:'cover',borderRadius:8,marginTop:8}}/>}
-            <div style={{display:'flex',gap:10,marginTop:16}}>
-              <button style={S.btn} onClick={save}>💾 حفظ التعديل</button>
-              <button style={S.btnGray} onClick={cancel}>إلغاء</button>
+            <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} />
+            <label style={{ ...S.label, marginTop: 10 }}>صورة جديدة (400×300)</label>
+            <input
+              style={S.input}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const r = new FileReader();
+                r.onload = (ev) => setImage(ev.target.result);
+                r.readAsDataURL(e.target.files[0]);
+              }}
+            />
+            {image && (
+              <img
+                src={image}
+                style={{
+                  width: "100%",
+                  height: 60,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                  marginTop: 8,
+                }}
+              />
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button style={S.btn} onClick={save}>
+                💾 حفظ التعديل
+              </button>
+              <button style={S.btnGray} onClick={cancel}>
+                إلغاء
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:10,color:CLR.accent}}>➕ إضافة فئة جديدة</h3>
-        <p style={{fontSize:12,color:CLR.textSm,marginBottom:12}}>📐 حجم صورة الفئة المثالي: <strong>400×300 بكسل</strong></p>
-        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
-          <div style={{flex:1,minWidth:160}}><label style={S.label}>اسم الفئة *</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: مواد غذائية" /></div>
-          <div style={{flex:1,minWidth:160}}><label style={S.label}>صورة (400×300)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/></div>
-          {image&&<img src={image} style={{width:60,height:45,borderRadius:8,objectFit:'cover'}}/>}
+        <h3 style={{ fontWeight: 800, marginBottom: 10, color: CLR.accent }}>
+          ➕ إضافة فئة جديدة
+        </h3>
+        <p style={{ fontSize: 12, color: CLR.textSm, marginBottom: 12 }}>
+          📐 حجم صورة الفئة المثالي: <strong>400×300 بكسل</strong>
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={S.label}>اسم الفئة *</label>
+            <input
+              style={S.input}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="مثال: مواد غذائية"
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={S.label}>صورة (400×300)</label>
+            <input
+              style={S.input}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const r = new FileReader();
+                r.onload = (ev) => setImage(ev.target.result);
+                r.readAsDataURL(e.target.files[0]);
+              }}
+            />
+          </div>
+          {image && (
+            <img src={image} style={{ width: 60, height: 45, borderRadius: 8, objectFit: "cover" }} />
+          )}
         </div>
-        <div style={{display:'flex',gap:10,marginTop:12}}>
-          <button style={S.btn} onClick={save}>{editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
-          {editId&&<button style={S.btnGray} onClick={cancel}>✖ إلغاء</button>}
+        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          <button style={S.btn} onClick={save}>
+            {editId ? "💾 حفظ التعديل" : "➕ إضافة"}
+          </button>
+          {editId && (
+            <button style={S.btnGray} onClick={cancel}>
+              ✖ إلغاء
+            </button>
+          )}
         </div>
       </div>
       <div style={S.card}>
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead><tr><th style={S.th}>الصورة</th><th style={S.th}>الاسم</th><th style={S.th}>إجراءات</th></tr></thead>
-          <tbody>{items.map((c,i)=>(
-            <tr key={c.id} className="nq-tr" style={{background:i%2===0?'white':CLR.bg,cursor:'pointer'}}
-              onClick={()=>startEdit(c)}>
-              <td style={S.td}>{c.image
-                ?<img src={c.image} style={{width:56,height:42,borderRadius:8,objectFit:'cover',border:`1px solid ${CLR.border}`}}/>
-                :<div style={{width:56,height:42,borderRadius:8,background:CLR.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>📁</div>}</td>
-              <td style={{...S.td,fontWeight:700}}>{c.name}</td>
-              <td style={S.td} onClick={e=>e.stopPropagation()}>
-                <div style={{display:'flex',gap:5}}>
-                  <button style={{...S.btnSm,background:'#DBEAFE',color:'#1D4ED8'}} onClick={()=>startEdit(c)}>✏️</button>
-                  <button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={()=>del(c.id)}>🗑️</button>
-                </div>
-              </td>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={S.th}>الصورة</th>
+              <th style={S.th}>الاسم</th>
+              <th style={S.th}>إجراءات</th>
             </tr>
-          ))}
-          {items.length===0&&<tr><td colSpan={3} style={{textAlign:'center',padding:28,color:CLR.textSm}}>
-            <div style={{fontSize:32,marginBottom:8}}>📂</div>لا توجد فئات
-          </td></tr>}
+          </thead>
+          <tbody>
+            {items.map((c, i) => (
+              <tr
+                key={c.id}
+                className="nq-tr"
+                style={{ background: i % 2 === 0 ? "white" : CLR.bg, cursor: "pointer" }}
+                onClick={() => startEdit(c)}
+              >
+                <td style={S.td}>
+                  {c.image ? (
+                    <img
+                      src={c.image}
+                      style={{
+                        width: 56,
+                        height: 42,
+                        borderRadius: 8,
+                        objectFit: "cover",
+                        border: `1px solid ${CLR.border}`,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 56,
+                        height: 42,
+                        borderRadius: 8,
+                        background: CLR.bg,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 22,
+                      }}
+                    >
+                      📁
+                    </div>
+                  )}
+                </td>
+                <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
+                <td style={S.td} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button
+                      style={{ ...S.btnSm, background: "#DBEAFE", color: "#1D4ED8" }}
+                      onClick={() => startEdit(c)}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+                      onClick={() => del(c.id)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={3} style={{ textAlign: "center", padding: 28, color: CLR.textSm }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
+                  لا توجد فئات
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
     </div>
-  )
+  );
 }
 
 /* ══════════════════════════════════════════
-   🏷️ العلامات التجارية
+   🏷️ العلامات التجارية (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function Brands() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [editId,setEditId]=useState(null)
-  const [name,setName]=useState(''); const [image,setImage]=useState('')
-  const load=async()=>{ const {data}=await supabase.from('brands').select('*').order('name'); setItems(data||[]) }
-  useEffect(()=>{ load() },[])
-  const save=async()=>{
-    if(!name.trim()){showToast('الاسم مطلوب','error');return}
-    try {
-      if(editId){
-        await supabase.from('brands').update({name:name.trim(),image:image||null}).eq('id',editId)
-        await logActivity('تعديل علامة', `تم تعديل العلامة: ${name}`)
-        showToast('✅ تم التعديل'); setEditId(null)
-      } else {
-        await supabase.from('brands').insert({id:Date.now(),name:name.trim(),image:image||null})
-        await logActivity('إضافة علامة', `تم إضافة العلامة: ${name}`)
-        showToast('✅ تمت الإضافة')
-      }
-      setName(''); setImage(''); await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
-  const del=async id=>{
-    if(!await askConfirm('حذف هذه العلامة؟'))return
-    try {
-      await supabase.from('brands').delete().eq('id',id)
-      await logActivity('حذف علامة', `تم حذف العلامة`)
-      showToast('تم الحذف')
-      await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
-  const startEdit=b=>{ setEditId(b.id); setName(b.name); setImage(b.image||'') }
-  const cancel=()=>{ setEditId(null); setName(''); setImage('') }
-  return (
-    <div>{ToastUI}{ConfirmUI}
-      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🏷️ العلامات التجارية</h1>
+  const [showToast, ToastUI] = useToast();
+  const [askConfirm, ConfirmUI] = useConfirm();
+  const [items, setItems] = useState([]);
+  const [editId, setEditId] = useState(null);
+  const [name, setName] = useState("");
+  const [image, setImage] = useState("");
 
-      {editId&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:7000,
-          display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div style={{background:'white',borderRadius:14,padding:24,width:'100%',maxWidth:400,direction:'rtl'}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
-              <h3 style={{fontWeight:900,fontSize:16}}>✏️ تعديل العلامة التجارية</h3>
-              <button onClick={cancel} style={{background:CLR.bg,border:'none',borderRadius:'50%',width:30,height:30,cursor:'pointer',fontSize:14}}>✕</button>
+  const load = async () => {
+    const { data } = await supabase.from("brands").select("*").order("name");
+    setItems(data || []);
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    if (!name.trim()) {
+      showToast("الاسم مطلوب", "error");
+      return;
+    }
+    try {
+      if (editId) {
+        await supabase
+          .from("brands")
+          .update({ name: name.trim(), image: image || null })
+          .eq("id", editId);
+        await logActivity("تعديل علامة", `تم تعديل العلامة: ${name}`);
+        showToast("✅ تم التعديل");
+        setEditId(null);
+      } else {
+        await supabase
+          .from("brands")
+          .insert({ id: Date.now(), name: name.trim(), image: image || null });
+        await logActivity("إضافة علامة", `تم إضافة العلامة: ${name}`);
+        showToast("✅ تمت الإضافة");
+      }
+      setName("");
+      setImage("");
+      await load();
+    } catch (err) {
+      showToast("❌ خطأ: " + err.message, "error");
+    }
+  };
+
+  const startEdit = (b) => {
+    setEditId(b.id);
+    setName(b.name);
+    setImage(b.image || "");
+  };
+  const cancel = () => {
+    setEditId(null);
+    setName("");
+    setImage("");
+  };
+
+  // ✅ حذف العلامة → سلة المهملات
+  const del = async (id) => {
+    await softDelete("brands", id, items, setItems, load, showToast, askConfirm);
+  };
+
+  return (
+    <div>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🏷️ العلامات التجارية
+      </h1>
+
+      {editId && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.5)",
+            zIndex: 7000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: 14,
+              padding: 24,
+              width: "100%",
+              maxWidth: 400,
+              direction: "rtl",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 900, fontSize: 16 }}>✏️ تعديل العلامة التجارية</h3>
+              <button
+                onClick={cancel}
+                style={{
+                  background: CLR.bg,
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 14,
+                }}
+              >
+                ✕
+              </button>
             </div>
             <label style={S.label}>الاسم *</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} />
-            <label style={{...S.label,marginTop:10}}>شعار جديد (300×300)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/>
-            {image&&<img src={image} style={{width:80,height:80,borderRadius:'50%',objectFit:'cover',display:'block',margin:'8px auto 0'}}/>}
-            <div style={{display:'flex',gap:10,marginTop:16}}>
-              <button style={S.btn} onClick={save}>💾 حفظ التعديل</button>
-              <button style={S.btnGray} onClick={cancel}>إلغاء</button>
+            <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} />
+            <label style={{ ...S.label, marginTop: 10 }}>شعار جديد (300×300)</label>
+            <input
+              style={S.input}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const r = new FileReader();
+                r.onload = (ev) => setImage(ev.target.result);
+                r.readAsDataURL(e.target.files[0]);
+              }}
+            />
+            {image && (
+              <img
+                src={image}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  display: "block",
+                  margin: "8px auto 0",
+                }}
+              />
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button style={S.btn} onClick={save}>
+                💾 حفظ التعديل
+              </button>
+              <button style={S.btnGray} onClick={cancel}>
+                إلغاء
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:10,color:CLR.accent}}>➕ إضافة علامة جديدة</h3>
-        <p style={{fontSize:12,color:CLR.textSm,marginBottom:12}}>📐 حجم شعار الماركة المثالي: <strong>300×300 بكسل</strong> (مربع)</p>
-        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
-          <div style={{flex:1,minWidth:160}}><label style={S.label}>اسم العلامة *</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="مثال: Yema" /></div>
-          <div style={{flex:1,minWidth:160}}><label style={S.label}>شعار (300×300)</label>
-            <input style={S.input} type="file" accept="image/*" onChange={e=>{const r=new FileReader();r.onload=ev=>setImage(ev.target.result);r.readAsDataURL(e.target.files[0])}}/></div>
-          {image&&<img src={image} style={{width:50,height:50,borderRadius:'50%',objectFit:'cover'}}/>}
+        <h3 style={{ fontWeight: 800, marginBottom: 10, color: CLR.accent }}>
+          ➕ إضافة علامة جديدة
+        </h3>
+        <p style={{ fontSize: 12, color: CLR.textSm, marginBottom: 12 }}>
+          📐 حجم شعار الماركة المثالي: <strong>300×300 بكسل</strong> (مربع)
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={S.label}>اسم العلامة *</label>
+            <input
+              style={S.input}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="مثال: Yema"
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={S.label}>شعار (300×300)</label>
+            <input
+              style={S.input}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const r = new FileReader();
+                r.onload = (ev) => setImage(ev.target.result);
+                r.readAsDataURL(e.target.files[0]);
+              }}
+            />
+          </div>
+          {image && (
+            <img
+              src={image}
+              style={{ width: 50, height: 50, borderRadius: "50%", objectFit: "cover" }}
+            />
+          )}
         </div>
-        <div style={{display:'flex',gap:10,marginTop:12}}>
-          <button style={S.btn} onClick={save}>{editId?'💾 حفظ التعديل':'➕ إضافة'}</button>
-          {editId&&<button style={S.btnGray} onClick={cancel}>✖ إلغاء</button>}
+        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          <button style={S.btn} onClick={save}>
+            {editId ? "💾 حفظ التعديل" : "➕ إضافة"}
+          </button>
+          {editId && (
+            <button style={S.btnGray} onClick={cancel}>
+              ✖ إلغاء
+            </button>
+          )}
         </div>
       </div>
       <div style={S.card}>
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead><tr><th style={S.th}>الشعار</th><th style={S.th}>الاسم</th><th style={S.th}>إجراءات</th></tr></thead>
-          <tbody>{items.map((b,i)=>(
-            <tr key={b.id} className="nq-tr" style={{background:i%2===0?'white':CLR.bg,cursor:'pointer'}}
-              onClick={()=>startEdit(b)}>
-              <td style={S.td}>{b.image
-                ?<img src={b.image} style={{width:44,height:44,borderRadius:'50%',objectFit:'cover',border:`2px solid ${CLR.border}`}}/>
-                :<div style={{width:44,height:44,borderRadius:'50%',background:CLR.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🏷️</div>}</td>
-              <td style={{...S.td,fontWeight:700}}>{b.name}</td>
-              <td style={S.td} onClick={e=>e.stopPropagation()}>
-                <div style={{display:'flex',gap:5}}>
-                  <button style={{...S.btnSm,background:'#DBEAFE',color:'#1D4ED8'}} onClick={()=>startEdit(b)}>✏️</button>
-                  <button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={()=>del(b.id)}>🗑️</button>
-                </div>
-              </td>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={S.th}>الشعار</th>
+              <th style={S.th}>الاسم</th>
+              <th style={S.th}>إجراءات</th>
             </tr>
-          ))}
-          {items.length===0&&<tr><td colSpan={3} style={{textAlign:'center',padding:28,color:CLR.textSm}}>
-            <div style={{fontSize:32,marginBottom:8}}>🏷️</div>لا توجد علامات
-          </td></tr>}
+          </thead>
+          <tbody>
+            {items.map((b, i) => (
+              <tr
+                key={b.id}
+                className="nq-tr"
+                style={{ background: i % 2 === 0 ? "white" : CLR.bg, cursor: "pointer" }}
+                onClick={() => startEdit(b)}
+              >
+                <td style={S.td}>
+                  {b.image ? (
+                    <img
+                      src={b.image}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        border: `2px solid ${CLR.border}`,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        background: CLR.bg,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 22,
+                      }}
+                    >
+                      🏷️
+                    </div>
+                  )}
+                </td>
+                <td style={{ ...S.td, fontWeight: 700 }}>{b.name}</td>
+                <td style={S.td} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button
+                      style={{ ...S.btnSm, background: "#DBEAFE", color: "#1D4ED8" }}
+                      onClick={() => startEdit(b)}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+                      onClick={() => del(b.id)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={3} style={{ textAlign: "center", padding: 28, color: CLR.textSm }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🏷️</div>
+                  لا توجد علامات
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
     </div>
-  )
+  );
 }
 
 /* ══════════════════════════════════════════
-   🏭 الموردون
+   🏭 الموردون (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function Suppliers() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [search,setSearch]=useState(''); const [saving,setSaving]=useState(false)
-  const [form,setForm]=useState({id:'',name:'',phone:'',whatsapp:'',email:'',address:''})
-  
-  const load=async()=>{ 
-    const {data}=await supabase.from('suppliers').select('*').order('name')
-    setItems(data||[])
-  }
-  useEffect(()=>{ load() },[])
-  
-  const F = k => e => {
-    const value = e.target.value
-    if ((k === 'phone' || k === 'whatsapp') && !/^[0-9+]*$/.test(value) && value !== '') return
-    setForm(f => ({ ...f, [k]: value }))
-  }
-  
-  const save=async()=>{
-    if(!form.name.trim()){showToast('الاسم مطلوب','error');return} 
-    setSaving(true)
+  const [showToast, ToastUI] = useToast();
+  const [askConfirm, ConfirmUI] = useConfirm();
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    phone: "",
+    whatsapp: "",
+    email: "",
+    address: "",
+  });
+
+  const load = async () => {
+    const { data } = await supabase.from("suppliers").select("*").order("name");
+    setItems(data || []);
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const F = (k) => (e) => {
+    const value = e.target.value;
+    if ((k === "phone" || k === "whatsapp") && !/^[0-9+]*$/.test(value) && value !== "") return;
+    setForm((f) => ({ ...f, [k]: value }));
+  };
+
+  const save = async () => {
+    if (!form.name.trim()) {
+      showToast("الاسم مطلوب", "error");
+      return;
+    }
+    setSaving(true);
     try {
       const data = {
         id: form.id || Date.now(),
         name: form.name.trim(),
-        phone: form.phone || '',
-        whatsapp: form.whatsapp || '',
-        email: form.email || '',
-        address: form.address || ''
+        phone: form.phone || "",
+        whatsapp: form.whatsapp || "",
+        email: form.email || "",
+        address: form.address || "",
+      };
+      const { error } = await supabase.from("suppliers").upsert(data);
+      if (error) {
+        showToast("خطأ: " + error.message, "error");
+        return;
       }
-      const { error } = await supabase.from('suppliers').upsert(data)
-      if (error) { showToast('خطأ: ' + error.message, 'error'); return }
-      
+
       await logActivity(
-        form.id ? 'تعديل مورد' : 'إضافة مورد',
-        `${form.id ? 'تم تعديل' : 'تم إضافة'} المورد: ${form.name}`
-      )
-      
-      showToast(form.id ? '✅ تم التعديل' : '✅ تمت الإضافة')
-      setForm({ id: '', name: '', phone: '', whatsapp: '', email: '', address: '' })
-      await load()
+        form.id ? "تعديل مورد" : "إضافة مورد",
+        `${form.id ? "تم تعديل" : "تم إضافة"} المورد: ${form.name}`
+      );
+
+      showToast(form.id ? "✅ تم التعديل" : "✅ تمت الإضافة");
+      setForm({ id: "", name: "", phone: "", whatsapp: "", email: "", address: "" });
+      await load();
     } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
+      showToast("❌ خطأ: " + err.message, "error");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
-  
-  const edit=s=>setForm({id:s.id,name:s.name,phone:s.phone||'',whatsapp:s.whatsapp||'',email:s.email||'',address:s.address||''})
-  const del=async id=>{
-    if(!await askConfirm('حذف هذا المورد؟'))return
-    try {
-      await supabase.from('suppliers').delete().eq('id',id)
-      await logActivity('حذف مورد', `تم حذف المورد`)
-      showToast('تم الحذف')
-      await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
-  const filtered=items.filter(s=>s.name?.toLowerCase().includes(search.toLowerCase()))
-  
+  };
+
+  const edit = (s) =>
+    setForm({
+      id: s.id,
+      name: s.name,
+      phone: s.phone || "",
+      whatsapp: s.whatsapp || "",
+      email: s.email || "",
+      address: s.address || "",
+    });
+
+  // ✅ حذف المورد → سلة المهملات
+  const del = async (id) => {
+    await softDelete("suppliers", id, items, setItems, load, showToast, askConfirm);
+  };
+
+  const filtered = items.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
+
   return (
-    <div>{ToastUI}{ConfirmUI}
-      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>🏭 الموردون</h1>
+    <div>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🏭 الموردون
+      </h1>
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>{form.id?'✏️ تعديل':'➕ إضافة'} مورد</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          {form.id ? "✏️ تعديل" : "➕ إضافة"} مورد
+        </h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>الاسم *</label><input style={S.input} value={form.name} onChange={F('name')} /></div>
-          <div><label style={S.label}>الهاتف</label>
-            <PhoneInput value={form.phone} onChange={F('phone')} placeholder="مثال: 0555123456" />
+          <div>
+            <label style={S.label}>الاسم *</label>
+            <input style={S.input} value={form.name} onChange={F("name")} />
           </div>
-          <div><label style={S.label}>واتساب</label>
-            <PhoneInput value={form.whatsapp} onChange={F('whatsapp')} placeholder="مثال: 0555123456" />
+          <div>
+            <label style={S.label}>الهاتف</label>
+            <PhoneInput value={form.phone} onChange={F("phone")} placeholder="مثال: 0555123456" />
           </div>
-          <div><label style={S.label}>البريد</label><input style={S.input} value={form.email} onChange={F('email')} /></div>
-          <div><label style={S.label}>العنوان</label><input style={S.input} value={form.address} onChange={F('address')} /></div>
+          <div>
+            <label style={S.label}>واتساب</label>
+            <PhoneInput value={form.whatsapp} onChange={F("whatsapp")} placeholder="مثال: 0555123456" />
+          </div>
+          <div>
+            <label style={S.label}>البريد</label>
+            <input style={S.input} value={form.email} onChange={F("email")} />
+          </div>
+          <div>
+            <label style={S.label}>العنوان</label>
+            <input style={S.input} value={form.address} onChange={F("address")} />
+          </div>
         </div>
-        <div style={{display:'flex',gap:10,marginTop:14}}>
-          <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ'}</button>
-          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',phone:'',whatsapp:'',email:'',address:''})}>✖</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button style={S.btn} onClick={save} disabled={saving}>
+            {saving ? "⏳..." : "💾 حفظ"}
+          </button>
+          <button
+            style={S.btnGray}
+            onClick={() => setForm({ id: "", name: "", phone: "", whatsapp: "", email: "", address: "" })}
+          >
+            ✖
+          </button>
         </div>
       </div>
       <div style={S.card}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10}}>
-          <h3 style={{fontWeight:800}}>الموردون ({filtered.length})</h3>
-          <input style={{...S.input,width:200}} placeholder="🔍 بحث..." value={search} onChange={e=>setSearch(e.target.value)} />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 14,
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <h3 style={{ fontWeight: 800 }}>الموردون ({filtered.length})</h3>
+          <input
+            style={{ ...S.input, width: 200 }}
+            placeholder="🔍 بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={S.th}>الاسم</th><th style={S.th}>الهاتف</th><th style={S.th}>واتساب</th><th style={S.th}>إجراءات</th></tr></thead>
-            <tbody>{filtered.map(s=>(
-              <tr key={s.id} className='nq-tr'>
-                <td style={{...S.td,fontWeight:700}}>{s.name}</td>
-                <td style={S.td}>{s.phone||'—'}</td>
-                <td style={S.td}>{s.whatsapp?<a href={`https://wa.me/${s.whatsapp}`} target="_blank" style={{color:'#25D366',fontWeight:700}}>💬 {s.whatsapp}</a>:'—'}</td>
-                <td style={{...S.td,display:'flex',gap:5}}>
-                  <button style={{...S.btnSm,background:'#dbeafe',color:'#1d4ed8'}} onClick={()=>edit(s)}>✏️</button>
-                  <button style={{...S.btnSm,background:'#fee2e2',color:'#dc2626'}} onClick={()=>del(s.id)}>🗑️</button>
-                </td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={S.th}>الاسم</th>
+                <th style={S.th}>الهاتف</th>
+                <th style={S.th}>واتساب</th>
+                <th style={S.th}>إجراءات</th>
               </tr>
-            ))}
-            {filtered.length===0&&<tr><td colSpan={4} style={{textAlign:'center',padding:24,color:CLR.textSm}}>لا توجد موردين</td></tr>}
+            </thead>
+            <tbody>
+              {filtered.map((s) => (
+                <tr key={s.id} className="nq-tr">
+                  <td style={{ ...S.td, fontWeight: 700 }}>{s.name}</td>
+                  <td style={S.td}>{s.phone || "—"}</td>
+                  <td style={S.td}>
+                    {s.whatsapp ? (
+                      <a
+                        href={`https://wa.me/${s.whatsapp}`}
+                        target="_blank"
+                        style={{ color: "#25D366", fontWeight: 700 }}
+                      >
+                        💬 {s.whatsapp}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td style={{ ...S.td, display: "flex", gap: 5 }}>
+                    <button
+                      style={{ ...S.btnSm, background: "#dbeafe", color: "#1d4ed8" }}
+                      onClick={() => edit(s)}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }}
+                      onClick={() => del(s.id)}
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: "center", padding: 24, color: CLR.textSm }}>
+                    لا توجد موردين
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /* ══════════════════════════════════════════
-   👥 العملاء + تصنيف M1/M2/M3 + نقاط
+   👥 العملاء (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function Customers() {
-  const [showToast,ToastUI]=useToast(); const [askConfirm,ConfirmUI]=useConfirm()
-  const [items,setItems]=useState([]); const [search,setSearch]=useState(''); const [saving,setSaving]=useState(false)
-  const [tierSettings,setTierSettings]=useState({ m1:0, m2:5000, m3:20000, d1:0, d2:5, d3:10 })
-  const [form,setForm]=useState({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})
-  const [tierFilter,setTierFilter]=useState('all')
-  const [groupFilter,setGroupFilter]=useState('all')
-  const [groups,setGroups]=useState([])
+  const [showToast, ToastUI] = useToast();
+  const [askConfirm, ConfirmUI] = useConfirm();
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [tierSettings, setTierSettings] = useState({ m1: 0, m2: 5000, m3: 20000, d1: 0, d2: 5, d3: 10 });
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    password: "",
+    tier: "M1",
+    group: "",
+  });
+  const [tierFilter, setTierFilter] = useState("all");
+  const [groupFilter, setGroupFilter] = useState("all");
+  const [groups, setGroups] = useState([]);
 
-  const load=async()=>{
-    const {data}=await supabase.from('customers').select('*').order('name')
-    setItems(data||[])
-    const uniqueGroups = [...new Set((data||[]).map(c => c.group).filter(Boolean))]
-    setGroups(uniqueGroups)
-  }
-  useEffect(()=>{
-    load()
-    supabase.from('settings').select('*').in('key',['tier_m2_min','tier_m3_min','tier_m1_discount','tier_m2_discount','tier_m3_discount'])
-      .then(({data})=>{
-        if(!data) return
-        const m={}; data.forEach(r=>(m[r.key]=parseFloat(r.value)))
-        setTierSettings({ m1:0, m2:m['tier_m2_min']||5000, m3:m['tier_m3_min']||20000,
-          d1:m['tier_m1_discount']||0, d2:m['tier_m2_discount']||5, d3:m['tier_m3_discount']||10 })
-      })
-  },[])
+  const load = async () => {
+    const { data } = await supabase.from("customers").select("*").order("name");
+    setItems(data || []);
+    const uniqueGroups = [...new Set((data || []).map((c) => c.group).filter(Boolean))];
+    setGroups(uniqueGroups);
+  };
+  useEffect(() => {
+    load();
+    supabase
+      .from("settings")
+      .select("*")
+      .in("key", [
+        "tier_m2_min",
+        "tier_m3_min",
+        "tier_m1_discount",
+        "tier_m2_discount",
+        "tier_m3_discount",
+      ])
+      .then(({ data }) => {
+        if (!data) return;
+        const m = {};
+        data.forEach((r) => (m[r.key] = parseFloat(r.value)));
+        setTierSettings({
+          m1: 0,
+          m2: m["tier_m2_min"] || 5000,
+          m3: m["tier_m3_min"] || 20000,
+          d1: m["tier_m1_discount"] || 0,
+          d2: m["tier_m2_discount"] || 5,
+          d3: m["tier_m3_discount"] || 10,
+        });
+      });
+  }, []);
 
-  const F = k => e => {
-    const value = e.target.value
-    if (k === 'phone' && !/^[0-9+]*$/.test(value) && value !== '') return
-    setForm(f => ({ ...f, [k]: value }))
-  }
+  const F = (k) => (e) => {
+    const value = e.target.value;
+    if (k === "phone" && !/^[0-9+]*$/.test(value) && value !== "") return;
+    setForm((f) => ({ ...f, [k]: value }));
+  };
 
-  // ✅ نظام النقاط
   const calculatePoints = (totalAmount) => {
-    return Math.floor(totalAmount / 100)
-  }
+    return Math.floor(totalAmount / 100);
+  };
 
   const pointsToDiscount = (points) => {
-    return Math.floor(points / 100)
-  }
+    return Math.floor(points / 100);
+  };
 
-  const save=async()=>{
-    if(!form.name.trim()){showToast('الاسم مطلوب','error');return} setSaving(true)
+  const save = async () => {
+    if (!form.name.trim()) {
+      showToast("الاسم مطلوب", "error");
+      return;
+    }
+    setSaving(true);
     try {
-      const ex=items.find(c=>c.id==form.id)
-      const {error}=await supabase.from('customers').upsert({
-        id:form.id||Date.now(), name:form.name.trim(), email:form.email, phone:form.phone,
-        address:form.address, tier:form.tier, group:form.group || null,
-        password:form.password?hashPwd(form.password):(ex?.password||hashPwd('123456')),
-        points:ex?.points||0, created_at:ex?.created_at||new Date().toISOString()
-      })
-      if(error){showToast('خطأ: '+error.message,'error');return}
-      
+      const ex = items.find((c) => c.id == form.id);
+      const { error } = await supabase.from("customers").upsert({
+        id: form.id || Date.now(),
+        name: form.name.trim(),
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+        tier: form.tier,
+        group: form.group || null,
+        password: form.password ? hashPwd(form.password) : ex?.password || hashPwd("123456"),
+        points: ex?.points || 0,
+        created_at: ex?.created_at || new Date().toISOString(),
+      });
+      if (error) {
+        showToast("خطأ: " + error.message, "error");
+        return;
+      }
+
       await logActivity(
-        form.id ? 'تعديل عميل' : 'إضافة عميل',
-        `${form.id ? 'تم تعديل' : 'تم إضافة'} العميل: ${form.name}`
-      )
-      
-      showToast(form.id?'✅ تم التعديل':'✅ تمت الإضافة')
-      setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})
-      await load()
+        form.id ? "تعديل عميل" : "إضافة عميل",
+        `${form.id ? "تم تعديل" : "تم إضافة"} العميل: ${form.name}`
+      );
+
+      showToast(form.id ? "✅ تم التعديل" : "✅ تمت الإضافة");
+      setForm({ id: "", name: "", email: "", phone: "", address: "", password: "", tier: "M1", group: "" });
+      await load();
     } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
+      showToast("❌ خطأ: " + err.message, "error");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const edit=c=>setForm({id:c.id,name:c.name,email:c.email||'',phone:c.phone||'',address:c.address||'',password:'',tier:c.tier||'M1',group:c.group||''})
-  const del=async id=>{
-    if(!await askConfirm('حذف هذا العميل؟'))return
-    try {
-      await supabase.from('customers').delete().eq('id',id)
-      await logActivity('حذف عميل', `تم حذف العميل`)
-      showToast('تم الحذف')
-      await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
-  }
+  const edit = (c) =>
+    setForm({
+      id: c.id,
+      name: c.name,
+      email: c.email || "",
+      phone: c.phone || "",
+      address: c.address || "",
+      password: "",
+      tier: c.tier || "M1",
+      group: c.group || "",
+    });
 
-  const tierLabel = t => ({ M1:'🥉 M1 عادي', M2:'🥈 M2 مميز', M3:'🥇 M3 VIP' }[t]||t)
+  // ✅ حذف العميل → سلة المهملات
+  const del = async (id) => {
+    await softDelete("customers", id, items, setItems, load, showToast, askConfirm);
+  };
 
-  const filtered=items.filter(c=>{
-    const matchName = c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
-    const matchTier = tierFilter === 'all' || (c.tier || 'M1') === tierFilter
-    const matchGroup = groupFilter === 'all' || c.group === groupFilter
-    return matchName && matchTier && matchGroup
-  })
+  const tierLabel = (t) => ({ M1: "🥉 M1 عادي", M2: "🥈 M2 مميز", M3: "🥇 M3 VIP" }[t] || t);
+
+  const filtered = items.filter((c) => {
+    const matchName = c.name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search);
+    const matchTier = tierFilter === "all" || (c.tier || "M1") === tierFilter;
+    const matchGroup = groupFilter === "all" || c.group === groupFilter;
+    return matchName && matchTier && matchGroup;
+  });
 
   return (
     <div>
-      {ToastUI}{ConfirmUI}
-      <h1 style={{fontSize:20,fontWeight:900,marginBottom:20,color:CLR.text}}>👥 العملاء</h1>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        👥 العملاء
+      </h1>
 
-      <div style={{...S.card, background:'linear-gradient(135deg,#fffbeb,#fef3c7)', border:'1px solid #fcd34d'}}>
-        <h3 style={{fontWeight:800,marginBottom:12,color:'#92400e'}}>🏅 إعدادات تصنيف العملاء</h3>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+      <div
+        style={{
+          ...S.card,
+          background: "linear-gradient(135deg,#fffbeb,#fef3c7)",
+          border: "1px solid #fcd34d",
+        }}
+      >
+        <h3 style={{ fontWeight: 800, marginBottom: 12, color: "#92400e" }}>
+          🏅 إعدادات تصنيف العملاء
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
           {[
-            {tier:'M1',label:'🥉 M1 عادي',min:0,disc:tierSettings.d1,color:CLR.textSm},
-            {tier:'M2',label:'🥈 M2 مميز',min:tierSettings.m2,disc:tierSettings.d2,color:'#3b82f6'},
-            {tier:'M3',label:'🥇 M3 VIP',min:tierSettings.m3,disc:tierSettings.d3,color:'#f59e0b'},
-          ].map(({tier,label,min,disc,color})=>(
-            <div key={tier} style={{background:'white',borderRadius:12,padding:12,textAlign:'center',border:`2px solid ${color}`}}>
-              <div style={{fontWeight:800,color,marginBottom:4}}>{label}</div>
-              <div style={{fontSize:13,color:CLR.textSm}}>من {min} {CUR}</div>
-              <div style={{fontSize:13,color:'#10b981',fontWeight:700}}>خصم {disc}%</div>
+            { tier: "M1", label: "🥉 M1 عادي", min: 0, disc: tierSettings.d1, color: CLR.textSm },
+            { tier: "M2", label: "🥈 M2 مميز", min: tierSettings.m2, disc: tierSettings.d2, color: "#3b82f6" },
+            { tier: "M3", label: "🥇 M3 VIP", min: tierSettings.m3, disc: tierSettings.d3, color: "#f59e0b" },
+          ].map(({ tier, label, min, disc, color }) => (
+            <div
+              key={tier}
+              style={{
+                background: "white",
+                borderRadius: 12,
+                padding: 12,
+                textAlign: "center",
+                border: `2px solid ${color}`,
+              }}
+            >
+              <div style={{ fontWeight: 800, color, marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 13, color: CLR.textSm }}>من {min} {CUR}</div>
+              <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700 }}>خصم {disc}%</div>
             </div>
           ))}
         </div>
-        <p style={{fontSize:12,color:'#92400e',marginTop:10}}>💡 لتعديل حدود الرتب اذهب إلى ⚙️ الإعدادات → تصنيف العملاء</p>
+        <p style={{ fontSize: 12, color: "#92400e", marginTop: 10 }}>
+          💡 لتعديل حدود الرتب اذهب إلى ⚙️ الإعدادات → تصنيف العملاء
+        </p>
       </div>
 
       <div style={S.card}>
-        <h3 style={{fontWeight:800,marginBottom:14,color:'#dc2626'}}>{form.id?'✏️ تعديل':'➕ إضافة'} عميل</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          {form.id ? "✏️ تعديل" : "➕ إضافة"} عميل
+        </h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>الاسم *</label><input style={S.input} value={form.name} onChange={F('name')} /></div>
-          <div><label style={S.label}>البريد</label><input style={S.input} value={form.email} onChange={F('email')} /></div>
-          <div><label style={S.label}>الهاتف</label>
-            <PhoneInput value={form.phone} onChange={F('phone')} placeholder="مثال: 0555123456" />
+          <div>
+            <label style={S.label}>الاسم *</label>
+            <input style={S.input} value={form.name} onChange={F("name")} />
           </div>
-          <div><label style={S.label}>العنوان</label><input style={S.input} value={form.address} onChange={F('address')} /></div>
-          <div><label style={S.label}>كلمة المرور</label><input style={S.input} type="password" value={form.password} onChange={F('password')} /></div>
-          <div><label style={S.label}>الرتبة</label>
-            <select style={S.input} value={form.tier} onChange={F('tier')}>
+          <div>
+            <label style={S.label}>البريد</label>
+            <input style={S.input} value={form.email} onChange={F("email")} />
+          </div>
+          <div>
+            <label style={S.label}>الهاتف</label>
+            <PhoneInput value={form.phone} onChange={F("phone")} placeholder="مثال: 0555123456" />
+          </div>
+          <div>
+            <label style={S.label}>العنوان</label>
+            <input style={S.input} value={form.address} onChange={F("address")} />
+          </div>
+          <div>
+            <label style={S.label}>كلمة المرور</label>
+            <input style={S.input} type="password" value={form.password} onChange={F("password")} />
+          </div>
+          <div>
+            <label style={S.label}>الرتبة</label>
+            <select style={S.input} value={form.tier} onChange={F("tier")}>
               <option value="M1">🥉 M1 — عميل عادي</option>
               <option value="M2">🥈 M2 — عميل مميز</option>
               <option value="M3">🥇 M3 — عميل VIP</option>
-            </select></div>
-          <div><label style={S.label}>المجموعة</label>
-            <input style={S.input} value={form.group} onChange={F('group')} placeholder="مثال: عملاء مميزين, ولاية الجزائر" />
+            </select>
+          </div>
+          <div>
+            <label style={S.label}>المجموعة</label>
+            <input
+              style={S.input}
+              value={form.group}
+              onChange={F("group")}
+              placeholder="مثال: عملاء مميزين, ولاية الجزائر"
+            />
           </div>
         </div>
-        <div style={{display:'flex',gap:10,marginTop:14}}>
-          <button style={S.btn} onClick={save} disabled={saving}>{saving?'⏳...':'💾 حفظ'}</button>
-          <button style={S.btnGray} onClick={()=>setForm({id:'',name:'',email:'',phone:'',address:'',password:'',tier:'M1',group:''})}>✖</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button style={S.btn} onClick={save} disabled={saving}>
+            {saving ? "⏳..." : "💾 حفظ"}
+          </button>
+          <button
+            style={S.btnGray}
+            onClick={() =>
+              setForm({
+                id: "",
+                name: "",
+                email: "",
+                phone: "",
+                address: "",
+                password: "",
+                tier: "M1",
+                group: "",
+              })
+            }
+          >
+            ✖
+          </button>
         </div>
       </div>
 
       <div style={S.card}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10,alignItems:'center'}}>
-          <h3 style={{fontWeight:800,fontSize:15}}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 14,
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ fontWeight: 800, fontSize: 15 }}>
             العملاء
-            <span style={{marginRight:8,background:CLR.bg,border:'1px solid #E2E8F0',borderRadius:20,
-              padding:'2px 10px',fontSize:12,fontWeight:600,color:CLR.textSm}}>{filtered.length}</span>
+            <span
+              style={{
+                marginRight: 8,
+                background: CLR.bg,
+                border: "1px solid #E2E8F0",
+                borderRadius: 20,
+                padding: "2px 10px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: CLR.textSm,
+              }}
+            >
+              {filtered.length}
+            </span>
           </h3>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            <input style={{...S.input,width:200}} placeholder="🔍 اسم / هاتف..." value={search} onChange={e=>setSearch(e.target.value)} />
-            <select style={{...S.input,width:110}} value={tierFilter||'all'} onChange={e=>setTierFilter(e.target.value)}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              style={{ ...S.input, width: 200 }}
+              placeholder="🔍 اسم / هاتف..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              style={{ ...S.input, width: 110 }}
+              value={tierFilter || "all"}
+              onChange={(e) => setTierFilter(e.target.value)}
+            >
               <option value="all">كل الرتب</option>
               <option value="M1">🥉 M1</option>
               <option value="M2">🥈 M2</option>
               <option value="M3">🥇 M3</option>
             </select>
-            <select style={{...S.input,width:130}} value={groupFilter||'all'} onChange={e=>setGroupFilter(e.target.value)}>
+            <select
+              style={{ ...S.input, width: 130 }}
+              value={groupFilter || "all"}
+              onChange={(e) => setGroupFilter(e.target.value)}
+            >
               <option value="all">كل المجموعات</option>
-              {groups.map(g => <option key={g} value={g}>{g}</option>)}
+              {groups.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
             </select>
           </div>
         </div>
-        <div style={{overflowX:'auto'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{background:CLR.bg}}>
+              <tr style={{ background: CLR.bg }}>
                 <th style={S.th}>الاسم</th>
                 <th style={S.th}>الهاتف</th>
                 <th style={S.th}>الولاية</th>
@@ -1631,53 +2615,91 @@ function Customers() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c,i)=>{
-                const ts={M1:{bg:'#F1F5F9',color:CLR.textSm},M2:{bg:'#DBEAFE',color:'#1D4ED8'},M3:{bg:'#FEF9C3',color:'#92400E'}}[c.tier||'M1']
+              {filtered.map((c, i) => {
+                const ts = {
+                  M1: { bg: "#F1F5F9", color: CLR.textSm },
+                  M2: { bg: "#DBEAFE", color: "#1D4ED8" },
+                  M3: { bg: "#FEF9C3", color: "#92400E" },
+                }[c.tier || "M1"];
                 return (
-                  <tr key={c.id}
-                    style={{background:i%2===0?'white':CLR.bg,cursor:'pointer',transition:'background .15s'}}
-                    onMouseEnter={e=>e.currentTarget.style.background='#FFF7ED'}
-                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?'white':CLR.bg}
-                    onClick={()=>edit(c)}>
-                    <td style={{...S.td,fontWeight:700}}>
+                  <tr
+                    key={c.id}
+                    style={{
+                      background: i % 2 === 0 ? "white" : CLR.bg,
+                      cursor: "pointer",
+                      transition: "background .15s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#FFF7ED")}
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = i % 2 === 0 ? "white" : CLR.bg)
+                    }
+                    onClick={() => edit(c)}
+                  >
+                    <td style={{ ...S.td, fontWeight: 700 }}>
                       <div>{c.name}</div>
-                      {c.email&&<div style={{fontSize:11,color:CLR.textSm}}>{c.email}</div>}
+                      {c.email && <div style={{ fontSize: 11, color: CLR.textSm }}>{c.email}</div>}
                     </td>
-                    <td style={{...S.td,color:CLR.textSm}}>{c.phone||'—'}</td>
-                    <td style={{...S.td,color:CLR.textSm}}>{(c.address||'—').split(',')[0]}</td>
+                    <td style={{ ...S.td, color: CLR.textSm }}>{c.phone || "—"}</td>
+                    <td style={{ ...S.td, color: CLR.textSm }}>{(c.address || "—").split(",")[0]}</td>
                     <td style={S.td}>
-                      <span style={{padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700,background:ts?.bg,color:ts?.color}}>
-                        {tierLabel(c.tier||'M1')}
+                      <span
+                        style={{
+                          padding: "3px 10px",
+                          borderRadius: 20,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: ts?.bg,
+                          color: ts?.color,
+                        }}
+                      >
+                        {tierLabel(c.tier || "M1")}
                       </span>
                     </td>
-                    <td style={{...S.td,color:CLR.textSm}}>{c.group || '—'}</td>
-                    <td style={{...S.td,fontWeight:700,color:CLR.accent}}>
-                      {Number(c.total_purchases||0).toFixed(0)} {CUR}
+                    <td style={{ ...S.td, color: CLR.textSm }}>{c.group || "—"}</td>
+                    <td style={{ ...S.td, fontWeight: 700, color: CLR.accent }}>
+                      {Number(c.total_purchases || 0).toFixed(0)} {CUR}
                     </td>
-                    <td style={{...S.td,color:CLR.textSm}}>
-                      {c.points||0} ⭐
-                      {c.points > 0 && <span style={{fontSize:10,color:'#10b981',marginRight:4}}>
-                        (خصم {pointsToDiscount(c.points)}%)
-                      </span>}
+                    <td style={{ ...S.td, color: CLR.textSm }}>
+                      {c.points || 0} ⭐
+                      {c.points > 0 && (
+                        <span style={{ fontSize: 10, color: "#10b981", marginRight: 4 }}>
+                          (خصم {pointsToDiscount(c.points)}%)
+                        </span>
+                      )}
                     </td>
-                    <td style={S.td} onClick={e=>e.stopPropagation()}>
-                      <div style={{display:'flex',gap:4}}>
-                        <button style={{...S.btnSm,background:'#DBEAFE',color:'#1D4ED8'}} onClick={()=>edit(c)}>✏️</button>
-                        <button style={{...S.btnSm,background:'#FEE2E2',color:'#DC2626'}} onClick={()=>del(c.id)}>🗑️</button>
+                    <td style={S.td} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          style={{ ...S.btnSm, background: "#DBEAFE", color: "#1D4ED8" }}
+                          onClick={() => edit(c)}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+                          onClick={() => del(c.id)}
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </td>
                   </tr>
-                )
+                );
               })}
-              {filtered.length===0&&<tr><td colSpan={8} style={{textAlign:'center',padding:36,color:CLR.textSm}}>
-                <div style={{fontSize:32,marginBottom:8}}>👥</div>لا يوجد عملاء
-              </td></tr>}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: "center", padding: 36, color: CLR.textSm }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+                    لا يوجد عملاء
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
     </div>
-  )
+  );
 }
 /* ══════════════════════════════════════════
    👔 الموظفون (مع صلاحيات تفصيلية)
@@ -1782,16 +2804,9 @@ function Employees() {
     }
   }
 
-  const del=async id=>{
-    if(!await askConfirm('حذف هذا الموظف؟'))return
-    try {
-      await supabase.from('employees').delete().eq('id',id)
-      await logActivity('حذف موظف', `تم حذف الموظف`)
-      showToast('تم الحذف')
-      await load()
-    } catch (err) {
-      showToast('❌ خطأ: '+err.message, 'error')
-    }
+  // ✅ حذف الموظف → سلة المهملات
+  const del = async (id) => {
+    await softDelete('employees', id, items, setItems, load, showToast, askConfirm)
   }
 
   const edit = (emp) => {
@@ -2411,7 +3426,7 @@ function Inventory() {
           </table>
         </div>
         <div style={{marginTop:12,fontWeight:700,color:'#3b82f6'}}>
-          💰 إجمالي قيمة المخزون: {filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} {CUR}
+          💰 إجمالي قيمة المخزون: ${filtered.reduce((s,p)=>s+(p.stock||0)*Number(p.price),0).toFixed(0)} {CUR}
         </div>
       </div>
     </div>
@@ -2673,8 +3688,8 @@ function Orders() {
     </div>
   )
 }
-      /* ══════════════════════════════════════════
-   🎯 إدارة العروض الكاملة (مصححة - بدون .catch())
+/* ══════════════════════════════════════════
+   🎯 إدارة العروض (مع سلة المهملات)
 ══════════════════════════════════════════ */
 function PromotionsManager() {
   const [showToast, ToastUI] = useToast();
@@ -2735,7 +3750,6 @@ function PromotionsManager() {
     r.readAsDataURL(e.target.files[0]);
   };
 
-  // ✅ save مصحح (بدون .catch())
   const save = async () => {
     if (!form.name.trim()) {
       showToast("⚠️ اسم العرض مطلوب", "error");
@@ -2823,26 +3837,11 @@ function PromotionsManager() {
       region: p.region || "",
     });
 
-  // ✅ del مصحح (بدون .catch())
+  // ✅ حذف العرض → سلة المهملات
   const del = async (id) => {
-    if (!(await askConfirm("حذف هذا العرض؟"))) return;
-    try {
-      const { error } = await supabase.from("promotions").delete().eq("id", id);
-      if (error) {
-        console.error("❌ خطأ في حذف العرض:", error);
-        showToast("❌ خطأ: " + error.message, "error");
-        return;
-      }
-      await logActivity("حذف عرض", `تم حذف العرض`);
-      showToast("✅ تم الحذف");
-      await load();
-    } catch (err) {
-      console.error("❌ خطأ:", err);
-      showToast("❌ خطأ في الحذف", "error");
-    }
+    await softDelete("promotions", id, promos, setPromos, load, showToast, askConfirm);
   };
 
-  // ✅ toggleActive مصحح (بدون .catch())
   const toggleActive = async (id, val) => {
     try {
       const { error } = await supabase.from("promotions").update({ active: val }).eq("id", id);
@@ -2872,10 +3871,14 @@ function PromotionsManager() {
     <div>
       {ToastUI}
       {ConfirmUI}
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🎯 إدارة العروض</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🎯 إدارة العروض
+      </h1>
 
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>{form.id ? "✏️ تعديل" : "➕ إنشاء"} عرض</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          {form.id ? "✏️ تعديل" : "➕ إنشاء"} عرض
+        </h3>
 
         <div style={S.grid2}>
           <div>
@@ -2941,12 +3944,25 @@ function PromotionsManager() {
         <div style={{ marginTop: 12 }}>
           <label style={S.label}>صورة بانر العرض (1200×400)</label>
           <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
-          {form.image && <img src={form.image} style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 10, marginTop: 6 }} />}
+          {form.image && (
+            <img
+              src={form.image}
+              style={{
+                width: "100%",
+                height: 80,
+                objectFit: "cover",
+                borderRadius: 10,
+                marginTop: 6,
+              }}
+            />
+          )}
         </div>
 
         {form.type === "tier_buy" && (
           <div style={{ background: "#f0f9ff", borderRadius: 12, padding: 14, marginTop: 12 }}>
-            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "#1d4ed8" }}>📦 عند شراء X كرتون من نفس الشركة → خصم</p>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: "#1d4ed8" }}>
+              📦 عند شراء X كرتون من نفس الشركة → خصم
+            </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               <div>
                 <label style={S.label}>عدد الكراتين المطلوب</label>
@@ -2972,7 +3988,9 @@ function PromotionsManager() {
         )}
 
         <div style={{ marginTop: 14 }}>
-          <label style={{ ...S.label, marginBottom: 8 }}>🔍 المنتجات المشمولة بالعرض</label>
+          <label style={{ ...S.label, marginBottom: 8 }}>
+            🔍 المنتجات المشمولة بالعرض
+          </label>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <input
               style={{ ...S.input, flex: 1, marginBottom: 0 }}
@@ -2983,13 +4001,19 @@ function PromotionsManager() {
             <button
               style={{ ...S.btnSm, background: CLR.accent, color: "white", padding: "6px 14px" }}
               onClick={() => {
-                const vis = products.filter((p) => !prodSearch || p.name.toLowerCase().includes(prodSearch.toLowerCase()));
+                const vis = products.filter(
+                  (p) => !prodSearch || p.name.toLowerCase().includes(prodSearch.toLowerCase())
+                );
                 const visIds = vis.map((p) => p.id);
-                const allSel = visIds.every((id) => form.product_ids.includes(id) || form.product_ids.includes(String(id)));
+                const allSel = visIds.every(
+                  (id) => form.product_ids.includes(id) || form.product_ids.includes(String(id))
+                );
                 setForm((f) => ({
                   ...f,
                   product_ids: allSel
-                    ? f.product_ids.filter((x) => !visIds.includes(x) && !visIds.map(String).includes(String(x)))
+                    ? f.product_ids.filter(
+                        (x) => !visIds.includes(x) && !visIds.map(String).includes(String(x))
+                      )
                     : [...new Set([...f.product_ids, ...visIds])],
                 }));
               }}
@@ -3005,14 +4029,26 @@ function PromotionsManager() {
               </button>
             )}
           </div>
-          <div style={{ maxHeight: 280, overflowY: "auto", border: `1.5px solid ${CLR.border}`, borderRadius: 10, background: "white" }}>
+          <div
+            style={{
+              maxHeight: 280,
+              overflowY: "auto",
+              border: `1.5px solid ${CLR.border}`,
+              borderRadius: 10,
+              background: "white",
+            }}
+          >
             {products.length === 0 ? (
-              <div style={{ padding: 24, textAlign: "center", color: CLR.textSm }}>⏳ جاري تحميل المنتجات...</div>
+              <div style={{ padding: 24, textAlign: "center", color: CLR.textSm }}>
+                ⏳ جاري تحميل المنتجات...
+              </div>
             ) : products.filter((p) => {
                 if (!prodSearch || prodSearch.trim() === "") return true;
                 return p.name?.toLowerCase().includes(prodSearch.toLowerCase());
               }).length === 0 ? (
-              <div style={{ padding: 24, textAlign: "center", color: CLR.textSm }}>🔍 لا توجد نتائج لـ "{prodSearch}"</div>
+              <div style={{ padding: 24, textAlign: "center", color: CLR.textSm }}>
+                🔍 لا توجد نتائج لـ "{prodSearch}"
+              </div>
             ) : (
               products
                 .filter((p) => {
@@ -3022,57 +4058,260 @@ function PromotionsManager() {
                 .map((p, i) => {
                   const sel = form.product_ids.includes(p.id) || form.product_ids.includes(String(p.id));
                   return (
-                    <label key={p.id} onClick={() => toggleProduct(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", background: sel ? "#FFF7ED" : i % 2 === 0 ? "white" : CLR.bg, borderBottom: `1px solid ${CLR.border}` }}>
-                      <input type="checkbox" checked={sel} onChange={() => {}} style={{ accentColor: CLR.accent, width: 16, height: 16, cursor: "pointer" }} />
-                      {p.image ? <img src={p.image} style={{ width: 38, height: 38, borderRadius: 8, objectFit: "cover", border: `1px solid ${CLR.border}` }} /> : <div style={{ width: 38, height: 38, borderRadius: 8, background: CLR.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📦</div>}
+                    <label
+                      key={p.id}
+                      onClick={() => toggleProduct(p.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        background: sel ? "#FFF7ED" : i % 2 === 0 ? "white" : CLR.bg,
+                        borderBottom: `1px solid ${CLR.border}`,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={sel}
+                        onChange={() => {}}
+                        style={{ accentColor: CLR.accent, width: 16, height: 16, cursor: "pointer" }}
+                      />
+                      {p.image ? (
+                        <img
+                          src={p.image}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            objectFit: "cover",
+                            border: `1px solid ${CLR.border}`,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            background: CLR.bg,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 20,
+                          }}
+                        >
+                          📦
+                        </div>
+                      )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: sel ? 700 : 500, color: sel ? CLR.accent : CLR.text, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: CLR.textSm, marginTop: 1 }}>💰 {p.price} {CUR} | 📦 {p.stock || 0} كرتون</div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: sel ? 700 : 500,
+                            color: sel ? CLR.accent : CLR.text,
+                            overflow: "hidden",
+                            whiteSpace: "nowrap",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {p.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: CLR.textSm, marginTop: 1 }}>
+                          💰 {p.price} {CUR} | 📦 {p.stock || 0} كرتون
+                        </div>
                       </div>
-                      {sel && <div style={{ background: CLR.accent, color: "white", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900 }}>✓</div>}
+                      {sel && (
+                        <div
+                          style={{
+                            background: CLR.accent,
+                            color: "white",
+                            borderRadius: "50%",
+                            width: 22,
+                            height: 22,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            fontWeight: 900,
+                          }}
+                        >
+                          ✓
+                        </div>
+                      )}
                     </label>
                   );
                 })
             )}
           </div>
-          <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: form.product_ids.length > 0 ? CLR.success : CLR.textSm }}>
-            {form.product_ids.length > 0 ? `✅ ${form.product_ids.length} منتج محدد` : "📦 لم يُحدَّد أي منتج — العرض يشمل جميع المنتجات"}
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              color: form.product_ids.length > 0 ? CLR.success : CLR.textSm,
+            }}
+          >
+            {form.product_ids.length > 0
+              ? `✅ ${form.product_ids.length} منتج محدد`
+              : "📦 لم يُحدَّد أي منتج — العرض يشمل جميع المنتجات"}
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
-          <input type="checkbox" id="active" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
-          <label htmlFor="active" style={{ fontWeight: 700, cursor: "pointer" }}>⚡ تفعيل العرض فور الحفظ</label>
+          <input
+            type="checkbox"
+            id="active"
+            checked={form.active}
+            onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+          />
+          <label htmlFor="active" style={{ fontWeight: 700, cursor: "pointer" }}>
+            ⚡ تفعيل العرض فور الحفظ
+          </label>
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <button style={S.btn} onClick={save} disabled={saving}>{saving ? "⏳..." : "💾 حفظ العرض"}</button>
-          <button style={S.btnGray} onClick={() => setForm({ id: "", name: "", type: "percent", active: true, buy_qty: 3, get_qty: 1, discount_value: 0, product_ids: [], min_amount: 0, description: "", end_date: "", image: "", region: "" })}>✖ إلغاء</button>
+          <button style={S.btn} onClick={save} disabled={saving}>
+            {saving ? "⏳..." : "💾 حفظ العرض"}
+          </button>
+          <button
+            style={S.btnGray}
+            onClick={() =>
+              setForm({
+                id: "",
+                name: "",
+                type: "percent",
+                active: true,
+                buy_qty: 3,
+                get_qty: 1,
+                discount_value: 0,
+                product_ids: [],
+                min_amount: 0,
+                description: "",
+                end_date: "",
+                image: "",
+                region: "",
+              })
+            }
+          >
+            ✖ إلغاء
+          </button>
         </div>
       </div>
 
       <div style={S.card}>
         <h3 style={{ fontWeight: 800, marginBottom: 14 }}>العروض الحالية ({promos.length})</h3>
-        {promos.length === 0 && <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>لا توجد عروض</p>}
+        {promos.length === 0 && (
+          <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>لا توجد عروض</p>
+        )}
         {promos.map((p) => {
           const pids = typeof p.product_ids === "string" ? JSON.parse(p.product_ids || "[]") : (p.product_ids || []);
           const isExpired = p.end_date && new Date(p.end_date) < new Date();
           return (
-            <div key={p.id} style={{ background: p.active && !isExpired ? "#f0fdf4" : "#f8fafc", borderRadius: 14, padding: 14, marginBottom: 10, border: `1px solid ${p.active && !isExpired ? "#10b981" : "#e2e8f0"}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+            <div
+              key={p.id}
+              style={{
+                background: p.active && !isExpired ? "#f0fdf4" : "#f8fafc",
+                borderRadius: 14,
+                padding: 14,
+                marginBottom: 10,
+                border: `1px solid ${p.active && !isExpired ? "#10b981" : "#e2e8f0"}`,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 15 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: CLR.textSm, marginTop: 2 }}>{typeLabel[p.type] || p.type}</div>
-                  {p.description && <div style={{ fontSize: 12, color: CLR.textSm, marginTop: 4, fontStyle: "italic" }}>"{p.description}"</div>}
-                  {p.end_date && <div style={{ fontSize: 11, color: isExpired ? "#ef4444" : "#f59e0b", marginTop: 2 }}>{isExpired ? "⏰ انتهى" : "⏳ ينتهي"}: {new Date(p.end_date).toLocaleDateString("ar-DZ")}</div>}
-                  {p.region && <div style={{ fontSize: 11, color: "#3b82f6", marginTop: 2 }}>📍 {p.region}</div>}
-                  <div style={{ fontSize: 11, color: CLR.textSm, marginTop: 4 }}>{pids.length === 0 ? "📦 يشمل كل المنتجات" : `📦 ${pids.length} منتج محدد`}</div>
+                  <div style={{ fontSize: 12, color: CLR.textSm, marginTop: 2 }}>
+                    {typeLabel[p.type] || p.type}
+                  </div>
+                  {p.description && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: CLR.textSm,
+                        marginTop: 4,
+                        fontStyle: "italic",
+                      }}
+                    >
+                      "{p.description}"
+                    </div>
+                  )}
+                  {p.end_date && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: isExpired ? "#ef4444" : "#f59e0b",
+                        marginTop: 2,
+                      }}
+                    >
+                      {isExpired ? "⏰ انتهى" : "⏳ ينتهي"}:{" "}
+                      {new Date(p.end_date).toLocaleDateString("ar-DZ")}
+                    </div>
+                  )}
+                  {p.region && (
+                    <div style={{ fontSize: 11, color: "#3b82f6", marginTop: 2 }}>
+                      📍 {p.region}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: CLR.textSm, marginTop: 4 }}>
+                    {pids.length === 0
+                      ? "📦 يشمل كل المنتجات"
+                      : `📦 ${pids.length} منتج محدد`}
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: p.active && !isExpired ? "#d1fae5" : isExpired ? "#fee2e2" : "#fef9c3", color: p.active && !isExpired ? "#059669" : isExpired ? "#dc2626" : "#92400e" }}>{isExpired ? "منتهي" : p.active ? "✅ فعّال" : "⏸️ موقوف"}</span>
-                  <button style={{ ...S.btnSm, background: p.active ? "#fef9c3" : "#d1fae5", color: p.active ? "#92400e" : "#059669" }} onClick={() => toggleActive(p.id, !p.active)}>{p.active ? "⏸️ إيقاف" : "▶️ تفعيل"}</button>
-                  <button style={{ ...S.btnSm, background: "#dbeafe", color: "#1d4ed8" }} onClick={() => edit(p)}>✏️</button>
-                  <button style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }} onClick={() => del(p.id)}>🗑️</button>
+                  <span
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background:
+                        p.active && !isExpired
+                          ? "#d1fae5"
+                          : isExpired
+                          ? "#fee2e2"
+                          : "#fef9c3",
+                      color:
+                        p.active && !isExpired
+                          ? "#059669"
+                          : isExpired
+                          ? "#dc2626"
+                          : "#92400e",
+                    }}
+                  >
+                    {isExpired ? "منتهي" : p.active ? "✅ فعّال" : "⏸️ موقوف"}
+                  </span>
+                  <button
+                    style={{
+                      ...S.btnSm,
+                      background: p.active ? "#fef9c3" : "#d1fae5",
+                      color: p.active ? "#92400e" : "#059669",
+                    }}
+                    onClick={() => toggleActive(p.id, !p.active)}
+                  >
+                    {p.active ? "⏸️ إيقاف" : "▶️ تفعيل"}
+                  </button>
+                  <button
+                    style={{ ...S.btnSm, background: "#dbeafe", color: "#1d4ed8" }}
+                    onClick={() => edit(p)}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }}
+                    onClick={() => del(p.id)}
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             </div>
@@ -3121,17 +4360,25 @@ function Notifications() {
   });
 
   const send = async () => {
-    if (!title || !body) { showToast("العنوان والنص مطلوبان", "error"); return; }
+    if (!title || !body) {
+      showToast("العنوان والنص مطلوبان", "error");
+      return;
+    }
     setSaving(true);
     try {
       await supabase.from("notifications").insert({
-        id: Date.now(), title, body,
-        target_type: targetType, target_count: targeted.length,
-        date: new Date().toLocaleString("ar-DZ"), is_read: false,
+        id: Date.now(),
+        title,
+        body,
+        target_type: targetType,
+        target_count: targeted.length,
+        date: new Date().toLocaleString("ar-DZ"),
+        is_read: false,
       });
       await logActivity("إرسال إشعار", `تم إرسال إشعار لـ ${targeted.length} عميل: ${title}`);
       showToast(`✅ تم الإرسال لـ ${targeted.length} عميل`);
-      setTitle(""); setBody("");
+      setTitle("");
+      setBody("");
       await load();
     } catch (err) {
       showToast("❌ خطأ: " + err.message, "error");
@@ -3146,49 +4393,116 @@ function Notifications() {
   return (
     <div>
       {ToastUI}
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🔔 الإشعارات</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🔔 الإشعارات
+      </h1>
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>📢 إرسال إشعار</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          📢 إرسال إشعار
+        </h3>
         <label style={S.label}>👥 أرسل إلى</label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           {Object.entries(tierLabels).map(([k, v]) => (
-            <button key={k} onClick={() => setTargetType(k)} style={{ ...S.btnSm, background: targetType === k ? tierColors[k] : "#f1f5f9", color: targetType === k ? "white" : "#64748b", border: `2px solid ${targetType === k ? tierColors[k] : "transparent"}`, fontWeight: 700 }}>{v}</button>
+            <button
+              key={k}
+              onClick={() => setTargetType(k)}
+              style={{
+                ...S.btnSm,
+                background: targetType === k ? tierColors[k] : "#f1f5f9",
+                color: targetType === k ? "white" : "#64748b",
+                border: `2px solid ${targetType === k ? tierColors[k] : "transparent"}`,
+                fontWeight: 700,
+              }}
+            >
+              {v}
+            </button>
           ))}
         </div>
         {targetType === "address" && (
           <div style={{ marginBottom: 12 }}>
             <label style={S.label}>🗺️ فلتر العنوان</label>
-            <input style={S.input} value={addressFilter} onChange={(e) => setAddressFilter(e.target.value)} placeholder="مثال: الجزائر العاصمة" />
-            <p style={{ fontSize: 11, color: CLR.textSm, marginTop: 4 }}>📌 سيتم إرسال الإشعار للعملاء الذين يحتوي عنوانهم على هذه الكلمة</p>
+            <input
+              style={S.input}
+              value={addressFilter}
+              onChange={(e) => setAddressFilter(e.target.value)}
+              placeholder="مثال: الجزائر العاصمة"
+            />
+            <p style={{ fontSize: 11, color: CLR.textSm, marginTop: 4 }}>
+              📌 سيتم إرسال الإشعار للعملاء الذين يحتوي عنوانهم على هذه الكلمة
+            </p>
           </div>
         )}
-        <div style={{ background: "#f0fdf4", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 13, fontWeight: 700, color: "#059669" }}>👥 سيصل الإشعار إلى: <strong>{targeted.length}</strong> عميل</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <div><label style={S.label}>العنوان *</label><input style={S.input} value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div><label style={S.label}>النص *</label><input style={S.input} value={body} onChange={(e) => setBody(e.target.value)} /></div>
+        <div
+          style={{
+            background: "#f0fdf4",
+            borderRadius: 10,
+            padding: "10px 14px",
+            marginBottom: 12,
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#059669",
+          }}
+        >
+          👥 سيصل الإشعار إلى: <strong>{targeted.length}</strong> عميل
         </div>
-        <button style={S.btn} onClick={send} disabled={saving || targeted.length === 0}>{saving ? "⏳..." : "📢 إرسال"}</button>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={S.label}>العنوان *</label>
+            <input style={S.input} value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <label style={S.label}>النص *</label>
+            <input style={S.input} value={body} onChange={(e) => setBody(e.target.value)} />
+          </div>
+        </div>
+        <button style={S.btn} onClick={send} disabled={saving || targeted.length === 0}>
+          {saving ? "⏳..." : "📢 إرسال"}
+        </button>
       </div>
       <div style={S.card}>
-        {items.length === 0 ? <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>لا توجد إشعارات</p> :
+        {items.length === 0 ? (
+          <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>لا توجد إشعارات</p>
+        ) : (
           items.map((n) => (
             <div key={n.id} style={{ borderBottom: `1px solid ${CLR.bg}`, padding: "12px 0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 6,
+                }}
+              >
                 <strong>{n.title}</strong>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {n.target_type && n.target_type !== "all" && <span style={{ fontSize: 11, background: "#f1f5f9", borderRadius: 20, padding: "2px 8px" }}>{tierLabels[n.target_type] || n.target_type}</span>}
-                  {n.target_count > 0 && <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>{n.target_count} عميل</span>}
+                  {n.target_type && n.target_type !== "all" && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        background: "#f1f5f9",
+                        borderRadius: 20,
+                        padding: "2px 8px",
+                      }}
+                    >
+                      {tierLabels[n.target_type] || n.target_type}
+                    </span>
+                  )}
+                  {n.target_count > 0 && (
+                    <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>
+                      {n.target_count} عميل
+                    </span>
+                  )}
                   <span style={{ fontSize: 12, color: CLR.textSm }}>{n.date}</span>
                 </div>
               </div>
               <p style={{ fontSize: 14, color: CLR.textSm, marginTop: 4 }}>{n.body}</p>
             </div>
-          ))}
+          ))
+        )}
       </div>
     </div>
   );
 }
-
 /* ══════════════════════════════════════════
    📈 التقارير
 ══════════════════════════════════════════ */
@@ -3239,8 +4553,18 @@ function Reports() {
   const thisY = now.getFullYear();
   const lastM = thisM === 0 ? 11 : thisM - 1;
   const lastY = thisM === 0 ? thisY - 1 : thisY;
-  const salesThisM = data.orders.filter((o) => { const d = new Date(o.created_at || o.date); return d.getMonth() === thisM && d.getFullYear() === thisY; }).reduce((s, o) => s + Number(o.total), 0);
-  const salesLastM = data.orders.filter((o) => { const d = new Date(o.created_at || o.date); return d.getMonth() === lastM && d.getFullYear() === lastY; }).reduce((s, o) => s + Number(o.total), 0);
+  const salesThisM = data.orders
+    .filter((o) => {
+      const d = new Date(o.created_at || o.date);
+      return d.getMonth() === thisM && d.getFullYear() === thisY;
+    })
+    .reduce((s, o) => s + Number(o.total), 0);
+  const salesLastM = data.orders
+    .filter((o) => {
+      const d = new Date(o.created_at || o.date);
+      return d.getMonth() === lastM && d.getFullYear() === lastY;
+    })
+    .reduce((s, o) => s + Number(o.total), 0);
   const chg = salesLastM > 0 ? Math.round(((salesThisM - salesLastM) / salesLastM) * 100) : 0;
   const totalSales = data.orders.reduce((s, o) => s + Number(o.total), 0);
   const totalPurch = data.purchases.reduce((s, p) => s + Number(p.total), 0);
@@ -3250,10 +4574,14 @@ function Reports() {
   const prodSales = {};
   data.orders.forEach((o) => {
     const its = typeof o.items === "string" ? JSON.parse(o.items || "[]") : (o.items || []);
-    its.forEach((i) => { prodSales[i.name] = (prodSales[i.name] || 0) + ((i.qty || 1) * (i.price || 0)); });
+    its.forEach((i) => {
+      prodSales[i.name] = (prodSales[i.name] || 0) + ((i.qty || 1) * (i.price || 0));
+    });
   });
   const topProds = Object.entries(prodSales).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const topCusts = [...data.customers].sort((a, b) => Number(b.total_purchases || 0) - Number(a.total_purchases || 0)).slice(0, 8);
+  const topCusts = [...data.customers]
+    .sort((a, b) => Number(b.total_purchases || 0) - Number(a.total_purchases || 0))
+    .slice(0, 8);
   const geoData = {};
   data.orders.forEach((o) => {
     const w = (o.address || o.customer_address || "غير محدد").split(/[,،]/)[0].trim() || "غير محدد";
@@ -3264,14 +4592,50 @@ function Reports() {
   const maxC = Number(topCusts[0]?.total_purchases || 1);
   const maxG = topGeo[0]?.[1] || 1;
 
-  const sSt = (s) => ({ padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: { pending: "#FEF9C3", confirmed: "#DBEAFE", shipping: "#E0E7FF", delivered: "#D1FAE5", cancelled: "#FEE2E2" }[s] || "#F1F5F9", color: { pending: "#92400E", confirmed: "#1D4ED8", shipping: "#5B21B6", delivered: "#059669", cancelled: "#DC2626" }[s] || "#475569" });
+  const sSt = (s) => ({
+    padding: "3px 9px",
+    borderRadius: 20,
+    fontSize: 11,
+    fontWeight: 700,
+    background:
+      {
+        pending: "#FEF9C3",
+        confirmed: "#DBEAFE",
+        shipping: "#E0E7FF",
+        delivered: "#D1FAE5",
+        cancelled: "#FEE2E2",
+      }[s] || "#F1F5F9",
+    color:
+      {
+        pending: "#92400E",
+        confirmed: "#1D4ED8",
+        shipping: "#5B21B6",
+        delivered: "#059669",
+        cancelled: "#DC2626",
+      }[s] || "#475569",
+  });
 
   return (
     <div>
       {ToastUI}
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>📈 التقارير</h1>
-      <button style={{ ...S.btn, background: "#7c3aed", marginBottom: 16 }} onClick={exportPDF}>📄 تصدير تقرير PDF</button>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12, marginBottom: 20 }}>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        📈 التقارير
+      </h1>
+      <button
+        style={{ ...S.btn, background: "#7c3aed", marginBottom: 16 }}
+        onClick={exportPDF}
+      >
+        📄 تصدير تقرير PDF
+      </button>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
         {[
           { l: "هذا الشهر", v: salesThisM, c: CLR.accent, i: "📅", ch: chg },
           { l: "الشهر الماضي", v: salesLastM, c: "#94A3B8", i: "🗓️" },
@@ -3279,97 +4643,261 @@ function Reports() {
           { l: "صافي الربح", v: profit, c: profit >= 0 ? CLR.success : CLR.danger, i: "📊" },
         ].map((s, i) => (
           <div key={i} style={{ ...S.card, marginBottom: 0, borderTop: `3px solid ${s.c}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: s.c + "18", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{s.i}</div>
-              {s.ch !== undefined && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: s.ch >= 0 ? "#D1FAE5" : "#FEE2E2", color: s.ch >= 0 ? "#059669" : "#DC2626" }}>{s.ch >= 0 ? "↑" : "↓"}{Math.abs(s.ch)}%</span>}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: s.c + "18",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                }}
+              >
+                {s.i}
+              </div>
+              {s.ch !== undefined && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 7px",
+                    borderRadius: 20,
+                    background: s.ch >= 0 ? "#D1FAE5" : "#FEE2E2",
+                    color: s.ch >= 0 ? "#059669" : "#DC2626",
+                  }}
+                >
+                  {s.ch >= 0 ? "↑" : "↓"}
+                  {Math.abs(s.ch)}%
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginTop: 8 }}>{s.v.toFixed(0)} {CUR}</div>
+            <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginTop: 8 }}>
+              {s.v.toFixed(0)} {CUR}
+            </div>
             <div style={{ fontSize: 12, color: CLR.textSm }}>{s.l}</div>
           </div>
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {[["overview", "نظرة عامة"], ["products", "المنتجات"], ["customers", "العملاء"], ["geo", "جغرافي"]].map(([v, l]) => (
-          <button key={v} onClick={() => setRepTab(v)} style={{ ...S.btnSm, background: repTab === v ? CLR.accent : "white", color: repTab === v ? "white" : CLR.textSm, border: `1px solid ${repTab === v ? CLR.accent : CLR.border}`, padding: "7px 16px", fontSize: 13 }}>{l}</button>
+        {[
+          ["overview", "نظرة عامة"],
+          ["products", "المنتجات"],
+          ["customers", "العملاء"],
+          ["geo", "جغرافي"],
+        ].map(([v, l]) => (
+          <button
+            key={v}
+            onClick={() => setRepTab(v)}
+            style={{
+              ...S.btnSm,
+              background: repTab === v ? CLR.accent : "white",
+              color: repTab === v ? "white" : CLR.textSm,
+              border: `1px solid ${repTab === v ? CLR.accent : CLR.border}`,
+              padding: "7px 16px",
+              fontSize: 13,
+            }}
+          >
+            {l}
+          </button>
         ))}
       </div>
       {repTab === "overview" && (
         <div style={S.card}>
-          <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>📋 آخر الطلبيات</h3>
+          <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>
+            📋 آخر الطلبيات
+          </h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: CLR.bg }}><th style={S.th}>#</th><th style={S.th}>العميل</th><th style={S.th}>الولاية</th><th style={S.th}>الإجمالي</th><th style={S.th}>الحالة</th></tr></thead>
-              <tbody>{data.orders.slice(0, 15).map((o, i) => (
-                <tr key={o.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
-                  <td style={{ ...S.td, fontSize: 11, color: CLR.textSm }}>#{String(o.id).slice(-5)}</td>
-                  <td style={{ ...S.td, fontWeight: 700 }}>{o.customer_name}</td>
-                  <td style={{ ...S.td, color: CLR.textSm }}>{(o.address || o.customer_address || "—").split(/[,،]/)[0]}</td>
-                  <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>{Number(o.total).toFixed(0)} {CUR}</td>
-                  <td style={S.td}><span style={sSt(o.status)}>{o.status || "انتظار"}</span></td>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>#</th>
+                  <th style={S.th}>العميل</th>
+                  <th style={S.th}>الولاية</th>
+                  <th style={S.th}>الإجمالي</th>
+                  <th style={S.th}>الحالة</th>
                 </tr>
-              ))}</tbody>
+              </thead>
+              <tbody>
+                {data.orders.slice(0, 15).map((o, i) => (
+                  <tr key={o.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
+                    <td style={{ ...S.td, fontSize: 11, color: CLR.textSm }}>
+                      #{String(o.id).slice(-5)}
+                    </td>
+                    <td style={{ ...S.td, fontWeight: 700 }}>{o.customer_name}</td>
+                    <td style={{ ...S.td, color: CLR.textSm }}>
+                      {(o.address || o.customer_address || "—").split(/[,،]/)[0]}
+                    </td>
+                    <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>
+                      {Number(o.total).toFixed(0)} {CUR}
+                    </td>
+                    <td style={S.td}>
+                      <span style={sSt(o.status)}>{o.status || "انتظار"}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
       )}
       {repTab === "products" && (
         <div style={S.card}>
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>📦 أكثر المنتجات مبيعاً</h3>
-          {topProds.length === 0 ? <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p> :
+          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
+            📦 أكثر المنتجات مبيعاً
+          </h3>
+          {topProds.length === 0 ? (
+            <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p>
+          ) : (
             topProds.map(([name, val], i) => (
               <div key={i} style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700 }}>{i + 1}. {name}</span>
-                  <span style={{ color: CLR.accent, fontWeight: 700 }}>{val.toFixed(0)} {CUR}</span>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 5,
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ fontWeight: 700 }}>
+                    {i + 1}. {name}
+                  </span>
+                  <span style={{ color: CLR.accent, fontWeight: 700 }}>
+                    {val.toFixed(0)} {CUR}
+                  </span>
                 </div>
                 <div style={{ background: CLR.bg, borderRadius: 30, height: 8, overflow: "hidden" }}>
-                  <div style={{ width: `${(val / maxP) * 100}%`, height: "100%", background: `linear-gradient(90deg,${CLR.accent},${CLR.accentDk})`, borderRadius: 30 }} />
+                  <div
+                    style={{
+                      width: `${(val / maxP) * 100}%`,
+                      height: "100%",
+                      background: `linear-gradient(90deg,${CLR.accent},${CLR.accentDk})`,
+                      borderRadius: 30,
+                    }}
+                  />
                 </div>
               </div>
-            ))}
+            ))
+          )}
         </div>
       )}
       {repTab === "customers" && (
         <div style={S.card}>
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>👥 أكثر العملاء شراءً</h3>
+          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
+            👥 أكثر العملاء شراءً
+          </h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: CLR.bg }}><th style={S.th}>#</th><th style={S.th}>الاسم</th><th style={S.th}>الرتبة</th><th style={S.th}>المشتريات</th><th style={S.th}>التقدم</th></tr></thead>
-              <tbody>{topCusts.map((c, i) => {
-                const ts = { M1: { bg: "#F1F5F9", color: CLR.textSm }, M2: { bg: "#DBEAFE", color: "#1D4ED8" }, M3: { bg: "#FEF9C3", color: "#92400E" } }[c.tier || "M1"];
-                return (
-                  <tr key={c.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
-                    <td style={{ ...S.td, fontWeight: 900, color: CLR.textSm }}>{i + 1}</td>
-                    <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
-                    <td style={S.td}><span style={{ ...ts, padding: "2px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{c.tier || "M1"}</span></td>
-                    <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>{Number(c.total_purchases || 0).toFixed(0)} {CUR}</td>
-                    <td style={{ ...S.td, minWidth: 100 }}>
-                      <div style={{ background: CLR.bg, borderRadius: 30, height: 6, overflow: "hidden" }}>
-                        <div style={{ width: `${Math.min(100, (Number(c.total_purchases || 0) / maxC) * 100)}%`, height: "100%", background: `linear-gradient(90deg,${CLR.accent},#FB923C)`, borderRadius: 30 }} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}</tbody>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>#</th>
+                  <th style={S.th}>الاسم</th>
+                  <th style={S.th}>الرتبة</th>
+                  <th style={S.th}>المشتريات</th>
+                  <th style={S.th}>التقدم</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topCusts.map((c, i) => {
+                  const ts = {
+                    M1: { bg: "#F1F5F9", color: CLR.textSm },
+                    M2: { bg: "#DBEAFE", color: "#1D4ED8" },
+                    M3: { bg: "#FEF9C3", color: "#92400E" },
+                  }[c.tier || "M1"];
+                  return (
+                    <tr key={c.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
+                      <td style={{ ...S.td, fontWeight: 900, color: CLR.textSm }}>{i + 1}</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
+                      <td style={S.td}>
+                        <span
+                          style={{
+                            ...ts,
+                            padding: "2px 9px",
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {c.tier || "M1"}
+                        </span>
+                      </td>
+                      <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>
+                        {Number(c.total_purchases || 0).toFixed(0)} {CUR}
+                      </td>
+                      <td style={{ ...S.td, minWidth: 100 }}>
+                        <div
+                          style={{
+                            background: CLR.bg,
+                            borderRadius: 30,
+                            height: 6,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                (Number(c.total_purchases || 0) / maxC) * 100
+                              )}%`,
+                              height: "100%",
+                              background: `linear-gradient(90deg,${CLR.accent},#FB923C)`,
+                              borderRadius: 30,
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
         </div>
       )}
       {repTab === "geo" && (
         <div style={S.card}>
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>🗺️ المبيعات حسب الولاية</h3>
-          {topGeo.length === 0 ? <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p> :
+          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
+            🗺️ المبيعات حسب الولاية
+          </h3>
+          {topGeo.length === 0 ? (
+            <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p>
+          ) : (
             topGeo.map(([wil, val], i) => (
               <div key={i} style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 13 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 5,
+                    fontSize: 13,
+                  }}
+                >
                   <span style={{ fontWeight: 700 }}>📍 {wil}</span>
-                  <span style={{ color: CLR.info, fontWeight: 700 }}>{val.toFixed(0)} {CUR}</span>
+                  <span style={{ color: CLR.info, fontWeight: 700 }}>
+                    {val.toFixed(0)} {CUR}
+                  </span>
                 </div>
                 <div style={{ background: CLR.bg, borderRadius: 30, height: 8, overflow: "hidden" }}>
-                  <div style={{ width: `${(val / maxG) * 100}%`, height: "100%", background: `linear-gradient(90deg,${CLR.info},#60A5FA)`, borderRadius: 30 }} />
+                  <div
+                    style={{
+                      width: `${(val / maxG) * 100}%`,
+                      height: "100%",
+                      background: `linear-gradient(90deg,${CLR.info},#60A5FA)`,
+                      borderRadius: 30,
+                    }}
+                  />
                 </div>
               </div>
-            ))}
+            ))
+          )}
         </div>
       )}
     </div>
@@ -3385,7 +4913,12 @@ function Expenses() {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", amount: "", date: new Date().toISOString().split("T")[0], category: "other" });
+  const [form, setForm] = useState({
+    name: "",
+    amount: "",
+    date: new Date().toISOString().split("T")[0],
+    category: "other",
+  });
   const load = async () => {
     try {
       const { data } = await supabase.from("expenses").select("*").order("id", { ascending: false });
@@ -3395,16 +4928,32 @@ function Expenses() {
       showToast("❌ خطأ في تحميل المصاريف", "error");
     }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
   const F = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const add = async () => {
-    if (!form.name || !form.amount) { showToast("الاسم والمبلغ مطلوبان", "error"); return; }
+    if (!form.name || !form.amount) {
+      showToast("الاسم والمبلغ مطلوبان", "error");
+      return;
+    }
     setSaving(true);
     try {
-      await supabase.from("expenses").insert({ id: Date.now(), name: form.name.trim(), amount: parseFloat(form.amount), date: form.date, category: form.category });
+      await supabase.from("expenses").insert({
+        id: Date.now(),
+        name: form.name.trim(),
+        amount: parseFloat(form.amount),
+        date: form.date,
+        category: form.category,
+      });
       await logActivity("إضافة مصروف", `تم إضافة مصروف: ${form.name} بقيمة ${form.amount} دج`);
       showToast("✅ تمت الإضافة");
-      setForm({ name: "", amount: "", date: new Date().toISOString().split("T")[0], category: "other" });
+      setForm({
+        name: "",
+        amount: "",
+        date: new Date().toISOString().split("T")[0],
+        category: "other",
+      });
       await load();
     } catch (err) {
       showToast("❌ خطأ: " + err.message, "error");
@@ -3428,40 +4977,100 @@ function Expenses() {
   const total = items.reduce((s, e) => s + Number(e.amount), 0);
   return (
     <div>
-      {ToastUI}{ConfirmUI}
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>💸 المصاريف</h1>
+      {ToastUI}
+      {ConfirmUI}
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        💸 المصاريف
+      </h1>
       <div style={S.card}>
         <div style={S.grid2}>
-          <div><label style={S.label}>الاسم *</label><input style={S.input} value={form.name} onChange={F("name")} /></div>
-          <div><label style={S.label}>المبلغ *</label><NumInput value={form.amount} onChange={F("amount")} /></div>
-          <div><label style={S.label}>التاريخ</label><input style={S.input} type="date" value={form.date} onChange={F("date")} /></div>
-          <div><label style={S.label}>الفئة</label><select style={S.input} value={form.category} onChange={F("category")}><option value="rent">إيجار</option><option value="salary">رواتب</option><option value="utilities">فواتير</option><option value="other">أخرى</option></select></div>
+          <div>
+            <label style={S.label}>الاسم *</label>
+            <input style={S.input} value={form.name} onChange={F("name")} />
+          </div>
+          <div>
+            <label style={S.label}>المبلغ *</label>
+            <NumInput value={form.amount} onChange={F("amount")} />
+          </div>
+          <div>
+            <label style={S.label}>التاريخ</label>
+            <input style={S.input} type="date" value={form.date} onChange={F("date")} />
+          </div>
+          <div>
+            <label style={S.label}>الفئة</label>
+            <select style={S.input} value={form.category} onChange={F("category")}>
+              <option value="rent">إيجار</option>
+              <option value="salary">رواتب</option>
+              <option value="utilities">فواتير</option>
+              <option value="other">أخرى</option>
+            </select>
+          </div>
         </div>
-        <button style={{ ...S.btn, marginTop: 14 }} onClick={add} disabled={saving}>{saving ? "⏳..." : "➕ إضافة"}</button>
+        <button style={{ ...S.btn, marginTop: 14 }} onClick={add} disabled={saving}>
+          {saving ? "⏳..." : "➕ إضافة"}
+        </button>
       </div>
       <div style={S.card}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 14,
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
           <h3 style={{ fontWeight: 800 }}>المصاريف</h3>
-          <input style={{ ...S.input, width: 200 }} placeholder="🔍 بحث..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            style={{ ...S.input, width: 200 }}
+            placeholder="🔍 بحث..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr><th style={S.th}>الاسم</th><th style={S.th}>المبلغ</th><th style={S.th}>الفئة</th><th style={S.th}>التاريخ</th><th style={S.th}>حذف</th></tr></thead>
+            <thead>
+              <tr>
+                <th style={S.th}>الاسم</th>
+                <th style={S.th}>المبلغ</th>
+                <th style={S.th}>الفئة</th>
+                <th style={S.th}>التاريخ</th>
+                <th style={S.th}>حذف</th>
+              </tr>
+            </thead>
             <tbody>
               {filtered.map((e) => (
                 <tr key={e.id} className="nq-tr">
                   <td style={{ ...S.td, fontWeight: 700 }}>{e.name}</td>
-                  <td style={{ ...S.td, color: "#ef4444", fontWeight: 700 }}>{Number(e.amount).toFixed(0)} {CUR}</td>
+                  <td style={{ ...S.td, color: "#ef4444", fontWeight: 700 }}>
+                    {Number(e.amount).toFixed(0)} {CUR}
+                  </td>
                   <td style={S.td}>{catLabel[e.category] || e.category}</td>
                   <td style={S.td}>{e.date}</td>
-                  <td style={S.td}><button style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }} onClick={() => del(e.id)}>🗑️</button></td>
+                  <td style={S.td}>
+                    <button
+                      style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }}
+                      onClick={() => del(e.id)}
+                    >
+                      🗑️
+                    </button>
+                  </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", padding: 24, color: CLR.textSm }}>لا توجد مصاريف</td></tr>}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "center", padding: 24, color: CLR.textSm }}>
+                    لا توجد مصاريف
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-        <div style={{ marginTop: 14, fontWeight: 900, color: "#ef4444", fontSize: 16 }}>💰 الإجمالي: {total.toFixed(0)} {CUR}</div>
+        <div style={{ marginTop: 14, fontWeight: 900, color: "#ef4444", fontSize: 16 }}>
+          💰 الإجمالي: {total.toFixed(0)} {CUR}
+        </div>
       </div>
     </div>
   );
@@ -3476,7 +5085,11 @@ function ActivityLog() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await supabase.from("activity_log").select("*").order("id", { ascending: false }).limit(50);
+        const { data } = await supabase
+          .from("activity_log")
+          .select("*")
+          .order("id", { ascending: false })
+          .limit(50);
         setItems(data || []);
       } catch (err) {
         console.error("❌ خطأ في تحميل سجل النشاطات:", err);
@@ -3488,23 +5101,38 @@ function ActivityLog() {
   }, []);
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>📋 سجل النشاطات</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        📋 سجل النشاطات
+      </h1>
       <div style={{ ...S.card, maxHeight: 500, overflowY: "auto" }}>
-        {loading ? <div style={{ textAlign: "center", padding: 24, color: CLR.textSm }}>⏳ جاري التحميل...</div> :
-          items.length === 0 ? <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>📭 لا توجد نشاطات مسجلة</p> :
-            items.map((log) => (
-              <div key={log.id} style={{ borderBottom: `1px solid ${CLR.bg}`, padding: "10px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><strong style={{ color: CLR.accent }}>{log.action}</strong><span style={{ fontSize: 12, color: CLR.textSm }}>{log.date}</span></div>
-                <p style={{ fontSize: 13, color: CLR.textSm, marginTop: 2 }}>{log.details}</p>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 24, color: CLR.textSm }}>
+            ⏳ جاري التحميل...
+          </div>
+        ) : items.length === 0 ? (
+          <p style={{ textAlign: "center", color: CLR.textSm, padding: 24 }}>
+            📭 لا توجد نشاطات مسجلة
+          </p>
+        ) : (
+          items.map((log) => (
+            <div
+              key={log.id}
+              style={{ borderBottom: `1px solid ${CLR.bg}`, padding: "10px 0" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <strong style={{ color: CLR.accent }}>{log.action}</strong>
+                <span style={{ fontSize: 12, color: CLR.textSm }}>{log.date}</span>
               </div>
-            ))}
+              <p style={{ fontSize: 13, color: CLR.textSm, marginTop: 2 }}>{log.details}</p>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
-
 /* ══════════════════════════════════════════
-   🗑️ سلة مهملات (مصححة - بدون .catch())
+   🗑️ سلة المهملات (مصححة بالكامل)
 ══════════════════════════════════════════ */
 function RecycleBin() {
   const [showToast, ToastUI] = useToast();
@@ -3514,13 +5142,18 @@ function RecycleBin() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("deleted_items").select("*").order("deleted_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("deleted_items")
+        .select("*")
+        .order("deleted_at", { ascending: false });
+
       if (error) {
         console.error("❌ خطأ في تحميل سلة المهملات:", error);
         showToast("❌ خطأ في تحميل سلة المهملات", "error");
         setItems([]);
       } else {
         setItems(data || []);
+        console.log("✅ تم تحميل سلة المهملات:", data?.length || 0);
       }
     } catch (err) {
       console.error("❌ خطأ:", err);
@@ -3529,12 +5162,18 @@ function RecycleBin() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, []);
 
-  // ✅ restore مصحح (بدون .catch())
+  useEffect(() => {
+    load();
+  }, []);
+
+  // ✅ استعادة العنصر
   const restore = async (id) => {
     const item = items.find((i) => i.id === id);
-    if (!item) { showToast("❌ العنصر غير موجود", "error"); return; }
+    if (!item) {
+      showToast("❌ العنصر غير موجود", "error");
+      return;
+    }
     try {
       const data = JSON.parse(item.data);
       const { error } = await supabase.from(item.table_name).insert(data);
@@ -3543,7 +5182,14 @@ function RecycleBin() {
         showToast("❌ خطأ: " + error.message, "error");
         return;
       }
-      await supabase.from("deleted_items").delete().eq("id", id);
+
+      const { error: deleteError } = await supabase.from("deleted_items").delete().eq("id", id);
+      if (deleteError) {
+        console.error("❌ خطأ:", deleteError);
+        showToast("❌ خطأ في الحذف", "error");
+        return;
+      }
+
       await logActivity("استعادة عنصر", `تم استعادة عنصر من سلة المهملات`);
       showToast("✅ تم استعادة العنصر");
       load();
@@ -3553,7 +5199,7 @@ function RecycleBin() {
     }
   };
 
-  // ✅ permanentDelete مصحح (بدون .catch())
+  // ✅ حذف نهائي
   const permanentDelete = async (id) => {
     if (!confirm("⚠️ حذف نهائي؟ لا يمكن استعادته")) return;
     try {
@@ -3576,38 +5222,72 @@ function RecycleBin() {
     <div>
       {ToastUI}
       <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>🗑️ سلة المهملات</h1>
-      <p style={{ color: CLR.textSm, marginBottom: 16, fontSize: 13 }}>العناصر المحذوفة خلال آخر 30 يوم يمكن استعادتها</p>
+      <p style={{ color: CLR.textSm, marginBottom: 16, fontSize: 13 }}>
+        العناصر المحذوفة خلال آخر 30 يوم يمكن استعادتها
+      </p>
       <div style={S.card}>
-        {loading ? <div style={{ textAlign: "center", padding: 40 }}>⏳ جاري التحميل...</div> :
-          items.length === 0 ? <div style={{ textAlign: "center", padding: 40, color: CLR.textSm }}>🗑️ سلة المهملات فارغة<p style={{ fontSize: 12, marginTop: 8 }}>عند حذف منتج أو عنصر، سيظهر هنا</p></div> :
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr style={{ background: CLR.bg }}><th style={S.th}>الجدول</th><th style={S.th}>البيانات</th><th style={S.th}>تاريخ الحذف</th><th style={S.th}>إجراءات</th></tr></thead>
-                <tbody>
-                  {items.map((item) => {
-                    let dataPreview = "";
-                    try { const d = JSON.parse(item.data); dataPreview = d.name || d.title || d.code || `#${d.id || item.item_id}`; } catch { dataPreview = `#${item.item_id}`; }
-                    return (
-                      <tr key={item.id} className="nq-tr">
-                        <td style={S.td}>{item.table_name}</td>
-                        <td style={S.td}>{dataPreview}</td>
-                        <td style={S.td}>{new Date(item.deleted_at).toLocaleDateString("ar-DZ")}</td>
-                        <td style={S.td}>
-                          <div style={{ display: "flex", gap: 5 }}>
-                            <button style={{ ...S.btnSm, background: "#D1FAE5", color: "#059669" }} onClick={() => restore(item.id)}>↩️ استعادة</button>
-                            <button style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }} onClick={() => permanentDelete(item.id)}>🗑️ حذف نهائي</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>⏳ جاري التحميل...</div>
+        ) : items.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 40, color: CLR.textSm }}>
+            🗑️ سلة المهملات فارغة
+            <p style={{ fontSize: 12, marginTop: 8 }}>عند حذف منتج أو عنصر، سيظهر هنا</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: CLR.bg }}>
+                  <th style={S.th}>الجدول</th>
+                  <th style={S.th}>البيانات</th>
+                  <th style={S.th}>تاريخ الحذف</th>
+                  <th style={S.th}>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => {
+                  let dataPreview = "";
+                  try {
+                    const d = JSON.parse(item.data);
+                    dataPreview = d.name || d.title || d.code || `#${d.id || item.item_id}`;
+                  } catch {
+                    dataPreview = `#${item.item_id}`;
+                  }
+                  return (
+                    <tr key={item.id} className="nq-tr">
+                      <td style={S.td}>{item.table_name}</td>
+                      <td style={S.td}>{dataPreview}</td>
+                      <td style={S.td}>
+                        {new Date(item.deleted_at).toLocaleDateString("ar-DZ")}
+                      </td>
+                      <td style={S.td}>
+                        <div style={{ display: "flex", gap: 5 }}>
+                          <button
+                            style={{ ...S.btnSm, background: "#D1FAE5", color: "#059669" }}
+                            onClick={() => restore(item.id)}
+                          >
+                            ↩️ استعادة
+                          </button>
+                          <button
+                            style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+                            onClick={() => permanentDelete(item.id)}
+                          >
+                            🗑️ حذف نهائي
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 /* ══════════════════════════════════════════
    ⚙️ الإعدادات
 ══════════════════════════════════════════ */
@@ -3645,11 +5325,18 @@ function Settings({ showToast }) {
           const map = {};
           data.forEach((r) => (map[r.key] = r.value));
           setForm((f) => ({ ...f, ...map }));
+
           try {
             const b = JSON.parse(map["branches"] || "[]");
-            setBranches(b.length > 0 ? b : [{ id: Date.now(), name: "الفرع الرئيسي", address: "الجزائر العاصمة", phone: "" }]);
+            setBranches(
+              b.length > 0
+                ? b
+                : [{ id: Date.now(), name: "الفرع الرئيسي", address: "الجزائر العاصمة", phone: "" }]
+            );
           } catch {
-            setBranches([{ id: Date.now(), name: "الفرع الرئيسي", address: "الجزائر العاصمة", phone: "" }]);
+            setBranches([
+              { id: Date.now(), name: "الفرع الرئيسي", address: "الجزائر العاصمة", phone: "" },
+            ]);
           }
         }
       } catch (err) {
@@ -3662,9 +5349,18 @@ function Settings({ showToast }) {
     loadSettings();
   }, []);
 
-  const addBranch = () => { setBranches([...branches, { id: Date.now(), name: "", address: "", phone: "" }]); };
-  const updateBranch = (id, field, value) => { setBranches(branches.map((b) => (b.id === id ? { ...b, [field]: value } : b))); };
-  const removeBranch = (id) => { if (!confirm("حذف هذا الفرع؟")) return; setBranches(branches.filter((b) => b.id !== id)); };
+  const addBranch = () => {
+    setBranches([...branches, { id: Date.now(), name: "", address: "", phone: "" }]);
+  };
+
+  const updateBranch = (id, field, value) => {
+    setBranches(branches.map((b) => (b.id === id ? { ...b, [field]: value } : b)));
+  };
+
+  const removeBranch = (id) => {
+    if (!confirm("حذف هذا الفرع؟")) return;
+    setBranches(branches.filter((b) => b.id !== id));
+  };
 
   const saveBranches = async () => {
     try {
@@ -3680,7 +5376,11 @@ function Settings({ showToast }) {
   const save = async () => {
     setSaving(true);
     try {
-      await Promise.all(Object.entries(form).map(([key, value]) => supabase.from("settings").upsert({ key, value: String(value) })));
+      await Promise.all(
+        Object.entries(form).map(([key, value]) =>
+          supabase.from("settings").upsert({ key, value: String(value) })
+        )
+      );
       await saveBranches();
       await logActivity("تحديث الإعدادات", "تم تحديث إعدادات المتجر");
       showToast("✅ تم حفظ جميع الإعدادات");
@@ -3692,50 +5392,206 @@ function Settings({ showToast }) {
     }
   };
 
-  if (loading) { return <div style={{ textAlign: "center", padding: 40 }}>⏳ جاري تحميل الإعدادات...</div>; }
+  if (loading) {
+    return <div style={{ textAlign: "center", padding: 40 }}>⏳ جاري تحميل الإعدادات...</div>;
+  }
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>⚙️ إعدادات المتجر</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        ⚙️ إعدادات المتجر
+      </h1>
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: CLR.accent }}>🏪 إعدادات عامة</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: CLR.accent }}>
+          🏪 إعدادات عامة
+        </h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>اسم المتجر</label><input style={S.input} value={form.store_name} onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))} placeholder="نقاء" /></div>
-          <div><label style={S.label}>العملة</label><input style={S.input} value={form.store_currency} onChange={(e) => setForm((f) => ({ ...f, store_currency: e.target.value }))} placeholder="دج" /></div>
-          <div><label style={S.label}>📱 رقم واتساب المتجر</label><PhoneInput value={form.whatsapp_number} onChange={(e) => setForm((f) => ({ ...f, whatsapp_number: e.target.value, admin_phone: e.target.value, contact_whatsapp: e.target.value }))} placeholder="213xxxxxxxxx" /></div>
-          <div><label style={S.label}>📧 البريد الإلكتروني للتواصل</label><input style={S.input} value={form.contact_email} onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))} placeholder="info@naqaa.dz" /></div>
-          <div><label style={S.label}>🚚 حد التوصيل المجاني (دج)</label><NumInput value={form.free_shipping_threshold} onChange={(e) => setForm((f) => ({ ...f, free_shipping_threshold: e.target.value }))} /></div>
-          <div><label style={S.label}>🚚 تكلفة التوصيل (دج)</label><NumInput value={form.shipping_cost} onChange={(e) => setForm((f) => ({ ...f, shipping_cost: e.target.value }))} /></div>
-          <div><label style={S.label}>⏰ ساعات العمل</label><input style={S.input} value={form.contact_hours} onChange={(e) => setForm((f) => ({ ...f, contact_hours: e.target.value }))} placeholder="من 8 صباحاً إلى 10 مساءً" /></div>
-          <div><label style={S.label}>📍 العنوان</label><input style={S.input} value={form.contact_address} onChange={(e) => setForm((f) => ({ ...f, contact_address: e.target.value }))} placeholder="الجزائر العاصمة" /></div>
+          <div>
+            <label style={S.label}>اسم المتجر</label>
+            <input
+              style={S.input}
+              value={form.store_name}
+              onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
+              placeholder="نقاء"
+            />
+          </div>
+          <div>
+            <label style={S.label}>العملة</label>
+            <input
+              style={S.input}
+              value={form.store_currency}
+              onChange={(e) => setForm((f) => ({ ...f, store_currency: e.target.value }))}
+              placeholder="دج"
+            />
+          </div>
+          <div>
+            <label style={S.label}>📱 رقم واتساب المتجر</label>
+            <PhoneInput
+              value={form.whatsapp_number}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  whatsapp_number: e.target.value,
+                  admin_phone: e.target.value,
+                  contact_whatsapp: e.target.value,
+                }))
+              }
+              placeholder="213xxxxxxxxx"
+            />
+          </div>
+          <div>
+            <label style={S.label}>📧 البريد الإلكتروني للتواصل</label>
+            <input
+              style={S.input}
+              value={form.contact_email}
+              onChange={(e) => setForm((f) => ({ ...f, contact_email: e.target.value }))}
+              placeholder="info@naqaa.dz"
+            />
+          </div>
+          <div>
+            <label style={S.label}>🚚 حد التوصيل المجاني (دج)</label>
+            <NumInput
+              value={form.free_shipping_threshold}
+              onChange={(e) => setForm((f) => ({ ...f, free_shipping_threshold: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>🚚 تكلفة التوصيل (دج)</label>
+            <NumInput
+              value={form.shipping_cost}
+              onChange={(e) => setForm((f) => ({ ...f, shipping_cost: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>⏰ ساعات العمل</label>
+            <input
+              style={S.input}
+              value={form.contact_hours}
+              onChange={(e) => setForm((f) => ({ ...f, contact_hours: e.target.value }))}
+              placeholder="من 8 صباحاً إلى 10 مساءً"
+            />
+          </div>
+          <div>
+            <label style={S.label}>📍 العنوان</label>
+            <input
+              style={S.input}
+              value={form.contact_address}
+              onChange={(e) => setForm((f) => ({ ...f, contact_address: e.target.value }))}
+              placeholder="الجزائر العاصمة"
+            />
+          </div>
         </div>
-        <div style={{ marginTop: 12 }}><label style={S.label}>📢 شريط الإعلانات</label><input style={S.input} value={form.announce_bar} onChange={(e) => setForm((f) => ({ ...f, announce_bar: e.target.value }))} placeholder="🎉 توصيل مجاني على الطلبات فوق 5000 دج" /></div>
+        <div style={{ marginTop: 12 }}>
+          <label style={S.label}>📢 شريط الإعلانات</label>
+          <input
+            style={S.input}
+            value={form.announce_bar}
+            onChange={(e) => setForm((f) => ({ ...f, announce_bar: e.target.value }))}
+            placeholder="🎉 توصيل مجاني على الطلبات فوق 5000 دج"
+          />
+        </div>
       </div>
 
       <div style={S.card}>
         <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>🏢 إدارة الفروع</h3>
         {branches.map((branch) => (
-          <div key={branch.id} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr auto", gap: 8, alignItems: "center", marginBottom: 8, background: CLR.bg, padding: 10, borderRadius: 8 }}>
-            <input style={S.input} value={branch.name} onChange={(e) => updateBranch(branch.id, "name", e.target.value)} placeholder="اسم الفرع" />
-            <input style={S.input} value={branch.address} onChange={(e) => updateBranch(branch.id, "address", e.target.value)} placeholder="العنوان" />
-            <PhoneInput value={branch.phone} onChange={(e) => updateBranch(branch.id, "phone", e.target.value)} placeholder="الهاتف" />
-            <button style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }} onClick={() => removeBranch(branch.id)}>🗑️</button>
+          <div
+            key={branch.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "2fr 2fr 1fr auto",
+              gap: 8,
+              alignItems: "center",
+              marginBottom: 8,
+              background: CLR.bg,
+              padding: 10,
+              borderRadius: 8,
+            }}
+          >
+            <input
+              style={S.input}
+              value={branch.name}
+              onChange={(e) => updateBranch(branch.id, "name", e.target.value)}
+              placeholder="اسم الفرع"
+            />
+            <input
+              style={S.input}
+              value={branch.address}
+              onChange={(e) => updateBranch(branch.id, "address", e.target.value)}
+              placeholder="العنوان"
+            />
+            <PhoneInput
+              value={branch.phone}
+              onChange={(e) => updateBranch(branch.id, "phone", e.target.value)}
+              placeholder="الهاتف"
+            />
+            <button
+              style={{ ...S.btnSm, background: "#FEE2E2", color: "#DC2626" }}
+              onClick={() => removeBranch(branch.id)}
+            >
+              🗑️
+            </button>
           </div>
         ))}
-        <button style={{ ...S.btnSm, background: CLR.success, color: "white" }} onClick={addBranch}>➕ إضافة فرع</button>
+        <button
+          style={{ ...S.btnSm, background: CLR.success, color: "white" }}
+          onClick={addBranch}
+        >
+          ➕ إضافة فرع
+        </button>
       </div>
 
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>🏅 إعدادات تصنيف العملاء</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 14 }}>
-          <div><label style={S.label}>🥈 M2 — الحد الأدنى (دج)</label><NumInput value={form.tier_m2_min} onChange={(e) => setForm((f) => ({ ...f, tier_m2_min: e.target.value }))} /></div>
-          <div><label style={S.label}>🥇 M3 — الحد الأدنى (دج)</label><NumInput value={form.tier_m3_min} onChange={(e) => setForm((f) => ({ ...f, tier_m3_min: e.target.value }))} /></div>
-          <div><label style={S.label}>خصم M1 %</label><NumInput value={form.tier_m1_discount} onChange={(e) => setForm((f) => ({ ...f, tier_m1_discount: e.target.value }))} /></div>
-          <div><label style={S.label}>خصم M2 %</label><NumInput value={form.tier_m2_discount} onChange={(e) => setForm((f) => ({ ...f, tier_m2_discount: e.target.value }))} /></div>
-          <div><label style={S.label}>خصم M3 %</label><NumInput value={form.tier_m3_discount} onChange={(e) => setForm((f) => ({ ...f, tier_m3_discount: e.target.value }))} /></div>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          🏅 إعدادات تصنيف العملاء
+        </h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))",
+            gap: 14,
+          }}
+        >
+          <div>
+            <label style={S.label}>🥈 M2 — الحد الأدنى (دج)</label>
+            <NumInput
+              value={form.tier_m2_min}
+              onChange={(e) => setForm((f) => ({ ...f, tier_m2_min: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>🥇 M3 — الحد الأدنى (دج)</label>
+            <NumInput
+              value={form.tier_m3_min}
+              onChange={(e) => setForm((f) => ({ ...f, tier_m3_min: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>خصم M1 %</label>
+            <NumInput
+              value={form.tier_m1_discount}
+              onChange={(e) => setForm((f) => ({ ...f, tier_m1_discount: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>خصم M2 %</label>
+            <NumInput
+              value={form.tier_m2_discount}
+              onChange={(e) => setForm((f) => ({ ...f, tier_m2_discount: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>خصم M3 %</label>
+            <NumInput
+              value={form.tier_m3_discount}
+              onChange={(e) => setForm((f) => ({ ...f, tier_m3_discount: e.target.value }))}
+            />
+          </div>
         </div>
       </div>
-      <button style={{ ...S.btn, marginTop: 16 }} onClick={save} disabled={saving}>{saving ? "⏳ جاري الحفظ..." : "💾 حفظ جميع الإعدادات"}</button>
+      <button style={{ ...S.btn, marginTop: 16 }} onClick={save} disabled={saving}>
+        {saving ? "⏳ جاري الحفظ..." : "💾 حفظ جميع الإعدادات"}
+      </button>
     </div>
   );
 }
@@ -3760,7 +5616,9 @@ function StoreManager({ showToast }) {
         if (!data) return;
         const map = {};
         data.forEach((r) => (map[r.key] = r.value));
-        try { setBanners(JSON.parse(map["store_banners"] || "[]")); } catch {}
+        try {
+          setBanners(JSON.parse(map["store_banners"] || "[]"));
+        } catch {}
         setPromoText(map["promo_text"] || "");
         setAnnounceBar(map["announce_bar"] || "");
         setPrimaryColor(map["primary_color"] || "#dc2626");
@@ -3774,11 +5632,22 @@ function StoreManager({ showToast }) {
     load();
   }, []);
 
-  const handleLogo = (e) => { const r = new FileReader(); r.onload = (ev) => setStoreLogo(ev.target.result); r.readAsDataURL(e.target.files[0]); };
-  const handleImg = (e) => { const r = new FileReader(); r.onload = (ev) => setForm((f) => ({ ...f, image: ev.target.result })); r.readAsDataURL(e.target.files[0]); };
+  const handleLogo = (e) => {
+    const r = new FileReader();
+    r.onload = (ev) => setStoreLogo(ev.target.result);
+    r.readAsDataURL(e.target.files[0]);
+  };
+  const handleImg = (e) => {
+    const r = new FileReader();
+    r.onload = (ev) => setForm((f) => ({ ...f, image: ev.target.result }));
+    r.readAsDataURL(e.target.files[0]);
+  };
 
   const addBanner = async () => {
-    if (!form.title && !form.image) { showToast("أضف صورة أو عنوان", "error"); return; }
+    if (!form.title && !form.image) {
+      showToast("أضف صورة أو عنوان", "error");
+      return;
+    }
     setSaving(true);
     try {
       const updated = [...banners, { id: Date.now(), ...form }];
@@ -3827,10 +5696,20 @@ function StoreManager({ showToast }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🎨 إدارة واجهة المتجر</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🎨 إدارة واجهة المتجر
+      </h1>
       <div style={{ ...S.card, background: "#f0f9ff", border: "1px solid #bfdbfe" }}>
         <strong style={{ color: "#1d4ed8" }}>📐 أحجام الصور:</strong>
-        <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap", fontSize: 13 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            marginTop: 8,
+            flexWrap: "wrap",
+            fontSize: 13,
+          }}
+        >
           <span>🖼️ بانر: <strong>1200×450px</strong></span>
           <span>🏷️ ماركة: <strong>300×300px</strong></span>
           <span>📂 فئة: <strong>400×300px</strong></span>
@@ -3839,41 +5718,145 @@ function StoreManager({ showToast }) {
         </div>
       </div>
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>📢 النصوص الترويجية</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          📢 النصوص الترويجية
+        </h3>
         <label style={S.label}>شريط الإعلانات</label>
-        <input style={S.input} value={announceBar} onChange={(e) => setAnnounceBar(e.target.value)} placeholder="🎉 توصيل مجاني على الطلبات فوق 500 دج" />
-        <div style={{ marginTop: 12 }}><label style={S.label}>نص ترويجي</label><input style={S.input} value={promoText} onChange={(e) => setPromoText(e.target.value)} placeholder="اشتري 3 خذ 4 مجاناً!" /></div>
-        <button style={{ ...S.btn, marginTop: 14 }} onClick={saveTexts} disabled={saving}>{saving ? "⏳..." : "💾 حفظ النصوص"}</button>
+        <input
+          style={S.input}
+          value={announceBar}
+          onChange={(e) => setAnnounceBar(e.target.value)}
+          placeholder="🎉 توصيل مجاني على الطلبات فوق 500 دج"
+        />
+        <div style={{ marginTop: 12 }}>
+          <label style={S.label}>نص ترويجي</label>
+          <input
+            style={S.input}
+            value={promoText}
+            onChange={(e) => setPromoText(e.target.value)}
+            placeholder="اشتري 3 خذ 4 مجاناً!"
+          />
+        </div>
+        <button style={{ ...S.btn, marginTop: 14 }} onClick={saveTexts} disabled={saving}>
+          {saving ? "⏳..." : "💾 حفظ النصوص"}
+        </button>
       </div>
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>🎨 الهوية البصرية</h3>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          🎨 الهوية البصرية
+        </h3>
         <div style={S.grid2}>
-          <div><label style={S.label}>اسم المتجر</label><input style={S.input} value={storeName2} onChange={(e) => setStoreName2(e.target.value)} /></div>
-          <div><label style={S.label}>اللون الأساسي</label><div style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} style={{ width: 46, height: 38, border: "none", borderRadius: 8, cursor: "pointer" }} /><input style={{ ...S.input, width: 120 }} value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} /></div></div>
-          <div><label style={S.label}>شعار المتجر</label><input style={S.input} type="file" accept="image/*" onChange={handleLogo} />{storeLogo && <img src={storeLogo} style={{ height: 50, marginTop: 6, borderRadius: 8 }} />}</div>
+          <div>
+            <label style={S.label}>اسم المتجر</label>
+            <input
+              style={S.input}
+              value={storeName2}
+              onChange={(e) => setStoreName2(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={S.label}>اللون الأساسي</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="color"
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                style={{ width: 46, height: 38, border: "none", borderRadius: 8, cursor: "pointer" }}
+              />
+              <input
+                style={{ ...S.input, width: 120 }}
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={S.label}>شعار المتجر</label>
+            <input style={S.input} type="file" accept="image/*" onChange={handleLogo} />
+            {storeLogo && (
+              <img src={storeLogo} style={{ height: 50, marginTop: 6, borderRadius: 8 }} />
+            )}
+          </div>
         </div>
-        <button style={{ ...S.btn, marginTop: 14 }} onClick={saveTexts} disabled={saving}>{saving ? "⏳..." : "💾 حفظ الهوية"}</button>
+        <button style={{ ...S.btn, marginTop: 14 }} onClick={saveTexts} disabled={saving}>
+          {saving ? "⏳..." : "💾 حفظ الهوية"}
+        </button>
       </div>
       <div style={S.card}>
-        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>🖼️ البانرات المتحركة</h3>
-        <p style={{ fontSize: 12, color: CLR.textSm, marginBottom: 12 }}>📐 حجم البانر المثالي: <strong>1200×450 بكسل</strong></p>
+        <h3 style={{ fontWeight: 800, marginBottom: 14, color: "#dc2626" }}>
+          🖼️ البانرات المتحركة
+        </h3>
+        <p style={{ fontSize: 12, color: CLR.textSm, marginBottom: 12 }}>
+          📐 حجم البانر المثالي: <strong>1200×450 بكسل</strong>
+        </p>
         <div style={S.grid2}>
-          <div><label style={S.label}>العنوان</label><input style={S.input} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="عروض الصيف" /></div>
-          <div><label style={S.label}>نص فرعي</label><input style={S.input} value={form.subtitle} onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))} /></div>
-          <div><label style={S.label}>صورة</label><input style={S.input} type="file" accept="image/*" onChange={handleImg} /></div>
-          {form.image && <div><img src={form.image} style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 10 }} /></div>}
+          <div>
+            <label style={S.label}>العنوان</label>
+            <input
+              style={S.input}
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="عروض الصيف"
+            />
+          </div>
+          <div>
+            <label style={S.label}>نص فرعي</label>
+            <input
+              style={S.input}
+              value={form.subtitle}
+              onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label style={S.label}>صورة</label>
+            <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
+          </div>
+          {form.image && (
+            <div>
+              <img
+                src={form.image}
+                style={{ width: "100%", height: 60, objectFit: "cover", borderRadius: 10 }}
+              />
+            </div>
+          )}
         </div>
-        <button style={{ ...S.btn, marginTop: 14 }} onClick={addBanner} disabled={saving}>{saving ? "⏳..." : "➕ إضافة بانر"}</button>
+        <button style={{ ...S.btn, marginTop: 14 }} onClick={addBanner} disabled={saving}>
+          {saving ? "⏳..." : "➕ إضافة بانر"}
+        </button>
       </div>
       {banners.length > 0 && (
         <div style={S.card}>
           <h3 style={{ fontWeight: 800, marginBottom: 14 }}>البانرات ({banners.length})</h3>
           {banners.map((b, i) => (
-            <div key={b.id} style={{ display: "flex", gap: 12, alignItems: "center", background: "#f8fafc", borderRadius: 12, padding: 12, marginBottom: 8 }}>
+            <div
+              key={b.id}
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                background: "#f8fafc",
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 8,
+              }}
+            >
               <span style={{ fontWeight: 700, color: CLR.textSm }}>#{i + 1}</span>
-              {b.image && <img src={b.image} style={{ width: 80, height: 45, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />}
-              <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>{b.title || "(بدون عنوان)"}</div>{b.subtitle && <div style={{ fontSize: 12, color: CLR.textSm }}>{b.subtitle}</div>}</div>
-              <button style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }} onClick={() => delBanner(b.id)}>🗑️</button>
+              {b.image && (
+                <img
+                  src={b.image}
+                  style={{ width: 80, height: 45, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                />
+              )}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700 }}>{b.title || "(بدون عنوان)"}</div>
+                {b.subtitle && <div style={{ fontSize: 12, color: CLR.textSm }}>{b.subtitle}</div>}
+              </div>
+              <button
+                style={{ ...S.btnSm, background: "#fee2e2", color: "#dc2626" }}
+                onClick={() => delBanner(b.id)}
+              >
+                🗑️
+              </button>
             </div>
           ))}
         </div>
@@ -3896,13 +5879,26 @@ function DataBackup({ showToast }) {
     if (ab) {
       const last = localStorage.getItem("nq_last_backup_date");
       const today = new Date().toDateString();
-      if (last !== today) { setTimeout(() => doAutoBackup(), 3000); }
+      if (last !== today) {
+        setTimeout(() => doAutoBackup(), 3000);
+      }
     }
   }, []);
 
   const doAutoBackup = async () => {
     try {
-      const tables = ["products", "categories", "brands", "suppliers", "customers", "orders", "purchases", "expenses", "promotions", "settings"];
+      const tables = [
+        "products",
+        "categories",
+        "brands",
+        "suppliers",
+        "customers",
+        "orders",
+        "purchases",
+        "expenses",
+        "promotions",
+        "settings",
+      ];
       const backup = {};
       for (const t of tables) {
         const { data } = await supabase.from(t).select("*").catch(() => ({ data: [] }));
@@ -3931,7 +5927,19 @@ function DataBackup({ showToast }) {
     showToast(v ? "✅ سيتم النسخ الاحتياطي تلقائياً كل يوم" : "⏸️ تم إيقاف النسخ التلقائي");
   };
 
-  const tables = ["products", "orders", "customers", "suppliers", "brands", "categories", "purchases", "coupons", "expenses", "notifications", "settings"];
+  const tables = [
+    "products",
+    "orders",
+    "customers",
+    "suppliers",
+    "brands",
+    "categories",
+    "purchases",
+    "coupons",
+    "expenses",
+    "notifications",
+    "settings",
+  ];
 
   const backup = async () => {
     setLoading(true);
@@ -3985,17 +5993,56 @@ function DataBackup({ showToast }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>💾 النسخ الاحتياطي</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        💾 النسخ الاحتياطي
+      </h1>
       <div style={S.card}>
-        <p style={{ color: CLR.textSm, fontSize: 14, marginBottom: 20 }}>احفظ نسخة من جميع بيانات متجرك في ملف JSON. يمكنك استعادتها في أي وقت.</p>
+        <p style={{ color: CLR.textSm, fontSize: 14, marginBottom: 20 }}>
+          احفظ نسخة من جميع بيانات متجرك في ملف JSON. يمكنك استعادتها في أي وقت.
+        </p>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          <button style={{ ...S.btn, padding: "14px 28px", fontSize: 15 }} onClick={backup} disabled={loading}>{loading ? "⏳ جاري التحميل..." : "📥 تحميل نسخة احتياطية"}</button>
-          <label style={{ ...S.btnGray, padding: "14px 28px", fontSize: 15, cursor: "pointer", borderRadius: 30, fontWeight: 700 }}>📤 استعادة من ملف<input type="file" accept=".json" style={{ display: "none" }} onChange={restore} /></label>
+          <button
+            style={{ ...S.btn, padding: "14px 28px", fontSize: 15 }}
+            onClick={backup}
+            disabled={loading}
+          >
+            {loading ? "⏳ جاري التحميل..." : "📥 تحميل نسخة احتياطية"}
+          </button>
+          <label
+            style={{
+              ...S.btnGray,
+              padding: "14px 28px",
+              fontSize: 15,
+              cursor: "pointer",
+              borderRadius: 30,
+              fontWeight: 700,
+            }}
+          >
+            📤 استعادة من ملف
+            <input type="file" accept=".json" style={{ display: "none" }} onChange={restore} />
+          </label>
         </div>
-        <div style={{ marginTop: 20, background: "#fef9c3", borderRadius: 12, padding: 14, fontSize: 13, color: "#92400e" }}>⚠️ <strong>تنبيه:</strong> استعادة النسخة الاحتياطية ستضيف البيانات للموجودة ولن تحذف شيئاً. يُنصح بعمل نسخة احتياطية أسبوعية.</div>
+        <div
+          style={{
+            marginTop: 20,
+            background: "#fef9c3",
+            borderRadius: 12,
+            padding: 14,
+            fontSize: 13,
+            color: "#92400e",
+          }}
+        >
+          ⚠️ <strong>تنبيه:</strong> استعادة النسخة الاحتياطية ستضيف البيانات للموجودة ولن تحذف شيئاً.
+          يُنصح بعمل نسخة احتياطية أسبوعية.
+        </div>
         <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><input type="checkbox" checked={autoBackup} onChange={toggleAuto} /><span>🔄 نسخ احتياطي تلقائي يومي</span></label>
-          {lastBackup !== "—" && <span style={{ fontSize: 12, color: CLR.textSm }}>📅 آخر نسخ: {lastBackup}</span>}
+          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <input type="checkbox" checked={autoBackup} onChange={toggleAuto} />
+            <span>🔄 نسخ احتياطي تلقائي يومي</span>
+          </label>
+          {lastBackup !== "—" && (
+            <span style={{ fontSize: 12, color: CLR.textSm }}>📅 آخر نسخ: {lastBackup}</span>
+          )}
         </div>
       </div>
     </div>
@@ -4009,7 +6056,17 @@ function AboutUs({ showToast }) {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    supabase.from("settings").select("value").eq("key", "about_us").maybeSingle().then(({ data }) => setContent(data?.value || "نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة."));
+    supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "about_us")
+      .maybeSingle()
+      .then(({ data }) =>
+        setContent(
+          data?.value ||
+            "نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة."
+        )
+      );
   }, []);
   const save = async () => {
     setSaving(true);
@@ -4025,13 +6082,35 @@ function AboutUs({ showToast }) {
   };
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🏢 من نحن</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🏢 من نحن
+      </h1>
       <div style={S.card}>
         <label style={S.label}>محتوى الصفحة</label>
-        <textarea style={{ ...S.input, minHeight: 200, resize: "vertical", marginBottom: 14 }} value={content} onChange={(e) => setContent(e.target.value)} />
-        <button style={S.btn} onClick={save} disabled={saving}>{saving ? "⏳..." : "💾 حفظ"}</button>
+        <textarea
+          style={{ ...S.input, minHeight: 200, resize: "vertical", marginBottom: 14 }}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+        <button style={S.btn} onClick={save} disabled={saving}>
+          {saving ? "⏳..." : "💾 حفظ"}
+        </button>
       </div>
-      {content && <div style={S.card}><h3 style={{ fontWeight: 800, marginBottom: 10 }}>معاينة</h3><div style={{ whiteSpace: "pre-wrap", lineHeight: 1.8, color: CLR.textSm, fontSize: 14 }}>{content}</div></div>}
+      {content && (
+        <div style={S.card}>
+          <h3 style={{ fontWeight: 800, marginBottom: 10 }}>معاينة</h3>
+          <div
+            style={{
+              whiteSpace: "pre-wrap",
+              lineHeight: 1.8,
+              color: CLR.textSm,
+              fontSize: 14,
+            }}
+          >
+            {content}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4040,16 +6119,40 @@ function AboutUs({ showToast }) {
    📞 اتصل بنا
 ══════════════════════════════════════════ */
 function ContactUs({ showToast }) {
-  const [form, setForm] = useState({ contact_phone: "0696668065", contact_whatsapp: WA_DEFAULT, contact_email: "", contact_address: "", contact_facebook: "", contact_instagram: "", contact_hours: "السبت–الخميس: 8ص–6م" });
+  const [form, setForm] = useState({
+    contact_phone: "0696668065",
+    contact_whatsapp: WA_DEFAULT,
+    contact_email: "",
+    contact_address: "",
+    contact_facebook: "",
+    contact_instagram: "",
+    contact_hours: "السبت–الخميس: 8ص–6م",
+  });
   const [saving, setSaving] = useState(false);
+
   useEffect(() => {
-    supabase.from("settings").select("*").then(({ data }) => { if (data) { const map = {}; data.forEach((r) => (map[r.key] = r.value)); setForm((f) => ({ ...f, ...map })); } });
+    supabase
+      .from("settings")
+      .select("*")
+      .then(({ data }) => {
+        if (data) {
+          const map = {};
+          data.forEach((r) => (map[r.key] = r.value));
+          setForm((f) => ({ ...f, ...map }));
+        }
+      });
   }, []);
+
   const F = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
   const save = async () => {
     setSaving(true);
     try {
-      await Promise.all(Object.entries(form).map(([key, value]) => supabase.from("settings").upsert({ key, value: String(value) })));
+      await Promise.all(
+        Object.entries(form).map(([key, value]) =>
+          supabase.from("settings").upsert({ key, value: String(value) })
+        )
+      );
       await logActivity("تحديث اتصل بنا", "تم تحديث صفحة اتصل بنا");
       showToast("✅ تم الحفظ");
     } catch (err) {
@@ -4058,20 +6161,46 @@ function ContactUs({ showToast }) {
       setSaving(false);
     }
   };
+
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>📞 اتصل بنا</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        📞 اتصل بنا
+      </h1>
       <div style={S.card}>
         <div style={S.grid2}>
-          <div><label style={S.label}>📱 الهاتف</label><PhoneInput value={form.contact_phone} onChange={F("contact_phone")} /></div>
-          <div><label style={S.label}>💬 واتساب</label><PhoneInput value={form.contact_whatsapp} onChange={F("contact_whatsapp")} /></div>
-          <div><label style={S.label}>📧 البريد</label><input style={S.input} value={form.contact_email} onChange={F("contact_email")} /></div>
-          <div><label style={S.label}>📍 العنوان</label><input style={S.input} value={form.contact_address} onChange={F("contact_address")} /></div>
-          <div><label style={S.label}>📘 فيسبوك</label><input style={S.input} value={form.contact_facebook} onChange={F("contact_facebook")} /></div>
-          <div><label style={S.label}>📸 إنستغرام</label><input style={S.input} value={form.contact_instagram} onChange={F("contact_instagram")} /></div>
-          <div style={{ gridColumn: "span 2" }}><label style={S.label}>🕒 ساعات العمل</label><input style={S.input} value={form.contact_hours} onChange={F("contact_hours")} /></div>
+          <div>
+            <label style={S.label}>📱 الهاتف</label>
+            <PhoneInput value={form.contact_phone} onChange={F("contact_phone")} />
+          </div>
+          <div>
+            <label style={S.label}>💬 واتساب</label>
+            <PhoneInput value={form.contact_whatsapp} onChange={F("contact_whatsapp")} />
+          </div>
+          <div>
+            <label style={S.label}>📧 البريد</label>
+            <input style={S.input} value={form.contact_email} onChange={F("contact_email")} />
+          </div>
+          <div>
+            <label style={S.label}>📍 العنوان</label>
+            <input style={S.input} value={form.contact_address} onChange={F("contact_address")} />
+          </div>
+          <div>
+            <label style={S.label}>📘 فيسبوك</label>
+            <input style={S.input} value={form.contact_facebook} onChange={F("contact_facebook")} />
+          </div>
+          <div>
+            <label style={S.label}>📸 إنستغرام</label>
+            <input style={S.input} value={form.contact_instagram} onChange={F("contact_instagram")} />
+          </div>
+          <div style={{ gridColumn: "span 2" }}>
+            <label style={S.label}>🕒 ساعات العمل</label>
+            <input style={S.input} value={form.contact_hours} onChange={F("contact_hours")} />
+          </div>
         </div>
-        <button style={{ ...S.btn, marginTop: 18 }} onClick={save} disabled={saving}>{saving ? "⏳..." : "💾 حفظ"}</button>
+        <button style={{ ...S.btn, marginTop: 18 }} onClick={save} disabled={saving}>
+          {saving ? "⏳..." : "💾 حفظ"}
+        </button>
       </div>
     </div>
   );
@@ -4084,7 +6213,17 @@ function ReturnPolicy({ showToast }) {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    supabase.from("settings").select("value").eq("key", "return_policy").maybeSingle().then(({ data }) => setContent(data?.value || "يمكن للعميل استرجاع المنتج خلال 14 يوم من الاستلام بشرط أن يكون بحالته الأصلية.\n\nشروط الاسترجاع:\n• المنتج بدون استخدام\n• مع الفاتورة الأصلية\n• خلال 14 يوم"));
+    supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "return_policy")
+      .maybeSingle()
+      .then(({ data }) =>
+        setContent(
+          data?.value ||
+            "يمكن للعميل استرجاع المنتج خلال 14 يوم من الاستلام بشرط أن يكون بحالته الأصلية.\n\nشروط الاسترجاع:\n• المنتج بدون استخدام\n• مع الفاتورة الأصلية\n• خلال 14 يوم"
+        )
+      );
   }, []);
   const save = async () => {
     setSaving(true);
@@ -4100,11 +6239,19 @@ function ReturnPolicy({ showToast }) {
   };
   return (
     <div>
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🔄 سياسة الاسترجاع</h1>
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
+        🔄 سياسة الاسترجاع
+      </h1>
       <div style={S.card}>
         <label style={S.label}>محتوى السياسة</label>
-        <textarea style={{ ...S.input, minHeight: 220, resize: "vertical", marginBottom: 14 }} value={content} onChange={(e) => setContent(e.target.value)} />
-        <button style={S.btn} onClick={save} disabled={saving}>{saving ? "⏳..." : "💾 حفظ"}</button>
+        <textarea
+          style={{ ...S.input, minHeight: 220, resize: "vertical", marginBottom: 14 }}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+        <button style={S.btn} onClick={save} disabled={saving}>
+          {saving ? "⏳..." : "💾 حفظ"}
+        </button>
       </div>
     </div>
   );
@@ -4125,7 +6272,11 @@ export default function Admin() {
       try {
         const parsed = JSON.parse(saved);
         if (typeof parsed.permissions === "string") {
-          try { parsed.permissions = JSON.parse(parsed.permissions || "{}"); } catch { parsed.permissions = {}; }
+          try {
+            parsed.permissions = JSON.parse(parsed.permissions || "{}");
+          } catch {
+            parsed.permissions = {};
+          }
         }
         setUser(parsed);
       } catch (err) {
@@ -4134,8 +6285,16 @@ export default function Admin() {
     }
   }, []);
 
-  const handleLogin = (u) => { setUser(u); sessionStorage.setItem("nq_admin", JSON.stringify(u)); };
-  const handleLogout = () => { setUser(null); sessionStorage.removeItem("nq_admin"); setSection("dashboard"); };
+  const handleLogin = (u) => {
+    setUser(u);
+    sessionStorage.setItem("nq_admin", JSON.stringify(u));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    sessionStorage.removeItem("nq_admin");
+    setSection("dashboard");
+  };
 
   const hasPermission = (permId, action = "view") => {
     if (!user) return false;
@@ -4177,58 +6336,137 @@ export default function Admin() {
     const currentSection = sections.find((s) => s.id === section);
     if (currentSection && !hasPermission(currentSection.perm)) {
       return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300, gap: 16, color: CLR.textSm, padding: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 300,
+            gap: 16,
+            color: CLR.textSm,
+            padding: 24,
+          }}
+        >
           <div style={{ fontSize: 56 }}>🔒</div>
           <h3 style={{ fontWeight: 800, color: CLR.text }}>لا تملك صلاحية الوصول</h3>
-          <p style={{ fontSize: 14, textAlign: "center" }}>{user.role === "admin" ? "أنت مدير، لديك صلاحية الوصول لكل شيء ✅" : "تواصل مع المدير لمنحك الصلاحية"}</p>
+          <p style={{ fontSize: 14, textAlign: "center" }}>
+            {user.role === "admin"
+              ? "أنت مدير، لديك صلاحية الوصول لكل شيء ✅"
+              : "تواصل مع المدير لمنحك الصلاحية"}
+          </p>
           {user.role !== "admin" && (
-            <div style={{ background: "#FEF9C3", padding: "12px 18px", borderRadius: 8, fontSize: 13, color: "#92400E", textAlign: "center", maxWidth: 400 }}>
-              💡 الصلاحيات الممنوحة لك: {Object.keys(user.permissions || {}).length > 0 ? Object.keys(user.permissions).join(", ") : "لا توجد صلاحيات حالياً"}
+            <div
+              style={{
+                background: "#FEF9C3",
+                padding: "12px 18px",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#92400E",
+                textAlign: "center",
+                maxWidth: 400,
+              }}
+            >
+              💡 الصلاحيات الممنوحة لك:{" "}
+              {Object.keys(user.permissions || {}).length > 0
+                ? Object.keys(user.permissions).join(", ")
+                : "لا توجد صلاحيات حالياً"}
             </div>
           )}
         </div>
       );
     }
     switch (section) {
-      case "dashboard": return <Dashboard user={user} showToast={showToast} />;
-      case "products": return <Products />;
-      case "categories": return <Categories />;
-      case "brands": return <Brands />;
-      case "suppliers": return <Suppliers />;
-      case "customers": return <Customers />;
-      case "employees": return <Employees />;
-      case "coupons": return <Coupons />;
-      case "purchases": return <Purchases />;
-      case "inventory": return <Inventory />;
-      case "orders": return <Orders />;
-      case "promotions": return <PromotionsManager />;
-      case "notifications": return <Notifications />;
-      case "reports": return <Reports />;
-      case "expenses": return <Expenses />;
-      case "activityLog": return <ActivityLog />;
-      case "storeManager": return <StoreManager showToast={showToast} />;
-      case "backup": return <DataBackup showToast={showToast} />;
-      case "settings": return <Settings showToast={showToast} />;
-      case "about": return <AboutUs showToast={showToast} />;
-      case "contact": return <ContactUs showToast={showToast} />;
-      case "returnPolicy": return <ReturnPolicy showToast={showToast} />;
-      case "recycle": return <RecycleBin />;
-      default: return <Dashboard user={user} showToast={showToast} />;
+      case "dashboard":
+        return <Dashboard user={user} showToast={showToast} />;
+      case "products":
+        return <Products />;
+      case "categories":
+        return <Categories />;
+      case "brands":
+        return <Brands />;
+      case "suppliers":
+        return <Suppliers />;
+      case "customers":
+        return <Customers />;
+      case "employees":
+        return <Employees />;
+      case "coupons":
+        return <Coupons />;
+      case "purchases":
+        return <Purchases />;
+      case "inventory":
+        return <Inventory />;
+      case "orders":
+        return <Orders />;
+      case "promotions":
+        return <PromotionsManager />;
+      case "notifications":
+        return <Notifications />;
+      case "reports":
+        return <Reports />;
+      case "expenses":
+        return <Expenses />;
+      case "activityLog":
+        return <ActivityLog />;
+      case "storeManager":
+        return <StoreManager showToast={showToast} />;
+      case "backup":
+        return <DataBackup showToast={showToast} />;
+      case "settings":
+        return <Settings showToast={showToast} />;
+      case "about":
+        return <AboutUs showToast={showToast} />;
+      case "contact":
+        return <ContactUs showToast={showToast} />;
+      case "returnPolicy":
+        return <ReturnPolicy showToast={showToast} />;
+      case "recycle":
+        return <RecycleBin />;
+      default:
+        return <Dashboard user={user} showToast={showToast} />;
     }
   };
 
   const navGroups = [
     { label: "الرئيسية", items: ["dashboard"] },
-    { label: "المنتجات والمخزون", items: ["products", "categories", "brands", "inventory"] },
-    { label: "المبيعات", items: ["orders", "promotions", "coupons"] },
-    { label: "الموارد", items: ["purchases", "suppliers", "expenses"] },
-    { label: "العملاء", items: ["customers", "notifications"] },
-    { label: "الإدارة", items: ["reports", "employees", "activityLog", "storeManager", "backup", "settings", "about", "contact", "returnPolicy", "recycle"] },
+    {
+      label: "المنتجات والمخزون",
+      items: ["products", "categories", "brands", "inventory"],
+    },
+    {
+      label: "المبيعات",
+      items: ["orders", "promotions", "coupons"],
+    },
+    {
+      label: "الموارد",
+      items: ["purchases", "suppliers", "expenses"],
+    },
+    {
+      label: "العملاء",
+      items: ["customers", "notifications"],
+    },
+    {
+      label: "الإدارة",
+      items: [
+        "reports",
+        "employees",
+        "activityLog",
+        "storeManager",
+        "backup",
+        "settings",
+        "about",
+        "contact",
+        "returnPolicy",
+        "recycle",
+      ],
+    },
   ];
 
   return (
     <div dir="rtl" style={{ display: "flex", minHeight: "100vh", background: CLR.bg }}>
       {ToastUI}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;900&display=swap');
         body,*{font-family:'Tajawal',sans-serif!important}
@@ -4249,44 +6487,266 @@ export default function Admin() {
         .dark .nq-tr:hover td{background:#1e293b!important}
       `}</style>
 
-      <aside style={{ width: collapsed ? 58 : 232, background: CLR.primary, position: "sticky", top: 0, height: "100vh", display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden", transition: "width .22s ease", boxShadow: "2px 0 16px rgba(0,0,0,.15)", zIndex: 100 }}>
-        <div style={{ padding: collapsed ? "14px 9px" : "14px 14px", borderBottom: "1px solid rgba(255,255,255,.07)", flexShrink: 0 }}>
+      <aside
+        style={{
+          width: collapsed ? 58 : 232,
+          background: CLR.primary,
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+          overflow: "hidden",
+          transition: "width .22s ease",
+          boxShadow: "2px 0 16px rgba(0,0,0,.15)",
+          zIndex: 100,
+        }}
+      >
+        <div
+          style={{
+            padding: collapsed ? "14px 9px" : "14px 14px",
+            borderBottom: "1px solid rgba(255,255,255,.07)",
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: "linear-gradient(135deg,#F97316,#EA6C0A)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛍️</div>
-            {!collapsed && <div><div style={{ fontWeight: 900, fontSize: 15, color: "white", lineHeight: 1.2 }}>نقاء</div><div style={{ fontSize: 10, color: "rgba(255,255,255,.45)" }}>لوحة الإدارة</div></div>}
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 9,
+                flexShrink: 0,
+                background: "linear-gradient(135deg,#F97316,#EA6C0A)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+              }}
+            >
+              🛍️
+            </div>
+            {!collapsed && (
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 15, color: "white", lineHeight: 1.2 }}>
+                  نقاء
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.45)" }}>لوحة الإدارة</div>
+              </div>
+            )}
           </div>
-          {!collapsed && <div style={{ marginTop: 10, padding: "7px 10px", background: "rgba(255,255,255,.07)", borderRadius: 7, fontSize: 12, color: "rgba(255,255,255,.75)", display: "flex", alignItems: "center", gap: 6 }}><span>👤</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name || "المدير"}</span>{user.role === "admin" && <span style={{ fontSize: 8, background: "rgba(239,68,68,.3)", padding: "1px 6px", borderRadius: 10, color: "#FCA5A5" }}>مدير</span>}</div>}
+          {!collapsed && (
+            <div
+              style={{
+                marginTop: 10,
+                padding: "7px 10px",
+                background: "rgba(255,255,255,.07)",
+                borderRadius: 7,
+                fontSize: 12,
+                color: "rgba(255,255,255,.75)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>👤</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user.name || "المدير"}
+              </span>
+              {user.role === "admin" && (
+                <span
+                  style={{
+                    fontSize: 8,
+                    background: "rgba(239,68,68,.3)",
+                    padding: "1px 6px",
+                    borderRadius: 10,
+                    color: "#FCA5A5",
+                  }}
+                >
+                  مدير
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
         <nav style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "6px 0" }}>
           {navGroups.map((group) => (
             <div key={group.label}>
-              {!collapsed && <div style={{ padding: "8px 14px 3px", fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.28)", letterSpacing: "0.9px", textTransform: "uppercase" }}>{group.label}</div>}
+              {!collapsed && (
+                <div
+                  style={{
+                    padding: "8px 14px 3px",
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: "rgba(255,255,255,.28)",
+                    letterSpacing: "0.9px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {group.label}
+                </div>
+              )}
               {group.items.map((id) => {
                 const s = sections.find((x) => x.id === id);
                 if (!s) return null;
                 if (!hasPermission(s.perm)) return null;
-                return <div key={s.id} className={`sitem${section === s.id ? " on" : ""}`} onClick={() => setSection(s.id)} title={collapsed ? s.label : ""}><span className="ico">{s.icon}</span>{!collapsed && <span>{s.label}</span>}</div>;
+                return (
+                  <div
+                    key={s.id}
+                    className={`sitem${section === s.id ? " on" : ""}`}
+                    onClick={() => setSection(s.id)}
+                    title={collapsed ? s.label : ""}
+                  >
+                    <span className="ico">{s.icon}</span>
+                    {!collapsed && <span>{s.label}</span>}
+                  </div>
+                );
               })}
             </div>
           ))}
         </nav>
-        <div style={{ padding: "8px 6px", borderTop: "1px solid rgba(255,255,255,.07)", flexShrink: 0 }}>
-          <a href="/" target="_blank" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 7, color: "rgba(255,255,255,.5)", textDecoration: "none", fontSize: 12, fontWeight: 600, transition: ".15s", marginBottom: 3 }} onMouseEnter={(e) => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(255,255,255,.06)"; }} onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,.5)"; e.currentTarget.style.background = "none"; }}><span>🛍️</span>{!collapsed && <span>عرض المتجر</span>}</a>
-          <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 7, color: "rgba(239,68,68,.7)", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, width: "100%", textAlign: "right", fontFamily: "inherit" }} onMouseEnter={(e) => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,.08)"; }} onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(239,68,68,.7)"; e.currentTarget.style.background = "none"; }}><span>🚪</span>{!collapsed && <span>خروج</span>}</button>
+
+        <div
+          style={{
+            padding: "8px 6px",
+            borderTop: "1px solid rgba(255,255,255,.07)",
+            flexShrink: 0,
+          }}
+        >
+          <a
+            href="/"
+            target="_blank"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 7,
+              color: "rgba(255,255,255,.5)",
+              textDecoration: "none",
+              fontSize: 12,
+              fontWeight: 600,
+              transition: ".15s",
+              marginBottom: 3,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "white";
+              e.currentTarget.style.background = "rgba(255,255,255,.06)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(255,255,255,.5)";
+              e.currentTarget.style.background = "none";
+            }}
+          >
+            <span>🛍️</span>
+            {!collapsed && <span>عرض المتجر</span>}
+          </a>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 7,
+              color: "rgba(239,68,68,.7)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              width: "100%",
+              textAlign: "right",
+              fontFamily: "inherit",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#EF4444";
+              e.currentTarget.style.background = "rgba(239,68,68,.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(239,68,68,.7)";
+              e.currentTarget.style.background = "none";
+            }}
+          >
+            <span>🚪</span>
+            {!collapsed && <span>خروج</span>}
+          </button>
         </div>
       </aside>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: "white", borderBottom: `1px solid ${CLR.border}`, padding: "0 20px", height: 52, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 150, flexShrink: 0 }}>
+        <header
+          style={{
+            background: "white",
+            borderBottom: `1px solid ${CLR.border}`,
+            padding: "0 20px",
+            height: 52,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            position: "sticky",
+            top: 0,
+            zIndex: 150,
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => setCollapsed((p) => !p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: CLR.textSm, padding: "4px 6px", borderRadius: 6, transition: ".15s" }} onMouseEnter={(e) => e.currentTarget.style.background = CLR.bg} onMouseLeave={(e) => e.currentTarget.style.background = "none"}>{collapsed ? "☰" : "✕"}</button>
-            <div style={{ fontSize: 14, fontWeight: 700, color: CLR.text }}>{sections.find((s) => s.id === section)?.icon} {sections.find((s) => s.id === section)?.label}</div>
+            <button
+              onClick={() => setCollapsed((p) => !p)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 16,
+                color: CLR.textSm,
+                padding: "4px 6px",
+                borderRadius: 6,
+                transition: ".15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = CLR.bg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+            >
+              {collapsed ? "☰" : "✕"}
+            </button>
+            <div style={{ fontSize: 14, fontWeight: 700, color: CLR.text }}>
+              {sections.find((s) => s.id === section)?.icon}{" "}
+              {sections.find((s) => s.id === section)?.label}
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: CLR.textSm, background: CLR.bg, borderRadius: 6, padding: "4px 10px", border: `1px solid ${CLR.border}`, fontWeight: 600 }}>{new Date().toLocaleDateString("ar-DZ", { day: "numeric", month: "short" })}</span>
-            <a href="/" target="_blank" style={{ fontSize: 12, color: CLR.accent, background: "#FFF7ED", borderRadius: 6, padding: "4px 10px", border: "1px solid #FED7AA", textDecoration: "none", fontWeight: 700 }}>🛍️ المتجر</a>
+            <span
+              style={{
+                fontSize: 12,
+                color: CLR.textSm,
+                background: CLR.bg,
+                borderRadius: 6,
+                padding: "4px 10px",
+                border: `1px solid ${CLR.border}`,
+                fontWeight: 600,
+              }}
+            >
+              {new Date().toLocaleDateString("ar-DZ", { day: "numeric", month: "short" })}
+            </span>
+            <a
+              href="/"
+              target="_blank"
+              style={{
+                fontSize: 12,
+                color: CLR.accent,
+                background: "#FFF7ED",
+                borderRadius: 6,
+                padding: "4px 10px",
+                border: "1px solid #FED7AA",
+                textDecoration: "none",
+                fontWeight: 700,
+              }}
+            >
+              🛍️ المتجر
+            </a>
           </div>
         </header>
+
         <main style={{ flex: 1, padding: 22, overflowY: "auto" }}>{renderSection()}</main>
       </div>
     </div>
