@@ -1,8 +1,9 @@
 /**
- * Store.jsx — النسخة النهائية الكاملة والعاملة
+ * Store.jsx — النسخة النهائية المتكاملة (مع جميع التصحيحات)
+ * ✅ جميع الميزات: نقاط، خصومات، OTP، سلة، مفضلة، تقييمات، إلخ
  * ✅ شريط تقدم النقاط (مثل التوصيل المجاني)
  * ✅ عرض سعر الكرتون × عدد الكراتين
- * ✅ جميع الميزات السابقة (نقاط، خصومات، OTP، FAQ، الخ)
+ * ✅ لا توجد أخطاء (tabsMap معرف بشكل صحيح)
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase.js'
@@ -362,7 +363,7 @@ function RegisterModal({ onClose, onSuccess }) {
   )
 }
 
-// ========== CartModal (معدل) ==========
+// ========== CartModal ==========
 function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, promos, customer }) {
   const cartTotal = cart.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 1), 0)
   const changeQty = (id, d) => setCart(p => p.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + d) } : i))
@@ -395,7 +396,6 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   const pointsDiscount = customer ? Math.min(customer.points || 0, cartTotal - buy3Disc - volDisc) : 0
   const finalTotal = cartTotal - buy3Disc - volDisc - pointsDiscount
 
-  // حساب النقاط التي سيحصل عليها العميل من هذا الطلب (كل 100 دج = 1 نقطة)
   const pointsEarned = Math.floor(finalTotal / 100)
   const currentPoints = customer?.points || 0
   const totalAfter = currentPoints + pointsEarned
@@ -457,7 +457,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 </div>
               )}
 
-              {/* ⭐ شريط تقدم النقاط (جديد) */}
+              {/* شريط تقدم النقاط */}
               <div style={{ background: '#fef9c3', borderRadius: 14, padding: '12px 14px', margin: '12px 0', border: '1px solid #facc15' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
                   <span style={{ color: '#854d0e' }}>⭐ ستكسب من هذا الطلب</span>
@@ -1037,7 +1037,7 @@ export default function Store() {
   const [showScr, setShowScr] = useState(false)
   const [bannerIdx, setBannerIdx] = useState(0)
 
-  // debounce للبحث (بسيط)
+  // debounce للبحث
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchTimeout = useRef(null)
   useEffect(() => {
@@ -1179,11 +1179,444 @@ export default function Store() {
   }
 
   // ========== مكونات التابات ==========
-  // (ProductCard, HomeTab, SearchTab, CatsTab, WishTab, PromosTab, QuickOrderTab)
-  // تم تضمينها في الكود أعلاه، لكن نظراً لطولها سنفترض وجودها.
-  // للتأكد من عدم وجود خطأ، سأدرجها بشكل مختصر هنا، لكنها موجودة فعلاً في الكود الكامل.
+  // ProductCard
+  const ProductCard = ({ p }) => {
+    if (!p) return null
+    const isW = wishlist.includes(p.id)
+    const isN = new Date(p.created_at) >= sevenAgo
+    const disc = Number(p.discount) || 0
+    const activePromo = promos && promos.length > 0 ? promos.find(pr => {
+      if (!pr.active) return false
+      if (pr.end_date && new Date(pr.end_date) < new Date()) return false
+      const ids = typeof pr.product_ids === 'string' ? JSON.parse(pr.product_ids || '[]') : (pr.product_ids || [])
+      return ids.length === 0 || ids.includes(p.id) || ids.includes(String(p.id))
+    }) : null
+    const hasPromo = !!activePromo
+    let promoDisc = disc, promoPrice = disc > 0 ? p.price * (1 - disc / 100) : p.price
+    if (activePromo) {
+      if (activePromo.type === 'percent') { promoDisc = parseFloat(activePromo.discount_value) || 0; promoPrice = p.price * (1 - promoDisc / 100) }
+      else if (activePromo.type === 'fixed') { promoPrice = p.price - (parseFloat(activePromo.discount_value) || 0); promoDisc = Math.round((p.price - promoPrice) / p.price * 100) }
+    }
+    const hasDisc = hasPromo || disc > 0
+    const fp = promoPrice.toFixed(0)
+    const pct = promoDisc
 
-  // ... (الكود الكامل لكل التابات موجود في الرد السابق)
+    return (
+      <div className="pc" onClick={() => { setDetailProd(p); setModal('detail') }}>
+        <div className="pc-img" style={{ opacity: (p.stock || 0) === 0 ? 0.45 : 1, filter: (p.stock || 0) === 0 ? 'grayscale(60%)' : 'none' }}>
+          {hasPromo && <div className="pc-promo-badge" style={{ position: 'absolute', top: 6, right: 6, background: '#FF6B35', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 800, zIndex: 2 }}><i className="fas fa-bullhorn" style={{ fontSize: 9 }} /> عرض خاص</div>}
+          {(p.stock || 0) === 0 && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.55)', color: 'white', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 800, zIndex: 2, whiteSpace: 'nowrap' }}>نفذ المخزون</div>}
+          {p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <div className="pc-noimg">🛍️</div>}
+          {isN && !hasPromo && (p.stock || 0) > 0 && <span className="badge b-new">جديد</span>}
+          <button className="fav-b" onClick={e => { e.stopPropagation(); toggleWish(p.id) }}>
+            <i className="fas fa-heart" style={{ color: isW ? '#FF6B35' : '#CBD5E1' }}></i>
+          </button>
+        </div>
+        <div className="pc-name">{p.name}</div>
+        {hasDisc ? (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2, flexWrap: 'wrap' }}>
+              <span style={{ background: '#888', color: 'white', fontSize: 11, fontWeight: 900, padding: '2px 7px', borderRadius: 20 }}>{pct}%</span>
+              <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through', fontWeight: 600 }}>{p.price}{CUR}</span>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#1A0A00' }}>{fp}{CUR}</div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#FF6B35' }}>{fp} {CUR}</div>
+        )}
+        {p.units && <div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
+        {(p.stock || 0) < 10 && (p.stock || 0) > 0 && <div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
+        {(p.stock || 0) === 0 && <div className="pc-stock">❌ نفذ</div>}
+        <div style={{ display: 'flex', gap: 5, marginTop: 'auto', paddingTop: 6 }}>
+          <button className="add-b" style={{ flex: 1 }} disabled={(p.stock || 0) === 0} onClick={e => { e.stopPropagation(); addToCart(p) }}>
+            <i className="fas fa-cart-plus"></i>
+            {(p.stock || 0) === 0 ? 'نفذ' : 'أضف'}
+          </button>
+          <button onClick={e => { e.stopPropagation(); const msg = `🛍️ ${p.name}%0A💰 السعر: ${p.price} ${CUR}%0A🔗 ${window.location.origin}`; window.open(`https://wa.me/?text=${msg}`, '_blank') }}
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#25D36610', color: '#25D366', border: '1px solid #25D36630', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <i className="fab fa-whatsapp" style={{ fontSize: 14 }}></i>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // الفلاتر
+  const allP = products.filter(p => p.disabled !== true)
+  const newP = allP.filter(p => new Date(p.created_at) >= sevenAgo)
+  const flashP = allP.filter(p => Number(p.discount) > 0).slice(0, 10)
+  const dayDeal = allP.find(p => Number(p.discount) >= 20) || null
+
+  const filtered = (() => {
+    let f = [...allP]
+    if (debouncedSearch) f = f.filter(p => (p.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()))
+    if (brandSel !== 'all') f = f.filter(p => p.brand_id == brandSel)
+    if (catSel !== 'all') f = f.filter(p => p.category_id == catSel)
+    if (priceMin > 0 || priceMax < 999999) f = f.filter(p => Number(p.price) >= priceMin && Number(p.price) <= priceMax)
+    if (sortSel === 'newest') f = [...f].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    else if (sortSel === 'price_asc') f = [...f].sort((a, b) => a.price - b.price)
+    else if (sortSel === 'price_desc') f = [...f].sort((a, b) => b.price - a.price)
+    else if (sortSel === 'disc') f = [...f].sort((a, b) => (Number(b.discount) || 0) - (Number(a.discount) || 0))
+    return f
+  })()
+  const PER = 12
+  const PAGES = Math.ceil(filtered.length / PER)
+  const paged = filtered.slice((page - 1) * PER, page * PER)
+
+  // ========== Home Tab ==========
+  const HomeTab = () => {
+    const bestSellerProducts = bestSellers.map(id => allP.find(p => String(p.id) === id)).filter(Boolean).slice(0, 12)
+    return (
+      <>
+        {ANNOUNCE && <div className="announce">{ANNOUNCE}</div>}
+        <div className="banner-wrap">
+          <div className="banner-track" style={{ transform: `translateX(${bannerIdx * 100}%)` }}>
+            {banners && banners.length > 0 ? banners.map((b, i) => (
+              b.image ? <img key={i} src={b.image} className="banner-slide" alt="" /> :
+                <div key={i} className="banner-fall"><span style={{ fontSize: 36 }}>🛍️</span><span style={{ color: 'white', fontWeight: 900, fontSize: 22 }}>{b.title || SNAME}</span>{b.subtitle && <span style={{ color: 'rgba(255,255,255,.8)', fontSize: 14 }}>{b.subtitle}</span>}</div>
+            )) : <div className="banner-fall"><span style={{ fontSize: 40 }}>🛍️</span><span style={{ color: 'white', fontWeight: 900, fontSize: 24 }}>{SNAME}</span><span style={{ color: 'rgba(255,255,255,.8)', fontSize: 14 }}>أفضل المنتجات بأفضل الأسعار</span></div>}
+          </div>
+          {banners && banners.length > 1 && <div className="bdots">{banners.map((_, i) => <button key={i} className={`bdot${bannerIdx === i ? ' on' : ''}`} onClick={() => setBannerIdx(i)} />)}</div>}
+        </div>
+        {PROMO_TEXT && <div style={{ background: 'linear-gradient(135deg,#FFF0EB,#FFE4D6)', margin: '10px 14px 0', borderRadius: 14, padding: '10px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#FF6B35', border: '1px solid #FFD5C0' }}>{PROMO_TEXT}</div>}
+        {promos && promos.length > 0 && promos.find(p => p.end_date) && (
+          <div className="flash-bar" onClick={() => setTab('search')}>
+            <div>
+              <div style={{ color: 'white', fontWeight: 900, fontSize: 16 }}>⚡ {promos.find(p => p.end_date).name}</div>
+              <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 12 }}>{promos.find(p => p.end_date).description || 'عرض لفترة محدودة'}</div>
+            </div>
+            <div className="timer-wrap">
+              <div className="tbox">{timer.h}</div>
+              <span style={{ color: 'white', fontWeight: 900 }}>:</span>
+              <div className="tbox">{timer.m}</div>
+              <span style={{ color: 'white', fontWeight: 900 }}>:</span>
+              <div className="tbox">{timer.s}</div>
+            </div>
+          </div>
+        )}
+        {brands && brands.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">⭐ أفضل الماركات</span><button className="sec-more" onClick={() => setDrawerOpen(true)}>عرض الكل</button></div>
+            <div className="anim-grid">
+              <div className="anim-all" onClick={() => { setBrandSel('all'); setTab('search') }}><i className="fas fa-th"></i><span>عرض الكل</span></div>
+              {brands.slice(0, 5).map(b => (
+                <div key={b.id} className={`anim-card${brandSel == b.id ? ' sel' : ''}`} onClick={() => { setBrandSel(b.id); setTab('search') }}>
+                  {b.image ? <><img src={b.image} alt={b.name} /><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {categories && categories.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">📂 الفئات</span><button className="sec-more" onClick={() => setTab('cats')}>عرض الكل</button></div>
+            <div className="cats-scroll">
+              {categories.map(c => (
+                <div key={c.id} className={`cat-item${catSel == c.id ? ' sel' : ''}`} onClick={() => { setCatSel(c.id); setTab('search') }}>
+                  <div className="cat-img">{c.image ? <img src={c.image} alt={c.name} /> : <span>📁</span>}</div>
+                  <div className="cat-label">{c.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="promo-strip">
+          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }} onClick={() => { setSortSel('newest'); setTab('search') }}>
+            <div style={{ fontSize: 24 }}>🎁</div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 13, marginTop: 4 }}>{promos && promos.length > 0 && promos.find(p => p.type === 'buy_x_get_y') ? promos.find(p => p.type === 'buy_x_get_y').name : 'اشتري 3 خذ 4'}</div>
+            <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11 }}>أرخص منتج مجاناً</div>
+          </div>
+          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }} onClick={() => { setSortSel('price_asc'); setTab('search') }}>
+            <div style={{ fontSize: 24 }}>📦</div>
+            <div style={{ color: 'white', fontWeight: 800, fontSize: 13, marginTop: 4 }}>خصم الكميات</div>
+            <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11 }}>500دج→5% | 1000دج→10%</div>
+          </div>
+        </div>
+        {dayDeal && (
+          <div className="day-deal">
+            <div style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>🌟 عرض اليوم</span>
+              <span style={{ color: 'white', fontSize: 13 }}>خصم {dayDeal.discount}%</span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, padding: 16, cursor: 'pointer' }} onClick={() => { setDetailProd(dayDeal); setModal('detail') }}>
+              {dayDeal.image ? <img src={dayDeal.image} style={{ width: 90, height: 90, borderRadius: 12, objectFit: 'cover' }} /> :
+                <div style={{ width: 90, height: 90, borderRadius: 12, background: '#F8F4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{dayDeal.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through' }}>{dayDeal.price} {CUR}</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: '#FF6B35' }}>{(dayDeal.price * (1 - dayDeal.discount / 100)).toFixed(0)} {CUR}</span>
+                </div>
+                <button className="add-b" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); addToCart(dayDeal) }}>أضف للسلة</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {flashP.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">⚡ عروض خاصة</span><button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button></div>
+            <div className="hscroll">{flashP.map(p => <ProductCard key={p.id} p={p} />)}</div>
+          </div>
+        )}
+        {newP.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">🎁 وصل حديثاً</span></div>
+            <div className="hscroll">{newP.slice(0, 10).map(p => <ProductCard key={p.id} p={p} />)}</div>
+          </div>
+        )}
+        {bestSellerProducts.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">🔥 الأكثر مبيعاً</span><button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button></div>
+            <div className="hscroll">{bestSellerProducts.map(p => <ProductCard key={p.id} p={p} />)}</div>
+          </div>
+        )}
+        {allP.length > 0 && (
+          <div className="sec">
+            <div className="sec-head"><span className="sec-title">📦 جميع المنتجات</span><button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button></div>
+            <div className="hscroll">{allP.slice(0, 10).map(p => <ProductCard key={p.id} p={p} />)}</div>
+          </div>
+        )}
+        {cartCount > 0 && (
+          <div className="cart-bar" onClick={() => setModal('cart')}>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>🛒 {cartCount} كرتون في السلة</span>
+            <span style={{ color: 'white', fontWeight: 900, fontSize: 16 }}>{cartTotal.toFixed(0)} {CUR}</span>
+          </div>
+        )}
+        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '32px 0 8px', borderTop: '1px solid #e2e8f0', margin: '20px 14px 0' }}>
+          © 2026 {SNAME} — جميع الحقوق محفوظة
+        </div>
+      </>
+    )
+  }
+
+  // ========== Search Tab ==========
+  const SearchTab = () => {
+    const allPricesArr = allP.map(p => Number(p.price) || 0)
+    const absoluteMax = Math.max(...allPricesArr, 1000)
+    return (
+      <div className="sec" style={{ marginTop: 14 }}>
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <button className={`chip${catSel === 'all' ? ' sel' : ''}`} onClick={() => { setCatSel('all'); setPage(1) }}>الكل</button>
+          {categories.map(c => (
+            <button key={c.id} className={`chip${catSel == c.id ? ' sel' : ''}`} onClick={() => { setCatSel(c.id); setPage(1) }}>{c.name}</button>
+          ))}
+        </div>
+        <div className="chips" style={{ marginBottom: 12 }}>
+          {[['newest', 'الأحدث'], ['price_asc', 'السعر ↑'], ['price_desc', 'السعر ↓'], ['disc', 'الخصومات أولاً']].map(([v, l]) => (
+            <button key={v} className={`chip${sortSel === v ? ' sel' : ''}`} onClick={() => { setSortSel(v); setPage(1) }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1.5px solid #F1ECE8' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: '#1A0A00' }}>🎚️ فلتر السعر</span>
+            <span style={{ color: '#FF6B35', fontWeight: 800 }}>{priceMin.toLocaleString()} — {priceMax >= 999999 ? '∞' : priceMax.toLocaleString()} {CUR}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>من</span>
+            <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMin, absoluteMax)}
+              onChange={e => setPriceMin(Math.min(Number(e.target.value), priceMax - 50))}
+              style={{ flex: 1, accentColor: '#FF6B35', cursor: 'pointer' }} />
+            <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>إلى</span>
+            <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMax, absoluteMax)}
+              onChange={e => setPriceMax(Math.max(Number(e.target.value), priceMin + 50))}
+              style={{ flex: 1, accentColor: '#FF6B35', cursor: 'pointer' }} />
+          </div>
+          {(priceMin > 0 || priceMax < 999999) && (
+            <button onClick={() => { setPriceMin(0); setPriceMax(999999) }} style={{ fontSize: 11, color: '#FF6B35', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>✕ إلغاء فلتر السعر</button>
+          )}
+        </div>
+        {paged.length === 0
+          ? <div className="empty"><i className="fas fa-search"></i><p>لا توجد منتجات</p></div>
+          : <div className="prod-grid">{paged.map(p => <ProductCard key={p.id} p={p} />)}</div>}
+        {PAGES > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
+            {page > 1 && <button className="chip" onClick={() => setPage(p => p - 1)}>‹ السابق</button>}
+            {Array.from({ length: Math.min(PAGES, 5) }, (_, i) => i + 1).map(n => (
+              <button key={n} className={`chip${page === n ? ' sel' : ''}`} onClick={() => setPage(n)}>{n}</button>
+            ))}
+            {page < PAGES && <button className="chip" onClick={() => setPage(p => p + 1)}>التالي ›</button>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ========== Cats Tab ==========
+  const CatsTab = () => {
+    return (
+      <div className="sec" style={{ marginTop: 14 }}>
+        <div className="sec-head" style={{ paddingTop: 0 }}><span className="sec-title">🏷️ الماركات</span></div>
+        <div className="anim-grid">
+          <div className="anim-all" onClick={() => { setBrandSel('all'); setCatSel('all'); setTab('search') }}>
+            <i className="fas fa-th"></i><span>كل المنتجات</span>
+          </div>
+          {brands.map(b => (
+            <div key={b.id} className="anim-card" onClick={() => { setBrandSel(b.id); setTab('search') }}>
+              {b.image ? <><img src={b.image} alt={b.name} /><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
+            </div>
+          ))}
+        </div>
+        {categories.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div className="sec-head" style={{ paddingTop: 0 }}><span className="sec-title">📂 الفئات</span></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+              {categories.map(c => (
+                <div key={c.id} onClick={() => { setCatSel(c.id); setTab('search') }} style={{ background: 'white', borderRadius: 16, padding: 14, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.07)', transition: '.2s', overflow: 'hidden' }}>
+                  {c.image ? <img src={c.image} style={{ width: 50, height: 38, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} /> :
+                    <div style={{ width: 50, height: 38, borderRadius: 10, background: '#FFF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>}
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1A0A00' }}>{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ========== Wish Tab ==========
+  const WishTab = () => {
+    const wp = allP.filter(p => wishlist.includes(p.id))
+    return (
+      <div className="sec" style={{ marginTop: 14 }}>
+        {wp.length === 0 ? <div className="empty"><i className="fas fa-heart"></i><p>قائمة المفضلة فارغة — أضف منتجات من ❤️</p></div> :
+          <div className="prod-grid">{wp.map(p => <ProductCard key={p.id} p={p} />)}</div>}
+      </div>
+    )
+  }
+
+  // ========== Promos Tab ==========
+  const PromosTab = () => {
+    const active = (promos || []).filter(p => p && p.active)
+    const typeLabel = { percent: 'خصم نسبة %', fixed: 'خصم مبلغ ثابت', buy_x_get_y: 'اشتري X خذ Y', tier_buy: 'خصم كمية الشركة' }
+    const typeColor = { percent: '#FF6B35', fixed: '#7c3aed', buy_x_get_y: '#10b981', tier_buy: '#3b82f6' }
+    return (
+      <div style={{ paddingBottom: 80 }}>
+        <div style={{ background: 'linear-gradient(135deg,#FF6B35,#7C3AED)', padding: '22px 18px 20px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-40%', right: '-15%', width: 180, height: 180, background: 'rgba(255,255,255,.07)', borderRadius: '50%' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', fontWeight: 700, marginBottom: 3 }}>العروض الحصرية</div>
+            <h2 style={{ color: 'white', fontWeight: 900, fontSize: 22, marginBottom: 4 }}>🎯 {active.length} عرض نشط</h2>
+            <p style={{ color: 'rgba(255,255,255,.8)', fontSize: 13 }}>وفّر أكثر مع عروضنا المتجددة</p>
+          </div>
+        </div>
+        {active.length === 0 && <div className="empty" style={{ marginTop: 40 }}><i className="fas fa-tag" /><p>لا توجد عروض حالياً</p></div>}
+        {active.map(promo => {
+          const pids = (() => {
+            try { return typeof promo.product_ids === 'string' ? JSON.parse(promo.product_ids || '[]') : (promo.product_ids || []) }
+            catch { return [] }
+          })()
+          const promoProds = pids.length > 0 ? allP.filter(p => pids.includes(p.id) || pids.includes(String(p.id))) : allP.slice(0, 5)
+          const col = typeColor[promo.type] || '#FF6B35'
+          const isExpired = promo.end_date && new Date(promo.end_date) < new Date()
+          if (isExpired) return null
+          return (
+            <div key={promo.id} style={{ background: 'white', borderRadius: 20, margin: '12px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden', border: '1.5px solid #F1ECE8' }}>
+              {promo.image && <img src={promo.image} style={{ width: '100%', height: 130, objectFit: 'cover' }} />}
+              <div style={{ padding: '16px 16px 10px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 800, marginBottom: 10, background: col + '18', color: col }}>
+                  {typeLabel[promo.type] || promo.type}
+                </div>
+                {(promo.type === 'percent' || promo.type === 'fixed') && (
+                  <div style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', borderRadius: 50, padding: '5px 14px', fontSize: 17, fontWeight: 900, display: 'inline-block', marginBottom: 8, float: 'left', boxShadow: '0 4px 12px rgba(255,107,53,.35)' }}>
+                    {promo.type === 'percent' ? `-${promo.discount_value}%` : `-${promo.discount_value} ${CUR}`}
+                  </div>
+                )}
+                <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 4, clear: 'both' }}>{promo.name}</div>
+                {promo.description && <p style={{ color: '#64748b', fontSize: 13, marginBottom: 10 }}>{promo.description}</p>}
+                {promo.type === 'tier_buy' && <p style={{ color: '#3b82f6', fontSize: 12, fontWeight: 700, marginBottom: 10 }}>📦 اشتري {promo.tier_qty} كرتون من نفس الشركة → خصم {promo.tier_value}{promo.tier_type === 'percent' ? '%' : ' ' + CUR}</p>}
+              </div>
+              {promoProds.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 14px 14px' }}>
+                  {promoProds.slice(0, 6).map(pp => (
+                    <div key={pp.id} style={{ flexShrink: 0, width: 64, textAlign: 'center', cursor: 'pointer' }} onClick={() => { setDetailProd(pp); setModal('detail') }}>
+                      {pp.image ? <img src={pp.image} style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover', display: 'block', margin: '0 auto 4px', border: '2px solid #F1ECE8' }} /> :
+                        <div style={{ width: 60, height: 60, borderRadius: 12, background: '#F8F4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>🛍️</div>}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#7A6A5A', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pp.name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #F1ECE8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {promo.end_date ? <PromoCountdown endDate={promo.end_date} /> : <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>⚡ بدون تاريخ انتهاء</span>}
+                <button style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', border: 'none', borderRadius: 30, padding: '8px 18px', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('search')}>تسوّق الآن</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ========== Quick Order Tab ==========
+  const QuickOrderTab = () => {
+    const [qtyMap, setQtyMap] = useState({})
+    const visibleProds = allP.filter(p => (p.stock || 0) > 0)
+    const addAll = () => {
+      let count = 0
+      visibleProds.forEach(p => {
+        const qty = parseInt(qtyMap[p.id]) || 0
+        if (qty > 0) { addToCart(p, qty); count++ }
+      })
+      if (count > 0) showToast(`✅ تمت إضافة ${count} منتج`)
+      else showToast('أدخل الكميات أولاً', true)
+    }
+    return (
+      <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <h2 className="sec-title">⚡ الطلب السريع</h2>
+          <button onClick={addAll} style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
+        </div>
+        <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#FF6B35' }}>
+                <th style={{ padding: '11px 12px', textAlign: 'right', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>المنتج</th>
+                <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>سعر/كرتون</th>
+                <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الكمية (كرتون)</th>
+                <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleProds.map((p, i) => {
+                const qty = parseInt(qtyMap[p.id]) || 0
+                const unitPrice = p.carton_price || p.price * (p.units || 12)
+                return (
+                  <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <td style={{ padding: '10px 12px', border: '1px solid #E2E8F0' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {p.image && <img src={p.image} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #E2E8F0' }} />}
+                        <div><div style={{ fontWeight: 700, fontSize: 13, color: '#1A0A00' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.units || 12} قطعة/كرتون</div></div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#FF6B35', border: '1px solid #E2E8F0' }}>{unitPrice.toFixed(0)} {CUR}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #E2E8F0' }}>
+                      <input type="number" min="0" value={qtyMap[p.id] || ''} onChange={e => setQtyMap(m => ({ ...m, [p.id]: e.target.value }))} placeholder="0"
+                        style={{ width: 70, textAlign: 'center', border: '2px solid #E2E8F0', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = '#FF6B35'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#1A0A00', border: '1px solid #E2E8F0' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: '#FFF7ED' }}>
+                <td colSpan={3} style={{ padding: '12px', fontWeight: 800, color: '#1A0A00', fontSize: 14, border: '1px solid #E2E8F0', textAlign: 'right' }}>💰 الإجمالي المحدد:</td>
+                <td style={{ padding: '12px', fontWeight: 900, color: '#FF6B35', fontSize: 16, border: '1px solid #E2E8F0', textAlign: 'center' }}>
+                  {Object.entries(qtyMap).reduce((sum, [id, qty]) => {
+                    const p = allP.find(x => String(x.id) === String(id))
+                    const up = p ? (p.carton_price || p.price * (p.units || 12)) : 0
+                    return sum + (parseInt(qty) || 0) * up
+                  }, 0).toFixed(0)} {CUR}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    )
+  }
 
   // ========== وضع الصيانة ==========
   if (settings?.maintenance_mode === '1') {
@@ -1197,9 +1630,17 @@ export default function Store() {
     )
   }
 
-  // ========== التابعات الرئيسية ==========
-  // (يتم تعريفها في الكود الكامل، لكن هنا سأفترض أنها موجودة)
+  // ========== تعريف tabsMap (المهم جداً) ==========
+  const tabsMap = {
+    home: <HomeTab />,
+    search: <SearchTab />,
+    cats: <CatsTab />,
+    wish: <WishTab />,
+    promos: <PromosTab />,
+    quick: <QuickOrderTab />
+  }
 
+  // ========== المكون الرئيسي ==========
   return (
     <div dir="rtl">
       {/* HEADER */}
