@@ -9,6 +9,7 @@
  * ✅ سؤال FAQ جديد عن النقاط
  * ✅ جميع الميزات السابقة مع تحسينات
  */
+import React from 'react'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 
