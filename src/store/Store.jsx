@@ -1,11 +1,17 @@
 /**
- * Store.jsx — نقاء v6 (النسخة المصححة)
- * ✅ إزالة اسم العميل الثاني عند الدخول
- * ✅ عرض نقاط العميل بجانب اسمه
- * ✅ سؤال عن النقاط في الأسئلة الشائعة
- * ✅ سعر الكارتون × عدد الكراتين في السلة
- * ✅ المنتجات لا تتكرر في السلة (زيادة الكمية)
- * ✅ رقم السلة يعرض عدد الكراتين
+ * Store.jsx — نقاء v6 (النسخة الكاملة المصححة)
+ * ✅ تسجيل دخول + تسجيل جديد مع OTP
+ * ✅ عروض من قاعدة البيانات مع مؤقت
+ * ✅ خصم تدريجي حسب الكمية
+ * ✅ اشتري X خذ Y
+ * ✅ زر واتساب بارز
+ * ✅ الطلب بالكارتون فقط
+ * ✅ حقول رقمية فقط
+ * ✅ تأكيد الطلب بكود عبر واتساب
+ * ✅ صور متحركة للفئات والماركات
+ * ✅ نظام تقييمات المنتجات
+ * ✅ الطلب السريع
+ * ✅ وضع الليل
  * ✅ جميع الميزات السابقة
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -283,13 +289,13 @@ body.dark .ci{border-color:#2d1a0a}
 .abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
 .abtn.green{background:linear-gradient(135deg,#10b981,#059669)}
 
-/* OTP - Single Input */
-.otp-single-input{width:100%;max-width:280px;padding:14px 20px;font-size:24px;font-weight:900;
-  text-align:center;border:2px solid #E8DDD5;border-radius:14px;outline:none;
-  background:#F7F3EF;font-family:inherit;letter-spacing:8px;transition:border-color .3s;
-  margin:0 auto;display:block;direction:ltr}
-.otp-single-input:focus{border-color:#FF6B35}
-.otp-single-input.valid{border-color:#10b981}
+/* OTP */
+.otp-inputs{display:flex;gap:10px;justify-content:center;margin:16px 0}
+.otp-input{width:52px;height:58px;border:2px solid #E8DDD5;border-radius:12px;
+  text-align:center;font-size:22px;font-weight:900;font-family:inherit;
+  outline:none;background:#F7F3EF;-webkit-user-select:text;user-select:text}
+.otp-input:focus{border-color:#FF6B35}
+body.dark .otp-input{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
 
 /* TOAST */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
@@ -628,64 +634,30 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   )
 }
 
-// ✅ CheckoutModal المعدل - إرسال كود التأكيد عبر واتساب (خانة واحدة)
+// ✅ CheckoutModal المعدل - إرسال كود التأكيد عبر واتساب
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
   const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
   const [otp, setOtp] = useState('')
   const [genOtp, setGenOtp] = useState('')
+  const [digits, setDigits] = useState(['', '', '', ''])
+  const refs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const [loading, setLoading] = useState(false)
-  const inputRef = useRef(null)
   const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  // ✅ دالة إرسال الكود عبر Supabase Edge Function
-  const sendCodeViaWhatsApp = async (phone, name, code, type = 'otp') => {
-    try {
-      const response = await fetch(
-        'https://jxdqfcvkuuozwlbdbjblq.supabase.co/functions/v1/send-whatsapp',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phone, name, code, type })
-        }
-      )
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        console.log('✅ تم إرسال الرسالة بنجاح')
-        return true
-      } else {
-        console.error('❌ فشل إرسال الرسالة:', result.error)
-        return sendCodeViaWhatsAppFallback(phone, name, code, type)
-      }
-    } catch (error) {
-      console.error('❌ خطأ في إرسال الرسالة:', error)
-      return sendCodeViaWhatsAppFallback(phone, name, code, type)
-    }
-  }
-
-  // ✅ طريقة بديلة (فتح واتساب في المتصفح)
-  const sendCodeViaWhatsAppFallback = (phone, name, code, type = 'otp') => {
+  // ✅ دالة إرسال الكود عبر واتساب
+  const sendCodeViaWhatsApp = (phone, name, code) => {
     let waNumber = phone.replace(/^0/, '213')
     waNumber = waNumber.replace(/[^0-9]/g, '')
     
-    let message = ''
-    if (type === 'otp') {
-      message = `🔐 كود تأكيد الطلبية - ${storeName || 'نقاء'}\n\nمرحباً ${name}،\nكود تأكيد طلبيتك هو: *${code}*\n\nأدخل هذا الكود لإتمام طلبك.`
-    } else if (type === 'confirm') {
-      message = `✅ تم تأكيد طلبك رقم ${code} بنجاح!\n\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
-    }
+    const message = `🔐 كود تأكيد الطلبية - ${storeName || 'نقاء'}\n\nمرحباً ${name}،\nكود تأكيد طلبيتك هو: *${code}*\n\nأدخل هذا الكود لإتمام طلبك.`
     
+    // فتح واتساب مع الرسالة
     window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, '_blank')
-    return true
   }
 
   // ✅ توليد وإرسال الكود
-  const goToOtp = async () => {
+  const goToOtp = () => {
     if (!form.name || !form.phone) {
       showToast('الاسم والهاتف مطلوبان', true)
       return
@@ -694,48 +666,40 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
     const code = String(Math.floor(1000 + Math.random() * 9000))
     setGenOtp(code)
     
-    try {
-      const sent = await sendCodeViaWhatsApp(form.phone, form.name, code, 'otp')
-      if (sent) {
-        showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب`)
-      } else {
-        sendCodeViaWhatsAppFallback(form.phone, form.name, code, 'otp')
-        showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب (طريقة بديلة)`)
-      }
-    } catch (error) {
-      sendCodeViaWhatsAppFallback(form.phone, form.name, code, 'otp')
-      showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب (طريقة بديلة)`)
-    }
+    // ✅ إرسال الكود عبر واتساب (بدلاً من عرضه)
+    sendCodeViaWhatsApp(form.phone, form.name, code)
+    
+    // ✅ إعلام العميل أنه سيستلم الكود على واتساب
+    showToast(`📱 تم إرسال الكود إلى ${form.phone} عبر واتساب`)
     
     setStep(3)
-    setTimeout(() => inputRef.current?.focus(), 300)
+  }
+
+  const handleDigit = (i, v) => {
+    const nd = [...digits]
+    nd[i] = v.replace(/\D/, '')
+    setDigits(nd)
+    if (nd[i] && i < 3) refs[i + 1].current?.focus()
+    if (!nd[i] && i > 0) refs[i - 1].current?.focus()
+    setOtp(nd.join(''))
   }
 
   // ✅ إعادة إرسال الكود
-  const resendCode = async () => {
+  const resendCode = () => {
     const newCode = String(Math.floor(1000 + Math.random() * 9000))
     setGenOtp(newCode)
-    
-    try {
-      const sent = await sendCodeViaWhatsApp(form.phone, form.name, newCode, 'otp')
-      if (sent) {
-        showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone}`)
-      } else {
-        sendCodeViaWhatsAppFallback(form.phone, form.name, newCode, 'otp')
-        showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone} (طريقة بديلة)`)
-      }
-    } catch (error) {
-      sendCodeViaWhatsAppFallback(form.phone, form.name, newCode, 'otp')
-      showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone} (طريقة بديلة)`)
-    }
+    sendCodeViaWhatsApp(form.phone, form.name, newCode)
+    showToast(`📱 تم إعادة إرسال الكود إلى ${form.phone}`)
   }
 
-  // ✅ تأكيد الطلب
   const confirmOrder = async () => {
+    // ✅ التحقق من الكود
     if (otp !== genOtp) {
       showToast('❌ الكود غير صحيح، حاول مرة أخرى', true)
+      setDigits(['', '', '', ''])
       setOtp('')
-      inputRef.current?.focus()
+      // تركيز على أول حقل
+      refs[0].current?.focus()
       return
     }
     
@@ -759,6 +723,7 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       return
     }
     
+    // تحديث المخزون
     for (const item of cart) {
       const { data: p } = await supabase.from('products').select('stock').eq('id', item.id).maybeSingle()
       if (p) {
@@ -766,20 +731,17 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       }
     }
     
-    try {
-      const sent = await sendCodeViaWhatsApp(form.phone, form.name, order.id, 'confirm')
-      if (!sent) {
-        sendCodeViaWhatsAppFallback(form.phone, form.name, order.id, 'confirm')
-      }
-    } catch (error) {
-      sendCodeViaWhatsAppFallback(form.phone, form.name, order.id, 'confirm')
-    }
+    // ✅ إرسال رسالة تأكيد عبر واتساب
+    let waNumber = form.phone.replace(/^0/, '213')
+    waNumber = waNumber.replace(/[^0-9]/g, '')
+    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(confirmMsg)}`, '_blank')
     
     onSuccess(order.id)
     setLoading(false)
   }
 
-  // ✅ واجهة إدخال الكود (خانة واحدة)
+  // ✅ واجهة إدخال الكود (بدون عرض الكود للعميل)
   if (step === 3) {
     return (
       <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -797,53 +759,29 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
               {form.phone}
             </p>
             
-            {/* ✅ خانة واحدة لإدخال الكود */}
-            <div style={{ marginBottom: 16 }}>
-              <input
-                ref={inputRef}
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={otp}
-                onChange={e => {
-                  const val = e.target.value.replace(/\D/g, '')
-                  if (val.length <= 4) setOtp(val)
-                }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && otp.length === 4) {
-                    confirmOrder()
-                  }
-                }}
-                placeholder="أدخل الكود المكون من 4 أرقام"
-                className="otp-single-input"
-                style={{
-                  width: '100%',
-                  maxWidth: 280,
-                  padding: '14px 20px',
-                  fontSize: 24,
-                  fontWeight: 900,
-                  textAlign: 'center',
-                  border: `2px solid ${otp.length === 4 ? '#10b981' : '#E8DDD5'}`,
-                  borderRadius: 14,
-                  outline: 'none',
-                  background: '#F7F3EF',
-                  fontFamily: 'inherit',
-                  letterSpacing: 8,
-                  transition: 'border-color 0.3s',
-                  margin: '0 auto',
-                  display: 'block',
-                  direction: 'ltr'
-                }}
-                onFocus={e => e.target.style.borderColor = '#FF6B35'}
-                onBlur={e => e.target.style.borderColor = otp.length === 4 ? '#10b981' : '#E8DDD5'}
-                autoFocus
-              />
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
-                {otp.length === 0 && '📝 أدخل الكود المكون من 4 أرقام'}
-                {otp.length > 0 && otp.length < 4 && `✅ ${otp.length}/4 أرقام`}
-                {otp.length === 4 && '✅ جاهز للتأكيد'}
-              </p>
+            <div className="otp-inputs">
+              {digits.map((d, i) => (
+                <input
+                  key={i}
+                  ref={refs[i]}
+                  className="otp-input"
+                  value={d}
+                  inputMode="numeric"
+                  maxLength={1}
+                  autoFocus={i === 0}
+                  onChange={e => handleDigit(i, e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Backspace' && !d && i > 0) {
+                      refs[i - 1].current?.focus()
+                    }
+                  }}
+                />
+              ))}
             </div>
+            
+            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
+              أدخل الكود المكون من 4 أرقام الذي تلقيته على واتساب
+            </p>
             
             <button
               onClick={resendCode}
@@ -868,10 +806,6 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
               className="abtn green"
               onClick={confirmOrder}
               disabled={loading || otp.length < 4}
-              style={{
-                opacity: otp.length === 4 ? 1 : 0.5,
-                cursor: otp.length === 4 ? 'pointer' : 'not-allowed'
-              }}
             >
               {loading ? '⏳ جاري التأكيد...' : '✅ تأكيد الطلبية'}
             </button>
@@ -1377,27 +1311,6 @@ export default function Store() {
   const sevenAgo   = new Date(); sevenAgo.setDate(sevenAgo.getDate()-7)
   const [bestSellers,  setBestSellers]  = useState([])
 
-  // ✅ تحديث نقاط العميل عند الشراء
-  const updateCustomerPoints = async (customerId, totalAmount) => {
-    const pointsEarned = Math.floor(totalAmount / 100)
-    const { data: customerData } = await supabase
-      .from('customers')
-      .select('points')
-      .eq('id', customerId)
-      .single()
-    
-    if (customerData) {
-      const newPoints = (customerData.points || 0) + pointsEarned
-      await supabase
-        .from('customers')
-        .update({ points: newPoints })
-        .eq('id', customerId)
-      
-      // تحديث حالة العميل المحلية
-      setCustomer(prev => prev ? { ...prev, points: newPoints } : prev)
-    }
-  }
-
   /* load */
   useEffect(()=>{
     const load=async()=>{
@@ -1476,40 +1389,18 @@ export default function Store() {
     syncWish()
   },[customer])
 
-  // ✅ دالة إضافة إلى السلة (لا تتكرر المنتجات)
-  const addToCart = useCallback((product, qty = 1) => {
-    if (!product || (product.stock || 0) === 0) {
-      showToast('المنتج غير متوفر', true)
-      return
-    }
-    
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id)
-      
-      if (existing) {
-        const newQty = existing.qty + qty
-        showToast(`✅ تمت زيادة الكمية إلى ${newQty} كرتون`)
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, qty: newQty }
-            : item
-        )
+  const addToCart=useCallback((p,qty=1)=>{
+    if(!p||(p.stock||0)===0){showToast('المنتج غير متوفر',true);return}
+    setCart(prev=>{
+      const existing=prev.find(i=>i.id===p.id)
+      if(existing){
+        showToast('✅ تمت زيادة الكمية')
+        return prev.map(i=>i.id===p.id?{...i,qty:i.qty+qty}:i)
       }
-      
-      const cartonPrice = product.carton_price || (product.price * (product.units || 12))
       showToast('✅ تمت الإضافة للسلة')
-      return [...prev, {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        qty: qty,
-        image: product.image,
-        unitsPerCarton: product.units || 12,
-        cartonPrice: cartonPrice,
-        stock: product.stock || 0
-      }]
+      return [...prev,{id:p.id,name:p.name,price:Number(p.price),qty,image:p.image,unitsPerCarton:p.units||12}]
     })
-  }, [])
+  },[])
 
   const toggleWish=useCallback(id=>{
     setWishlist(prev=>{
@@ -2089,19 +1980,6 @@ export default function Store() {
             {customer
               ?<button className="sh-login" onClick={()=>setModal('account')}>
                   <i className="fas fa-user"></i> {customer.name.split(' ')[0]}
-                  {customer.points > 0 && (
-                    <span style={{
-                      background: '#FFD700',
-                      color: '#1A0A00',
-                      borderRadius: '12px',
-                      padding: '1px 8px',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      marginRight: '4px'
-                    }}>
-                      ⭐ {customer.points}
-                    </span>
-                  )}
                 </button>
               :<button className="sh-login" onClick={()=>setModal('login')}>
                   <i className="fas fa-user"></i> دخول
@@ -2206,7 +2084,7 @@ export default function Store() {
         </div>
       )}
 
-      {/* ✅ FAQ - إضافة سؤال عن النقاط */}
+      {/* FAQ Modal */}
       {modal==='faq'&&(
         <div className="moverlay" onClick={e=>{if(e.target.className==='moverlay')setModal(null)}}>
           <div className="msheet">
@@ -2220,15 +2098,10 @@ export default function Store() {
                 {q:'كيف يتم التسليم؟',a:'يتواصل معك فريقنا عبر واتساب لتحديد موعد التسليم.'},
                 {q:'ما طرق الدفع المتاحة؟',a:'الدفع نقداً عند الاستلام.'},
                 {q:'هل يمكن الإلغاء بعد الطلب؟',a:'يمكن الإلغاء قبل تأكيد الطلب عبر التواصل معنا.'},
-                // ✅ سؤال عن النقاط
-                { 
-                  q:'🌟 كيف أحصل على نقاط؟', 
-                  a:`تحصل على نقطة واحدة لكل 100 دج تشتريها.\n• 100 نقطة = 1% خصم على طلبك القادم.\n• يمكنك متابعة نقاطك من خلال حسابك في المتجر.\n• كلما زادت مشترياتك، زادت نقاطك وخصوماتك!` 
-                },
               ].map((item,i)=>(
                 <div key={i} style={{marginBottom:14,background:'#F7F3EF',borderRadius:12,padding:14}}>
                   <div style={{fontWeight:800,fontSize:14,color:'#1A0A00',marginBottom:6}}>❓ {item.q}</div>
-                  <div style={{fontSize:13,color:'#475569',lineHeight:1.6,whiteSpace:'pre-wrap'}}>💡 {item.a}</div>
+                  <div style={{fontSize:13,color:'#475569',lineHeight:1.6}}>💡 {item.a}</div>
                 </div>
               ))}
             </div>
