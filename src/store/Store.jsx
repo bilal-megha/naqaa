@@ -1,5 +1,5 @@
 /**
- * Store.jsx — الإصدار النهائي المعدل بالكامل
+ * Store.jsx — الإصدار النهائي المعدل بالكامل (مع إصلاح الأخطاء)
  * ✅ استخدام supabase.auth بدلاً من crypto-js (أمان)
  * ✅ تحسين الأداء (useMemo, useCallback, React.memo)
  * ✅ عرض نقاط العميل في الهيدر
@@ -9,8 +9,7 @@
  * ✅ سؤال FAQ جديد عن النقاط
  * ✅ جميع الميزات السابقة مع تحسينات
  */
-import React from 'react'
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 
 const WA_NUM = '213696668065'
@@ -586,6 +585,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
     { min:2000, disc:15, label:'خصم 15%' },
   ]
   const currentTier = [...volTiers].reverse().find(t=>cartTotal>=t.min)
+  const nextTier    = volTiers.find(t=>cartTotal<t.min)
   const volDisc     = currentTier ? cartTotal*(currentTier.disc/100) : 0
 
   // خصم النقاط (كل 100 نقطة = 100 دج)
@@ -699,7 +699,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
   )
 }
 
-// ========== CheckoutModal (بدون تغيير جوهري) ==========
+// ========== CheckoutModal ==========
 function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
   const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
@@ -914,7 +914,7 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
   )
 }
 
-// ========== DetailModal (بدون تغيير) ==========
+// ========== DetailModal ==========
 function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, currency, products, sevenAgo, onShowProduct, promos }) {
   if(!product) return null
   const p = product
