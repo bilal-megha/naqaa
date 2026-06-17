@@ -856,46 +856,47 @@ function Products() {
     const { data } = await supabase.from('product_categories').select('category_id').eq('product_id',p.id)
     setSelCats((data||[]).map(r=>r.category_id))
   }
+  
+// ✅ softDelete مصحح (مع BIGSERIAL)
+const softDelete = async (id) => {
+  if (!(await askConfirm("⚠️ حذف هذا المنتج؟ يمكن استعادته من سلة المهملات"))) return;
 
-  // ✅ softDelete مصحح (بدون .catch())
-  const softDelete = async (id) => {
-    if (!(await askConfirm("⚠️ حذف هذا المنتج؟ يمكن استعادته من سلة المهملات"))) return;
-
-    try {
-      const product = products.find((p) => p.id === id);
-      if (!product) {
-        showToast("❌ المنتج غير موجود", "error");
-        return;
-      }
-
-      const { error: insertError } = await supabase.from("deleted_items").insert({
-        table_name: "products",
-        item_id: id,
-        data: JSON.stringify(product),
-        deleted_at: new Date().toISOString(),
-      });
-
-      if (insertError) {
-        console.error("❌ خطأ:", insertError);
-        showToast("❌ خطأ: " + insertError.message, "error");
-        return;
-      }
-
-      const { error: deleteError } = await supabase.from("products").delete().eq("id", id);
-      if (deleteError) {
-        console.error("❌ خطأ:", deleteError);
-        showToast("❌ خطأ في حذف المنتج", "error");
-        return;
-      }
-
-      await logActivity("حذف منتج", `تم حذف المنتج: ${product.name}`);
-      showToast("✅ تم نقل المنتج إلى سلة المهملات");
-      await load();
-    } catch (err) {
-      console.error("❌ خطأ:", err);
-      showToast("❌ حدث خطأ غير متوقع", "error");
+  try {
+    const product = products.find((p) => p.id === id);
+    if (!product) {
+      showToast("❌ المنتج غير موجود", "error");
+      return;
     }
-  };
+
+    // ✅ إزالة id من البيانات (سيتم توليده تلقائياً)
+    const { error: insertError } = await supabase.from("deleted_items").insert({
+      table_name: "products",
+      item_id: product.id,
+      data: JSON.stringify(product),
+      deleted_at: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      console.error("❌ خطأ في الإضافة إلى سلة المهملات:", insertError);
+      showToast("❌ خطأ: " + insertError.message, "error");
+      return;
+    }
+
+    const { error: deleteError } = await supabase.from("products").delete().eq("id", id);
+    if (deleteError) {
+      console.error("❌ خطأ في حذف المنتج:", deleteError);
+      showToast("❌ خطأ في حذف المنتج", "error");
+      return;
+    }
+
+    await logActivity("حذف منتج", `تم حذف المنتج: ${product.name}`);
+    showToast("✅ تم نقل المنتج إلى سلة المهملات");
+    await load();
+  } catch (err) {
+    console.error("❌ خطأ:", err);
+    showToast("❌ حدث خطأ غير متوقع", "error");
+  }
+};
 
   const toggleCat = id => setSelCats(prev => prev.includes(id)?prev.filter(x=>x!==id):[...prev,id])
 
