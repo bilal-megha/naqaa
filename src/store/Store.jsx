@@ -12,82 +12,82 @@ const WA_NUM = '213696668065'
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Tajawal',sans-serif;background:#F7F3EF;direction:rtl}
-body.dark{background:#100800;color:#F0E8E0}
-.sh{background:linear-gradient(160deg,#FF6B35,#E8430E 65%,#C02E00);padding:12px 16px 14px;position:sticky;top:0;z-index:300;box-shadow:0 4px 24px rgba(255,107,53,.4)}
+body{font-family:'Tajawal',sans-serif;background:#F0F9FF;direction:rtl;min-height:100vh}
+body.dark{background:#071E2E;color:#DBEAFE}
+.sh{background:linear-gradient(150deg,#0284C7 0%,#0EA5E9 50%,#06B6D4 100%);padding:12px 16px 14px;position:sticky;top:0;z-index:300;box-shadow:0 6px 28px rgba(14,165,233,.45)}
 .sh-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;gap:8px}
 .sh-right{display:flex;gap:8px;align-items:center}
 .sh-login{background:rgba(255,255,255,.18);color:white;border:1.5px solid rgba(255,255,255,.45);padding:7px 14px;border-radius:30px;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit}
 .sh-icon{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,.2);color:white;font-size:17px;display:flex;align-items:center;justify-content:center}
 .sh-logo{font-size:21px;font-weight:900;color:white}
-.sh-contact{background:white;color:#FF6B35;border:none;padding:7px 15px;border-radius:30px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.sh-contact{background:white;color:#0EA5E9;border:none;padding:7px 15px;border-radius:30px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
 .sh-search{background:white;border-radius:30px;display:flex;align-items:center;gap:8px;padding:9px 16px;box-shadow:0 2px 12px rgba(0,0,0,.12)}
-body.dark .sh-search{background:#2a1400}
+body.dark .sh-search{background:#071E2E}
 .sh-search input{border:none;outline:none;flex:1;font-family:inherit;font-size:14px;background:transparent;color:#333}
 body.dark .sh-search input{color:#f0e8e0}
-.announce{background:#FF6B35;color:white;text-align:center;padding:7px 16px;font-size:12px;font-weight:700;letter-spacing:.3px}
-.banner-wrap{margin:14px 14px 0;border-radius:20px;overflow:hidden;position:relative;box-shadow:0 8px 28px rgba(255,107,53,.22)}
+.announce{background:linear-gradient(90deg,#0284C7,#0EA5E9,#059669);color:white;text-align:center;padding:7px 16px;font-size:12px;font-weight:700;letter-spacing:.3px}
+.banner-wrap{margin:14px 14px 0;border-radius:20px;overflow:hidden;position:relative;box-shadow:0 8px 28px rgba(14,165,233,.22)}
 .banner-track{display:flex;transition:transform .45s cubic-bezier(.4,0,.2,1)}
 .banner-slide{min-width:100%;height:175px;object-fit:cover;display:block}
-.banner-fall{min-width:100%;height:175px;background:linear-gradient(135deg,#FF6B35,#7C3AED);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.banner-fall{min-width:100%;height:175px;background:linear-gradient(135deg,#0EA5E9,#059669);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 .bdots{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
 .bdot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);border:none;cursor:pointer;transition:.3s;padding:0}
 .bdot.on{background:white;width:18px;border-radius:10px}
-.flash-bar{background:linear-gradient(135deg,#dc2626,#7c3aed);margin:14px 14px 0;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;box-shadow:0 4px 16px rgba(220,38,38,.3)}
+.flash-bar{background:linear-gradient(135deg,#0369A1,#0EA5E9 60%,#10B981);margin:14px 14px 0;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;box-shadow:0 4px 20px rgba(14,165,233,.45)}
 .timer-wrap{display:flex;gap:5px;align-items:center}
 .tbox{background:rgba(0,0,0,.3);color:white;padding:4px 8px;border-radius:8px;font-size:16px;font-weight:900;font-family:monospace;min-width:32px;text-align:center}
 .sec{padding:0 14px;margin-bottom:18px}
 .sec-head{display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-bottom:13px}
-.sec-title{font-size:17px;font-weight:900;color:#1A0A00}
-body.dark .sec-title{color:#F0E8E0}
-.sec-more{color:#FF6B35;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;font-family:inherit}
+.sec-title{font-size:17px;font-weight:900;color:#0C2D44}
+body.dark .sec-title{color:#DBEAFE}
+.sec-more{color:#0EA5E9;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;font-family:inherit}
 .anim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .anim-card{position:relative;border-radius:16px;overflow:hidden;cursor:pointer;aspect-ratio:1;box-shadow:0 4px 14px rgba(0,0,0,.1);transition:.3s;background:white;display:flex;align-items:center;justify-content:center;border:2.5px solid transparent}
-body.dark .anim-card{background:#1e1208}
+body.dark .anim-card{background:#082840}
 .anim-card:active{transform:scale(.95)}
-.anim-card.sel{border-color:#FF6B35}
+.anim-card.sel{border-color:#0EA5E9}
 .anim-card img{width:100%;height:100%;object-fit:cover;transition:.4s}
 .anim-card:hover img{transform:scale(1.08)}
 .anim-card .overlay{position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;padding:8px;opacity:0;transition:.3s}
 .anim-card:hover .overlay{opacity:1}
 .anim-card .overlay span{color:white;font-weight:700;font-size:12px}
-.anim-card .no-img{font-weight:900;font-size:13px;color:#1A0A00;text-align:center;padding:8px}
-body.dark .anim-card .no-img{color:#F0E8E0}
-.anim-all{border-radius:16px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#FF6B35,#7C3AED);transition:.2s}
+.anim-card .no-img{font-weight:900;font-size:13px;color:#0C2D44;text-align:center;padding:8px}
+body.dark .anim-card .no-img{color:#DBEAFE}
+.anim-all{border-radius:16px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#0EA5E9,#059669);transition:.2s}
 .anim-all i{font-size:24px;color:white;margin-bottom:5px}
 .anim-all span{font-size:12px;font-weight:800;color:white}
 .cats-scroll{display:flex;gap:10px;overflow-x:auto;padding:2px 0 8px}
 .cats-scroll::-webkit-scrollbar{display:none}
 .cat-item{flex-shrink:0;width:80px;text-align:center;cursor:pointer;transition:.2s}
 .cat-item:active{transform:scale(.93)}
-.cat-img{width:72px;height:72px;border-radius:16px;overflow:hidden;margin:0 auto 6px;background:#F8F4F0;display:flex;align-items:center;justify-content:center;font-size:28px;border:2.5px solid transparent;transition:.2s}
+.cat-img{width:72px;height:72px;border-radius:16px;overflow:hidden;margin:0 auto 6px;background:#E7F5FD;display:flex;align-items:center;justify-content:center;font-size:28px;border:2.5px solid transparent;transition:.2s}
 .cat-img img{width:100%;height:100%;object-fit:cover}
-.cat-item.sel .cat-img{border-color:#FF6B35}
-.cat-label{font-size:11px;font-weight:700;color:#1A0A00}
-body.dark .cat-label{color:#F0E8E0}
+.cat-item.sel .cat-img{border-color:#0EA5E9}
+.cat-label{font-size:11px;font-weight:700;color:#0C2D44}
+body.dark .cat-label{color:#DBEAFE}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0}
 .chips::-webkit-scrollbar{display:none}
-.chip{background:white;border:1.5px solid #E8DDD5;border-radius:30px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;color:#7A6A5A;flex-shrink:0}
-body.dark .chip{background:#1e1208;border-color:#3d2a1a;color:#C0A898}
-.chip.sel{background:#FF6B35;color:white;border-color:#FF6B35}
+.chip{background:white;border:1.5px solid #BAE6FD;border-radius:30px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;color:#4B7FA0;flex-shrink:0}
+body.dark .chip{background:#082840;border-color:#0F3D5A;color:#93C5D9}
+.chip.sel{background:#0EA5E9;color:white;border-color:#0EA5E9}
 .pc{background:white;border-radius:18px;padding:11px;transition:.2s;box-shadow:0 2px 14px rgba(0,0,0,.07);cursor:pointer;border:1.5px solid rgba(0,0,0,.04);width:160px;flex-shrink:0}
-body.dark .pc{background:#1e1208}
+body.dark .pc{background:#082840}
 .pc:active{transform:scale(.97)}
-.pc-img{position:relative;border-radius:13px;overflow:hidden;margin-bottom:9px;background:#F8F4F0;aspect-ratio:1}
+.pc-img{position:relative;border-radius:13px;overflow:hidden;margin-bottom:9px;background:#E7F5FD;aspect-ratio:1}
 .pc-img img{width:100%;height:100%;object-fit:cover}
 .pc-noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:34px}
 .badge{position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;color:white}
-.b-new{background:#10b981}.b-hot{background:#f59e0b}
-.b-promo{background:#FF6B35}.b-flash{background:#dc2626}
+.b-new{background:#10b981}.b-hot{background:#38BDF8}
+.b-promo{background:#0284C7}.b-flash{background:#0EA5E9}
 .fav-b{position:absolute;top:6px;left:6px;width:28px;height:28px;border-radius:50%;background:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px}
-.pc-name{font-size:12px;font-weight:700;color:#1A0A00;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-body.dark .pc-name{color:#F0E8E0}
-.pc-price{font-size:15px;font-weight:900;color:#FF6B35}
+.pc-name{font-size:12px;font-weight:700;color:#0C2D44;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.dark .pc-name{color:#DBEAFE}
+.pc-price{font-size:15px;font-weight:900;color:#0EA5E9}
 .pc-old{font-size:11px;color:#94a3b8;text-decoration:line-through;margin-left:4px}
-.pc-disc{background:#dc2626;color:white;font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;margin-right:4px}
-.pc-carton{font-size:10px;color:#7A6A5A;margin-top:1px}
+.pc-disc{background:#0EA5E9;color:white;font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px;margin-right:4px}
+.pc-carton{font-size:10px;color:#4B7FA0;margin-top:1px}
 .pc-stock{font-size:10px;color:#ef4444;margin-top:2px}
-.add-b{width:100%;margin-top:8px;padding:7px;border-radius:30px;background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:4px}
+.add-b{width:100%;margin-top:8px;padding:7px;border-radius:30px;background:linear-gradient(135deg,#0EA5E9,#0284C7);color:white;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:4px}
 .prod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .prod-grid .pc{width:100%}
 .hscroll{display:flex;gap:11px;overflow-x:auto;padding:2px 0 10px}
@@ -95,88 +95,235 @@ body.dark .pc-name{color:#F0E8E0}
 .promo-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px}
 .promo-box{border-radius:16px;padding:14px;text-align:center;cursor:pointer;transition:.2s}
 .promo-box:active{transform:scale(.97)}
-.prog-bar-wrap{background:#FFF0EB;border-radius:14px;padding:12px 14px;margin:12px 0}
-body.dark .prog-bar-wrap{background:#2d1a0a}
-.prog-track{background:#E8DDD5;border-radius:30px;height:8px;margin-top:8px;overflow:hidden}
-.prog-fill{height:100%;border-radius:30px;background:linear-gradient(90deg,#FF6B35,#7C3AED);transition:width .5s ease}
-.cart-bar{background:linear-gradient(135deg,#FF6B35,#7C3AED);margin:14px;border-radius:16px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;box-shadow:0 6px 20px rgba(255,107,53,.3)}
-.day-deal{background:white;margin:14px;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(255,107,53,.15);border:2px solid #FF6B35}
-body.dark .day-deal{background:#1e1208}
+.prog-bar-wrap{background:#E0F4FF;border-radius:14px;padding:12px 14px;margin:12px 0}
+body.dark .prog-bar-wrap{background:#0C3454}
+.prog-track{background:#BAE6FD;border-radius:30px;height:8px;margin-top:8px;overflow:hidden}
+.prog-fill{height:100%;border-radius:30px;background:linear-gradient(90deg,#0284C7,#0EA5E9,#10B981);transition:width .5s ease}
+.cart-bar{background:linear-gradient(135deg,#0284C7,#0EA5E9 50%,#10B981);margin:14px;border-radius:16px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;box-shadow:0 6px 24px rgba(14,165,233,.38)}
+.day-deal{background:white;margin:14px;border-radius:20px;overflow:hidden;box-shadow:0 4px 20px rgba(14,165,233,.15);border:2px solid #0EA5E9}
+body.dark .day-deal{background:#082840}
 .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(3px);z-index:800}
 .drawer{position:fixed;top:0;right:0;height:100vh;width:272px;background:white;z-index:900;box-shadow:-8px 0 40px rgba(0,0,0,.18);transform:translateX(110%);transition:transform .32s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
-body.dark .drawer{background:#1A0A00}
+body.dark .drawer{background:#0C2D44}
 .drawer.open{transform:translateX(0)}
-.drawer-head{background:linear-gradient(135deg,#FF6B35,#C02E00);padding:20px 18px 16px;flex-shrink:0;position:relative}
+.drawer-head{background:linear-gradient(150deg,#0284C7,#0EA5E9 55%,#06B6D4);padding:20px 18px 16px;flex-shrink:0;position:relative}
 .drawer-nav{flex:1;overflow-y:auto;padding:8px 0}
-.di{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;transition:.18s;color:#1A0A00;font-size:14px;font-weight:700}
-body.dark .di{color:#F0E8E0}
-.di:hover,.di.act{background:rgba(255,107,53,.09);color:#FF6B35}
-.di-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;background:#FFF0EB}
-.di.act .di-ico{background:linear-gradient(135deg,#FF6B35,#E8430E)}
-.di-div{height:1px;background:#F1ECE8;margin:4px 16px}
-body.dark .di-div{background:#2d1a0a}
-.di-badge{background:#FF6B35;color:white;border-radius:30px;padding:1px 8px;font-size:11px;font-weight:800;margin-right:auto}
+.di{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;transition:.18s;color:#0C2D44;font-size:14px;font-weight:700}
+body.dark .di{color:#DBEAFE}
+.di:hover,.di.act{background:rgba(14,165,233,.09);color:#0EA5E9}
+.di-ico{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;background:#E0F4FF}
+.di.act .di-ico{background:linear-gradient(135deg,#0EA5E9,#0284C7)}
+.di-div{height:1px;background:#E0F0FA;margin:4px 16px}
+body.dark .di-div{background:#0C3454}
+.di-badge{background:#0EA5E9;color:white;border-radius:30px;padding:1px 8px;font-size:11px;font-weight:800;margin-right:auto}
 .bnav{position:fixed;bottom:0;left:0;right:0;background:white;display:flex;justify-content:space-around;align-items:center;padding:10px 0 16px;z-index:300;box-shadow:0 -4px 20px rgba(0,0,0,.08);border-radius:20px 20px 0 0}
-body.dark .bnav{background:#1e1208}
-.bnav-b{display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:inherit;color:#AAA099;font-size:10px;font-weight:700;padding:0 10px;position:relative;min-width:48px}
-.bnav-b.on{color:#FF6B35}
+body.dark .bnav{background:#082840}
+.bnav-b{display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:inherit;color:#7AACCF;font-size:10px;font-weight:700;padding:0 10px;position:relative;min-width:48px}
+.bnav-b.on{color:#0EA5E9}
 .bnav-b i{font-size:22px}
-.nbadge{position:absolute;top:-1px;right:6px;background:#FF6B35;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid white}
-body.dark .nbadge{border-color:#1e1208}
+.nbadge{position:absolute;top:-1px;right:6px;background:#0EA5E9;color:white;border-radius:50%;width:16px;height:16px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid white}
+body.dark .nbadge{border-color:#082840}
 .wa-float{position:fixed;bottom:90px;left:14px;z-index:400}
 .wa-btn{width:56px;height:56px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.5);cursor:pointer;border:none;animation:waPulse 2s ease-in-out infinite;transition:.2s}
 .wa-btn:active{transform:scale(.9)}
 @keyframes waPulse{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,.5)}50%{box-shadow:0 4px 32px rgba(37,211,102,.8),0 0 0 8px rgba(37,211,102,.15)}}
 .wa-label{background:#25D366;color:white;font-size:10px;font-weight:700;border-radius:20px;padding:3px 8px;text-align:center;margin-top:4px;white-space:nowrap}
-.scrtop{position:fixed;bottom:90px;right:14px;width:44px;height:44px;background:#FF6B35;color:white;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(255,107,53,.4);z-index:280}
+.scrtop{position:fixed;bottom:90px;right:14px;width:44px;height:44px;background:#0EA5E9;color:white;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(14,165,233,.4);z-index:280}
 .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(5px);z-index:1000;display:flex;align-items:flex-end;justify-content:center}
 .msheet{background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding-bottom:30px;animation:slideUp .3s cubic-bezier(.4,0,.2,1)}
-body.dark .msheet{background:#1e1208}
+body.dark .msheet{background:#082840}
 .msheet.center{border-radius:24px;max-width:460px;margin:20px auto;animation:zoomIn .25s ease}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes zoomIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
-.mhandle{width:38px;height:4px;background:#E8DDD5;border-radius:10px;margin:12px auto 2px}
-body.dark .mhandle{background:#3d2a1a}
-.mhead{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F7F3EF;position:sticky;top:0;background:white;z-index:2}
-body.dark .mhead{background:#1e1208;border-color:#2d1a1a}
-.mhead h3{font-size:17px;font-weight:900;color:#1A0A00}
-body.dark .mhead h3{color:#F0E8E0}
-.mclose{width:32px;height:32px;border-radius:50%;background:#F7F3EF;border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center}
-body.dark .mclose{background:#2d1a0a;color:#F0E8E0}
+.mhandle{width:38px;height:4px;background:#BAE6FD;border-radius:10px;margin:12px auto 2px}
+body.dark .mhandle{background:#0F3D5A}
+.mhead{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F0F9FF;position:sticky;top:0;background:white;z-index:2}
+body.dark .mhead{background:#082840;border-color:#0C3454}
+.mhead h3{font-size:17px;font-weight:900;color:#0C2D44}
+body.dark .mhead h3{color:#DBEAFE}
+.mclose{width:32px;height:32px;border-radius:50%;background:#F0F9FF;border:none;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center}
+body.dark .mclose{background:#0C3454;color:#DBEAFE}
 .mbody{padding:16px 18px}
-.fi{background:#F7F3EF;border:1.5px solid #E8DDD5;border-radius:14px;padding:12px 16px;width:100%;font-family:inherit;font-size:14px;color:#1A0A00;outline:none;margin-bottom:12px;-webkit-user-select:text;user-select:text}
-body.dark .fi{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
-.fi:focus{border-color:#FF6B35;box-shadow:0 0 0 3px rgba(255,107,53,.1)}
-.fi-label{font-size:13px;font-weight:700;color:#7A6A5A;margin-bottom:6px;display:block}
-.ci{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #F7F3EF;align-items:center}
-body.dark .ci{border-color:#2d1a0a}
-.ci-img{width:58px;height:58px;border-radius:12px;object-fit:cover;background:#F7F3EF;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px}
+.fi{background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:14px;padding:12px 16px;width:100%;font-family:inherit;font-size:14px;color:#0C2D44;outline:none;margin-bottom:12px;-webkit-user-select:text;user-select:text}
+body.dark .fi{background:#0C3454;border-color:#0F3D5A;color:#DBEAFE}
+.fi:focus{border-color:#0EA5E9;box-shadow:0 0 0 3px rgba(14,165,233,.1)}
+.fi-label{font-size:13px;font-weight:700;color:#4B7FA0;margin-bottom:6px;display:block}
+.ci{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #F0F9FF;align-items:center}
+body.dark .ci{border-color:#0C3454}
+.ci-img{width:58px;height:58px;border-radius:12px;object-fit:cover;background:#F0F9FF;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:24px}
 .qty-row{display:flex;align-items:center;gap:10px;margin-top:6px}
-.qty-b{width:28px;height:28px;border-radius:50%;border:2px solid #FF6B35;color:#FF6B35;background:none;cursor:pointer;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.qty-b:active{background:#FF6B35;color:white}
-.abtn{width:100%;padding:15px;border-radius:30px;background:linear-gradient(135deg,#FF6B35,#E8430E);color:white;border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
-.abtn.purple{background:linear-gradient(135deg,#7C3AED,#5B21B6)}
+.qty-b{width:28px;height:28px;border-radius:50%;border:2px solid #0EA5E9;color:#0EA5E9;background:none;cursor:pointer;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.qty-b:active{background:#0EA5E9;color:white}
+.abtn{width:100%;padding:15px;border-radius:30px;background:linear-gradient(135deg,#0EA5E9,#0284C7);color:white;border:none;cursor:pointer;font-family:inherit;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.abtn.purple{background:linear-gradient(135deg,#059669,#047857)}
 .abtn.green{background:linear-gradient(135deg,#10b981,#059669)}
 .otp-inputs{display:flex;gap:10px;justify-content:center;margin:16px 0}
-.otp-input{width:52px;height:58px;border:2px solid #E8DDD5;border-radius:12px;text-align:center;font-size:22px;font-weight:900;font-family:inherit;outline:none;background:#F7F3EF;-webkit-user-select:text;user-select:text}
-.otp-input:focus{border-color:#FF6B35}
-body.dark .otp-input{background:#2d1a0a;border-color:#3d2a1a;color:#F0E8E0}
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1A0A00;color:white;padding:10px 22px;border-radius:30px;z-index:5000;font-size:13px;font-weight:700;animation:tin .3s ease;white-space:nowrap;max-width:85vw;text-align:center}
+.otp-input{width:52px;height:58px;border:2px solid #BAE6FD;border-radius:12px;text-align:center;font-size:22px;font-weight:900;font-family:inherit;outline:none;background:#F0F9FF;-webkit-user-select:text;user-select:text}
+.otp-input:focus{border-color:#0EA5E9}
+body.dark .otp-input{background:#0C3454;border-color:#0F3D5A;color:#DBEAFE}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#0C2D44;color:white;padding:10px 22px;border-radius:30px;z-index:5000;font-size:13px;font-weight:700;animation:tin .3s ease;white-space:nowrap;max-width:85vw;text-align:center}
 .toast.err{background:#ef4444}
 @keyframes tin{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.empty{text-align:center;padding:40px 16px;color:#7A6A5A}
+.empty{text-align:center;padding:40px 16px;color:#4B7FA0}
 .empty i{font-size:52px;margin-bottom:12px;display:block;opacity:.25}
-.trstep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #F7F3EF}
-body.dark .trstep{border-color:#2d1a0a}
+.trstep{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #F0F9FF}
+body.dark .trstep{border-color:#0C3454}
 .trdot{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px}
-.trdot.done{background:linear-gradient(135deg,#FF6B35,#7C3AED);color:white}
-.trdot.wait{background:#F7F3EF;color:#AAA099}
-body.dark .trdot.wait{background:#2d1a0a}
+.trdot.done{background:linear-gradient(135deg,#0EA5E9,#059669);color:white}
+.trdot.wait{background:#F0F9FF;color:#7AACCF}
+body.dark .trdot.wait{background:#0C3454}
 .page{padding-bottom:80px}
 .qt-wrap{overflow-x:auto;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07)}
 .qt-wrap table{width:100%;border-collapse:collapse;min-width:460px}
 input[type=range]{height:4px;border-radius:10px;cursor:pointer}
+
+.sk{background:linear-gradient(90deg,#E0F4FF 25%,#BAE6FD 50%,#E0F4FF 75%);background-size:200% 100%;animation:skShimmer 1.4s infinite;border-radius:10px}
+@keyframes skShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk-card{background:white;border-radius:18px;padding:11px;box-shadow:0 2px 14px rgba(0,0,0,.07)}
+body.dark .sk-card{background:#082840}
+.sk-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 14px}
 `
+
+
+// ========== AccountModal ==========
+function AccountModal({ customer, onClose, onLogout, onUpdatePoints, currency }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('info')
+
+  useEffect(() => {
+    const fetch = async () => {
+      if (!customer?.phone) { setLoading(false); return }
+      const { data } = await supabase.from('orders')
+        .select('id,date,total,status,items')
+        .eq('customer_phone', customer.phone)
+        .order('id', { ascending: false })
+        .limit(10)
+        .catch(() => ({ data: [] }))
+      setOrders(data || [])
+      setLoading(false)
+    }
+    fetch()
+  }, [customer])
+
+  const statusLabel = { pending: '⏳ قيد الانتظار', processing: '🔄 قيد المعالجة', shipped: '🚚 في الطريق', delivered: '✅ تم التسليم', cancelled: '❌ ملغي' }
+  const statusColor = { pending: '#f59e0b', processing: '#0EA5E9', shipped: '#059669', delivered: '#10b981', cancelled: '#ef4444' }
+
+  const tier = customer?.points >= 1000 ? { label: 'VIP ذهبي', color: '#f59e0b', icon: '🥇' }
+              : customer?.points >= 500  ? { label: 'فضي', color: '#94a3b8', icon: '🥈' }
+              : { label: 'برونزي', color: '#cd7f32', icon: '🥉' }
+
+  return (
+    <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="msheet">
+        <div className="mhandle" />
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(150deg,#0284C7,#0EA5E9 55%,#10B981)', padding: '22px 18px 20px', position: 'relative' }}>
+          <button onClick={onClose} style={{ position: 'absolute', top: 14, left: 14, background: 'rgba(255,255,255,.2)', border: 'none', color: 'white', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,255,255,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, border: '2px solid rgba(255,255,255,.5)' }}>
+              {customer?.name?.[0] || '👤'}
+            </div>
+            <div>
+              <div style={{ color: 'white', fontWeight: 900, fontSize: 18 }}>{customer?.name}</div>
+              <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 12, marginTop: 2 }}>{customer?.phone}</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.2)', borderRadius: 20, padding: '3px 10px', marginTop: 6 }}>
+                <span style={{ fontSize: 13 }}>{tier.icon}</span>
+                <span style={{ color: 'white', fontWeight: 800, fontSize: 12 }}>{tier.label}</span>
+              </div>
+            </div>
+          </div>
+          {/* بطاقة النقاط */}
+          <div style={{ background: 'rgba(255,255,255,.15)', borderRadius: 14, padding: '12px 16px', marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11, fontWeight: 700, marginBottom: 2 }}>⭐ رصيد نقاطك</div>
+              <div style={{ color: 'white', fontWeight: 900, fontSize: 26 }}>{customer?.points || 0}</div>
+              <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 10 }}>كل 100 نقطة = 100 {currency} خصم</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 10, marginBottom: 4 }}>التقدم نحو VIP</div>
+              <div style={{ background: 'rgba(255,255,255,.2)', borderRadius: 30, height: 8, width: 100, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, ((customer?.points || 0) / 1000) * 100)}%`, height: '100%', background: 'white', borderRadius: 30, transition: 'width .5s' }} />
+              </div>
+              <div style={{ color: 'rgba(255,255,255,.7)', fontSize: 9, marginTop: 3 }}>{customer?.points || 0} / 1000 نقطة</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '2px solid #E0F4FF', background: 'white', position: 'sticky', top: 0, zIndex: 2 }}>
+          {[{ id: 'info', label: '👤 بياناتي' }, { id: 'orders', label: '📦 طلباتي' }].map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ flex: 1, padding: '12px', border: 'none', background: 'none', fontFamily: 'inherit', fontWeight: 800, fontSize: 14, cursor: 'pointer', color: activeTab === t.id ? '#0EA5E9' : '#94a3b8', borderBottom: activeTab === t.id ? '3px solid #0EA5E9' : '3px solid transparent', transition: '.2s' }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mbody">
+          {activeTab === 'info' && (
+            <div>
+              {[
+                { label: 'الاسم الكامل', value: customer?.name, icon: '👤' },
+                { label: 'البريد الإلكتروني', value: customer?.email, icon: '📧' },
+                { label: 'رقم الهاتف', value: customer?.phone, icon: '📱' },
+                { label: 'العنوان', value: customer?.address || 'غير محدد', icon: '📍' },
+                { label: 'تاريخ التسجيل', value: customer?.created_at ? new Date(customer.created_at).toLocaleDateString('ar-DZ') : '—', icon: '📅' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #E0F4FF' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#E0F4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{item.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>{item.label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0C2D44' }}>{item.value}</div>
+                  </div>
+                </div>
+              ))}
+              <button onClick={onLogout} style={{ width: '100%', marginTop: 20, padding: '13px', borderRadius: 30, background: '#FEF2F2', color: '#ef4444', border: '2px solid #FECACA', cursor: 'pointer', fontFamily: 'inherit', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <i className="fas fa-sign-out-alt"></i> تسجيل الخروج
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div>
+              {loading
+                ? <div style={{ textAlign: 'center', padding: 40 }}><div style={{ fontSize: 32 }}>⏳</div><p style={{ color: '#94a3b8', marginTop: 12 }}>جاري تحميل طلباتك...</p></div>
+                : orders.length === 0
+                  ? <div className="empty"><i className="fas fa-box-open"></i><p>لا توجد طلبات بعد</p><p style={{ fontSize: 12, marginTop: 8 }}>ابدأ تسوّقك الآن!</p></div>
+                  : orders.map(ord => {
+                      let items = []
+                      try { items = typeof ord.items === 'string' ? JSON.parse(ord.items || '[]') : (ord.items || []) } catch {}
+                      return (
+                        <div key={ord.id} style={{ border: '1.5px solid #E0F4FF', borderRadius: 16, padding: 14, marginBottom: 12 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: '#0C2D44' }}>طلب #{ord.id}</div>
+                            <span style={{ background: statusColor[ord.status] + '22', color: statusColor[ord.status], borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 800 }}>
+                              {statusLabel[ord.status] || ord.status}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>📅 {ord.date}</div>
+                          {items.slice(0, 2).map((it, i) => (
+                            <div key={i} style={{ fontSize: 12, color: '#4B7FA0', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                              <span>📦</span>
+                              <span style={{ flex: 1 }}>{it.name}</span>
+                              <span style={{ fontWeight: 700 }}>×{it.quantity}</span>
+                            </div>
+                          ))}
+                          {items.length > 2 && <div style={{ fontSize: 11, color: '#94a3b8' }}>+{items.length - 2} منتجات أخرى</div>}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTop: '1px solid #E0F4FF', paddingTop: 10 }}>
+                            <span style={{ fontWeight: 900, color: '#0EA5E9', fontSize: 16 }}>{parseFloat(ord.total).toFixed(0)} {currency}</span>
+                            <span style={{ fontSize: 11, color: '#10b981', fontWeight: 700 }}>+{Math.floor(ord.total / 100)} نقطة مكتسبة</span>
+                          </div>
+                        </div>
+                      )
+                    })
+              }
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ========== دوال مساعدة ==========
 function showToast(msg, isErr = false) {
@@ -235,7 +382,7 @@ function LoginModal({ onClose, onLogin, onRegister }) {
       <div className="msheet center">
         <div style={{ textAlign: 'center', padding: '24px 18px 0' }}>
           <div style={{ fontSize: 40 }}>🛍️</div>
-          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1A0A00', margin: '8px 0 4px' }}>نقاء</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0C2D44', margin: '8px 0 4px' }}>نقاء</h2>
         </div>
         <div className="mbody">
           <label className="fi-label">البريد الإلكتروني</label>
@@ -245,7 +392,7 @@ function LoginModal({ onClose, onLogin, onRegister }) {
           <button className="abtn" onClick={submit} disabled={loading}>{loading ? '⏳ جاري الدخول...' : '🔐 دخول'}</button>
           <button className="abtn purple" onClick={onRegister}>📝 إنشاء حساب جديد</button>
           <div style={{ textAlign: 'center', marginTop: 8 }}>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#FF6B35', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600 }}>متابعة كزائر</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#0EA5E9', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600 }}>متابعة كزائر</button>
           </div>
         </div>
       </div>
@@ -318,7 +465,7 @@ function RegisterModal({ onClose, onSuccess }) {
         <div className="msheet center">
           <div className="mhead"><h3>📱 تأكيد الحساب</h3><button className="mclose" onClick={onClose}>×</button></div>
           <div className="mbody" style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: '#7A6A5A', marginBottom: 16 }}>أدخل كود التحقق المكون من 4 أرقام</p>
+            <p style={{ fontSize: 14, color: '#4B7FA0', marginBottom: 16 }}>أدخل كود التحقق المكون من 4 أرقام</p>
             <div className="otp-inputs">
               {digits.map((d, i) => (
                 <input key={i} ref={refs[i]} className="otp-input" value={d} inputMode="numeric" maxLength={1}
@@ -326,12 +473,12 @@ function RegisterModal({ onClose, onSuccess }) {
                   onKeyDown={e => { if (e.key === 'Backspace' && !d && i > 0) refs[i - 1].current?.focus() }} />
               ))}
             </div>
-            <div style={{ background: '#fef9c3', borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13 }}>
-              🔑 كودك: <strong style={{ fontSize: 20, color: '#dc2626' }}>{genOtp}</strong>
+            <div style={{ background: '#DBEAFE', borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13 }}>
+              🔑 كودك: <strong style={{ fontSize: 20, color: '#0EA5E9' }}>{genOtp}</strong>
               <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>في الإصدار الكامل يُرسل على واتساب تلقائياً</p>
             </div>
             <button className="abtn" onClick={verify} disabled={loading || otp.length < 4}>{loading ? '⏳...' : '✅ تأكيد التسجيل'}</button>
-            <button style={{ background: 'none', border: 'none', color: '#FF6B35', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            <button style={{ background: 'none', border: 'none', color: '#0EA5E9', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
               onClick={() => { setStep(1); setDigits(['', '', '', '']) }}>← تعديل البيانات</button>
           </div>
         </div>
@@ -416,9 +563,9 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                 <div key={i.id} className="ci">
                   {i.image ? <img src={i.image} className="ci-img" alt="" /> : <div className="ci-img">🛍️</div>}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1A0A00' }}>{i.name}</div>
-                    <div style={{ color: '#FF6B35', fontWeight: 900, fontSize: 15, marginTop: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#7A6A5A' }}>سعر الكرتون: </span>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0C2D44' }}>{i.name}</div>
+                    <div style={{ color: '#0EA5E9', fontWeight: 900, fontSize: 15, marginTop: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#4B7FA0' }}>سعر الكرتون: </span>
                       {i.price} {currency} × {i.qty} كرتون = {(i.price * i.qty).toFixed(0)} {currency}
                     </div>
                     <div className="qty-row">
@@ -439,12 +586,12 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
               )}
 
               {cartTotal < freeShip && (
-                <div style={{ background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+                <div style={{ background: '#EFF9FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#C2410C', marginBottom: 5 }}>
-                    🚚 أضف <strong style={{ color: '#FF6B35', fontSize: 15 }}>{(freeShip - cartTotal).toFixed(0)} {currency}</strong> للتوصيل المجاني!
+                    🚚 أضف <strong style={{ color: '#0EA5E9', fontSize: 15 }}>{(freeShip - cartTotal).toFixed(0)} {currency}</strong> للتوصيل المجاني!
                   </div>
-                  <div style={{ background: '#E8DDD5', borderRadius: 30, height: 7, overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, (cartTotal / freeShip) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#FF6B35,#10b981)', borderRadius: 30, transition: 'width .4s' }} />
+                  <div style={{ background: '#BAE6FD', borderRadius: 30, height: 7, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, (cartTotal / freeShip) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#0EA5E9,#10b981)', borderRadius: 30, transition: 'width .4s' }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
                     <span>0 {currency}</span><span style={{ color: '#10b981', fontWeight: 700 }}>🎁 {freeShip} {currency} = توصيل مجاني</span>
@@ -458,27 +605,27 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
               )}
 
               {/* شريط تقدم النقاط */}
-              <div style={{ background: '#fef9c3', borderRadius: 14, padding: '12px 14px', margin: '12px 0', border: '1px solid #facc15' }}>
+              <div style={{ background: '#DBEAFE', borderRadius: 14, padding: '12px 14px', margin: '12px 0', border: '1px solid #34D399' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
-                  <span style={{ color: '#854d0e' }}>⭐ ستكسب من هذا الطلب</span>
-                  <span style={{ color: '#FF6B35' }}>{pointsEarned} نقطة</span>
+                  <span style={{ color: '#0369A1' }}>⭐ ستكسب من هذا الطلب</span>
+                  <span style={{ color: '#0EA5E9' }}>{pointsEarned} نقطة</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
                   <span>نقاطك الحالية: {currentPoints}</span>
                   <span>→ بعد الطلب: {totalAfter}</span>
                 </div>
-                <div style={{ background: '#E8DDD5', borderRadius: 30, height: 8, overflow: 'hidden' }}>
+                <div style={{ background: '#BAE6FD', borderRadius: 30, height: 8, overflow: 'hidden' }}>
                   <div style={{
                     width: `${Math.min(100, (totalAfter / 1000) * 100)}%`,
                     height: '100%',
-                    background: 'linear-gradient(90deg,#facc15,#eab308)',
+                    background: 'linear-gradient(90deg,#34D399,#10B981)',
                     borderRadius: 30,
                     transition: 'width .5s'
                   }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
                   <span>0</span>
-                  <span style={{ fontWeight: 700, color: '#eab308' }}>🏅 1000 نقطة = مستوى VIP</span>
+                  <span style={{ fontWeight: 700, color: '#10B981' }}>🏅 1000 نقطة = مستوى VIP</span>
                 </div>
               </div>
 
@@ -490,7 +637,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
                       ? <span>أضف {(nextTier.min - cartTotal).toFixed(0)} {currency} للحصول على {nextTier.label}</span>
                       : <span>🏆 أقصى خصم محقق!</span>
                   }
-                  <span style={{ color: '#FF6B35' }}>{Math.min(100, (cartTotal / 2000 * 100)).toFixed(0)}%</span>
+                  <span style={{ color: '#0EA5E9' }}>{Math.min(100, (cartTotal / 2000 * 100)).toFixed(0)}%</span>
                 </div>
                 <div className="prog-track">
                   <div className="prog-fill" style={{ width: `${Math.min(100, cartTotal / 2000 * 100)}%` }}></div>
@@ -501,12 +648,12 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
               </div>
 
               {customer && customer.points > 0 && (
-                <div style={{ background: '#fef9c3', borderRadius: 14, padding: 12, margin: '10px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: '#DBEAFE', borderRadius: 14, padding: 12, margin: '10px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 13 }}>⭐ خصم النقاط</div>
                     <div style={{ fontSize: 11, color: '#64748b' }}>لديك {customer.points} نقطة</div>
                   </div>
-                  <div style={{ fontWeight: 900, color: '#FF6B35', fontSize: 16 }}>
+                  <div style={{ fontWeight: 900, color: '#0EA5E9', fontSize: 16 }}>
                     - {pointsDiscount.toFixed(0)} {currency}
                   </div>
                 </div>
@@ -519,7 +666,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 18, marginBottom: 16 }}>
                 <span>الإجمالي</span>
-                <span style={{ color: '#FF6B35' }}>{finalTotal.toFixed(0)} {currency}</span>
+                <span style={{ color: '#0EA5E9' }}>{finalTotal.toFixed(0)} {currency}</span>
               </div>
               <button className="abtn" onClick={() => onCheckout(finalTotal, buy3Disc + volDisc + pointsDiscount)}>
                 <i className="fas fa-credit-card"></i> إتمام الشراء
@@ -532,7 +679,7 @@ function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, pro
 }
 
 // ========== CheckoutModal ==========
-function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName }) {
+function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName, customer, onPointsUpdate }) {
   const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
   const [otp, setOtp] = useState('')
@@ -599,9 +746,18 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
       const { data: p } = await supabase.from('products').select('stock').eq('id', item.id).maybeSingle()
       if (p) { await supabase.from('products').update({ stock: Math.max(0, (p.stock || 0) - item.qty) }).eq('id', item.id) }
     }
+    // ✅ تحديث نقاط العميل في قاعدة البيانات
+    const pointsEarned = Math.floor(finalTotal / 100)
+    if (customer?.id && pointsEarned > 0) {
+      const newPoints = (customer.points || 0) + pointsEarned
+      await supabase.from('customers').update({ points: newPoints }).eq('id', customer.id).catch(() => {})
+      if (onPointsUpdate) onPointsUpdate(newPoints)
+    }
+
     let waNumber = form.phone.replace(/^0/, '213')
     waNumber = waNumber.replace(/[^0-9]/g, '')
-    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
+    const earnedMsg = pointsEarned > 0 ? `\n⭐ كسبت ${pointsEarned} نقطة! رصيدك الجديد: ${(customer?.points || 0) + pointsEarned} نقطة` : ''
+    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}${earnedMsg}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
     window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(confirmMsg)}`, '_blank')
     onSuccess(order.id)
     setLoading(false)
@@ -614,8 +770,8 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
           <div className="mhead"><h3>🔐 تأكيد الطلبية</h3><button className="mclose" onClick={onClose}>×</button></div>
           <div className="mbody" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
-            <p style={{ fontSize: 14, color: '#7A6A5A', marginBottom: 4 }}>تم إرسال كود التأكيد إلى رقم هاتفك عبر واتساب</p>
-            <p style={{ fontWeight: 700, color: '#FF6B35', marginBottom: 16, fontSize: 15 }}>{form.phone}</p>
+            <p style={{ fontSize: 14, color: '#4B7FA0', marginBottom: 4 }}>تم إرسال كود التأكيد إلى رقم هاتفك عبر واتساب</p>
+            <p style={{ fontWeight: 700, color: '#0EA5E9', marginBottom: 16, fontSize: 15 }}>{form.phone}</p>
             <div className="otp-inputs">
               {digits.map((d, i) => (
                 <input key={i} ref={refs[i]} className="otp-input" value={d} inputMode="numeric" maxLength={1}
@@ -624,7 +780,7 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
               ))}
             </div>
             <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>أدخل الكود المكون من 4 أرقام الذي تلقيته على واتساب</p>
-            <button onClick={resendCode} style={{ background: 'none', border: 'none', color: '#FF6B35', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>🔄 لم يصلك الكود؟ أعد الإرسال</button>
+            <button onClick={resendCode} style={{ background: 'none', border: 'none', color: '#0EA5E9', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>🔄 لم يصلك الكود؟ أعد الإرسال</button>
             <button className="abtn green" onClick={confirmOrder} disabled={loading || otp.length < 4}>
               {loading ? '⏳ جاري التأكيد...' : '✅ تأكيد الطلبية'}
             </button>
@@ -646,9 +802,9 @@ function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, 
           <p style={{ fontSize: 11, color: '#94a3b8', marginTop: -8, marginBottom: 12 }}>📱 سيُرسل كود التأكيد إلى هذا الرقم عبر واتساب</p>
           <label className="fi-label">العنوان</label>
           <textarea className="fi" rows="2" value={form.address} onChange={F('address')} style={{ resize: 'none' }} autoComplete="street-address" placeholder="أدخل عنوان التوصيل" />
-          <div style={{ background: '#FFF0EB', borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: '#E0F4FF', borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>إجمالي الطلب</span>
-            <span style={{ fontWeight: 900, color: '#FF6B35', fontSize: 18 }}>{finalTotal.toFixed(0)} {currency}</span>
+            <span style={{ fontWeight: 900, color: '#0EA5E9', fontSize: 18 }}>{finalTotal.toFixed(0)} {currency}</span>
           </div>
           <button className="abtn" onClick={goToOtp}><i className="fas fa-shield-alt"></i> التالي — تأكيد بكود</button>
           <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>🔒 سيتم إرسال كود تأكيد عبر واتساب للتحقق من هويتك</p>
@@ -672,7 +828,7 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
       <div className="msheet">
         <div className="mhandle"></div>
         {p.image ? <img src={p.image} style={{ width: '100%', height: 260, objectFit: 'cover' }} alt={p.name} /> :
-          <div style={{ width: '100%', height: 200, background: '#F8F4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 }}>🛍️</div>}
+          <div style={{ width: '100%', height: 200, background: '#E7F5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 }}>🛍️</div>}
         <div className="mhead">
           <h3 style={{ flex: 1, fontSize: 15 }}>{p.name}</h3>
           <button className="mclose" onClick={onClose}>×</button>
@@ -681,14 +837,14 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div>
               {disc > 0 && <span style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'line-through', marginLeft: 8 }}>{p.price} {currency}</span>}
-              <span style={{ fontSize: 24, fontWeight: 900, color: '#FF6B35' }}>{finalPrice} {currency}</span>
+              <span style={{ fontSize: 24, fontWeight: 900, color: '#0EA5E9' }}>{finalPrice} {currency}</span>
               {disc > 0 && <span className="pc-disc" style={{ marginRight: 8 }}>-{disc}%</span>}
             </div>
-            <button onClick={() => onToggleWish(p.id)} style={{ width: 40, height: 40, borderRadius: '50%', background: wishlist.includes(p.id) ? '#FFF0EB' : '#F7F3EF', border: 'none', cursor: 'pointer', fontSize: 20 }}>
-              <i className="fas fa-heart" style={{ color: wishlist.includes(p.id) ? '#FF6B35' : '#CBD5E1' }}></i>
+            <button onClick={() => onToggleWish(p.id)} style={{ width: 40, height: 40, borderRadius: '50%', background: wishlist.includes(p.id) ? '#E0F4FF' : '#F0F9FF', border: 'none', cursor: 'pointer', fontSize: 20 }}>
+              <i className="fas fa-heart" style={{ color: wishlist.includes(p.id) ? '#0EA5E9' : '#CBD5E1' }}></i>
             </button>
           </div>
-          {p.carton_price && <p style={{ color: '#7A6A5A', fontSize: 13, marginBottom: 8 }}>الكرتون ({p.units || 12} قطعة): {p.carton_price} {currency}</p>}
+          {p.carton_price && <p style={{ color: '#4B7FA0', fontSize: 13, marginBottom: 8 }}>الكرتون ({p.units || 12} قطعة): {p.carton_price} {currency}</p>}
           {(p.stock || 0) > 0 && (p.stock || 0) < 10 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
           {(p.stock || 0) === 0 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>❌ نفذ من المخزون</p>}
 
@@ -723,9 +879,9 @@ function DetailModal({ product, wishlist, onClose, onAddCart, onToggleWish, curr
                 {related.map(r => (
                   <div key={r.id} onClick={() => onShowProduct(r)} style={{ minWidth: 95, cursor: 'pointer', textAlign: 'center', flexShrink: 0 }}>
                     {r.image ? <img src={r.image} style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover' }} /> :
-                      <div style={{ width: 80, height: 80, borderRadius: 12, background: '#F7F3EF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🛍️</div>}
+                      <div style={{ width: 80, height: 80, borderRadius: 12, background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🛍️</div>}
                     <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{r.name}</div>
-                    <div style={{ fontSize: 12, color: '#FF6B35', fontWeight: 800 }}>{r.price} {currency}</div>
+                    <div style={{ fontSize: 12, color: '#0EA5E9', fontWeight: 800 }}>{r.price} {currency}</div>
                   </div>
                 ))}
               </div>
@@ -776,15 +932,15 @@ function ReviewsSection({ productId, currency }) {
   if (!loaded) return null
 
   return (
-    <div style={{ borderTop: '1px solid #F1ECE8', padding: '16px 18px 0' }}>
+    <div style={{ borderTop: '1px solid #E0F0FA', padding: '16px 18px 0' }}>
       {reviews.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, background: '#FFF7ED', borderRadius: 12, padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, background: '#EFF9FF', borderRadius: 12, padding: 14 }}>
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: 36, fontWeight: 900, color: '#FF6B35', lineHeight: 1 }}>{avgR}</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: '#0EA5E9', lineHeight: 1 }}>{avgR}</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 1, margin: '4px 0' }}>
-              {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= Math.round(avgR) ? '#FF6B35' : '#E2E8F0', fontSize: 14 }}>★</span>)}
+              {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= Math.round(avgR) ? '#0EA5E9' : '#BAE6FD', fontSize: 14 }}>★</span>)}
             </div>
-            <div style={{ fontSize: 11, color: '#7A6A5A' }}>{reviews.length} تقييم</div>
+            <div style={{ fontSize: 11, color: '#4B7FA0' }}>{reviews.length} تقييم</div>
           </div>
           <div style={{ flex: 1 }}>
             {[5, 4, 3, 2, 1].map(n => {
@@ -792,10 +948,10 @@ function ReviewsSection({ productId, currency }) {
               const pct = reviews.length ? Math.round(cnt / reviews.length * 100) : 0
               return (
                 <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 11, color: '#7A6A5A', width: 8, textAlign: 'center' }}>{n}</span>
-                  <span style={{ color: '#FF6B35', fontSize: 11 }}>★</span>
-                  <div style={{ flex: 1, background: '#E8DDD5', borderRadius: 30, height: 5, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: '#FF6B35', borderRadius: 30, transition: 'width .5s' }} />
+                  <span style={{ fontSize: 11, color: '#4B7FA0', width: 8, textAlign: 'center' }}>{n}</span>
+                  <span style={{ color: '#0EA5E9', fontSize: 11 }}>★</span>
+                  <div style={{ flex: 1, background: '#BAE6FD', borderRadius: 30, height: 5, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: '#0EA5E9', borderRadius: 30, transition: 'width .5s' }} />
                   </div>
                   <span style={{ fontSize: 10, color: '#94a3b8', width: 18, textAlign: 'left' }}>{cnt}</span>
                 </div>
@@ -806,30 +962,30 @@ function ReviewsSection({ productId, currency }) {
       )}
       <h3 style={{ fontWeight: 800, marginBottom: 12, fontSize: 15 }}>⭐ التقييمات ({reviews.length})</h3>
       {cust ? (
-        <div style={{ background: '#F7F3EF', borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#1A0A00' }}>🌟 أضف تقييمك</p>
+        <div style={{ background: '#F0F9FF', borderRadius: 12, padding: 14, marginBottom: 14 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#0C2D44' }}>🌟 أضف تقييمك</p>
           <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
             {[1, 2, 3, 4, 5].map(n => (
               <span key={n} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} onClick={() => setRating(n)}
-                style={{ fontSize: 30, cursor: 'pointer', transition: 'transform .15s', color: (hover || rating) >= n ? '#FF6B35' : '#E2E8F0', transform: (hover || rating) >= n ? 'scale(1.15)' : 'scale(1)' }}>★</span>
+                style={{ fontSize: 30, cursor: 'pointer', transition: 'transform .15s', color: (hover || rating) >= n ? '#0EA5E9' : '#BAE6FD', transform: (hover || rating) >= n ? 'scale(1.15)' : 'scale(1)' }}>★</span>
             ))}
-            {rating > 0 && <span style={{ fontSize: 12, color: '#7A6A5A', marginRight: 4, alignSelf: 'center' }}>{['', 'سيء', 'مقبول', 'جيد', 'جيد جداً', 'ممتاز'][rating]}</span>}
+            {rating > 0 && <span style={{ fontSize: 12, color: '#4B7FA0', marginRight: 4, alignSelf: 'center' }}>{['', 'سيء', 'مقبول', 'جيد', 'جيد جداً', 'ممتاز'][rating]}</span>}
           </div>
           <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="اكتب تعليقك (اختياري)..." maxLength={300} rows={2}
-            style={{ border: '1.5px solid #E8DDD5', borderRadius: 10, padding: '9px 12px', width: '100%', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'none', background: 'white', boxSizing: 'border-box', marginBottom: 8 }}
-            onFocus={e => e.target.style.borderColor = '#FF6B35'} onBlur={e => e.target.style.borderColor = '#E8DDD5'} />
+            style={{ border: '1.5px solid #BAE6FD', borderRadius: 10, padding: '9px 12px', width: '100%', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'none', background: 'white', boxSizing: 'border-box', marginBottom: 8 }}
+            onFocus={e => e.target.style.borderColor = '#0EA5E9'} onBlur={e => e.target.style.borderColor = '#BAE6FD'} />
           <button className="abtn" onClick={submit} disabled={saving || !rating} style={{ marginBottom: 0, padding: '10px', fontSize: 13, opacity: !rating ? 0.5 : 1 }}>{saving ? '⏳ جاري الإرسال...' : '✅ إرسال التقييم'}</button>
         </div>
       ) : (
-        <p style={{ fontSize: 13, color: '#7A6A5A', marginBottom: 12, textAlign: 'center', padding: '8px', background: '#F7F3EF', borderRadius: 10 }}>🔐 <strong>سجّل دخولك</strong> لإضافة تقييم</p>
+        <p style={{ fontSize: 13, color: '#4B7FA0', marginBottom: 12, textAlign: 'center', padding: '8px', background: '#F0F9FF', borderRadius: 10 }}>🔐 <strong>سجّل دخولك</strong> لإضافة تقييم</p>
       )}
       {reviews.map(r => (
-        <div key={r.id} style={{ borderBottom: '1px solid #F1ECE8', padding: '12px 0' }}>
+        <div key={r.id} style={{ borderBottom: '1px solid #E0F0FA', padding: '12px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
             <div>
-              <strong style={{ fontSize: 13, color: '#1A0A00' }}>{r.customer_name}</strong>
+              <strong style={{ fontSize: 13, color: '#0C2D44' }}>{r.customer_name}</strong>
               <div style={{ display: 'flex', gap: 1, marginTop: 2 }}>
-                {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= r.rating ? '#FF6B35' : '#E2E8F0', fontSize: 13 }}>★</span>)}
+                {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= r.rating ? '#0EA5E9' : '#BAE6FD', fontSize: 13 }}>★</span>)}
               </div>
             </div>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(r.created_at).toLocaleDateString('ar-DZ')}</span>
@@ -850,8 +1006,8 @@ function ThankyouModal({ orderId, storeName, onClose }) {
         <div className="mbody" style={{ textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
           <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>تمت الطلبية بنجاح!</h2>
-          <p style={{ color: '#7A6A5A', marginBottom: 6 }}>تم تأكيد طلبك وبدأ التجهيز</p>
-          <p style={{ color: '#FF6B35', fontWeight: 800, fontSize: 18, marginBottom: 6 }}>رقم الطلب: {orderId}</p>
+          <p style={{ color: '#4B7FA0', marginBottom: 6 }}>تم تأكيد طلبك وبدأ التجهيز</p>
+          <p style={{ color: '#0EA5E9', fontWeight: 800, fontSize: 18, marginBottom: 6 }}>رقم الطلب: {orderId}</p>
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>ستصلك رسالة واتساب بتفاصيل التوصيل</p>
           <button className="abtn" onClick={onClose}><i className="fas fa-home"></i> العودة للمتجر</button>
         </div>
@@ -886,7 +1042,7 @@ function TrackingModal({ onClose, currency }) {
     setLoading(false)
   }
 
-  const statusColors = { pending: '#f59e0b', processing: '#3b82f6', shipped: '#7c3aed', delivered: '#10b981', cancelled: '#ef4444' }
+  const statusColors = { pending: '#38BDF8', processing: '#3b82f6', shipped: '#059669', delivered: '#10b981', cancelled: '#ef4444' }
   const statusLabels = { pending: '⏳ انتظار', processing: '🔄 تجهيز', shipped: '🚚 شحن', delivered: '✅ تسليم', cancelled: '❌ ملغي' }
 
   return (
@@ -907,19 +1063,19 @@ function TrackingModal({ onClose, currency }) {
             </div>
           )}
           {res && res.id && (
-            <div style={{ marginTop: 16, background: '#FFF7ED', borderRadius: 14, padding: 14 }}>
+            <div style={{ marginTop: 16, background: '#EFF9FF', borderRadius: 14, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontWeight: 900, fontSize: 15 }}>طلب #{String(res.id).slice(-6)}</span>
                 <span style={{ background: statusColors[res.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>{statusLabels[res.status] || res.status}</span>
               </div>
-              <div style={{ color: '#7A6A5A', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
-              <div style={{ color: '#FF6B35', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
+              <div style={{ color: '#4B7FA0', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
+              <div style={{ color: '#0EA5E9', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
               {steps.map((s, i) => {
                 const cur = steps.indexOf(res.status)
                 return (
                   <div key={s} className="trstep">
                     <div className={`trdot ${i <= cur ? 'done' : 'wait'}`}>{i <= cur ? '✓' : i + 1}</div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#FF6B35' : '#94a3b8' }}>{labels[s]}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#0EA5E9' : '#94a3b8' }}>{labels[s]}</div>
                   </div>
                 )
               })}
@@ -929,13 +1085,13 @@ function TrackingModal({ onClose, currency }) {
             <div style={{ marginTop: 16 }}>
               <div style={{ fontWeight: 800, marginBottom: 10, fontSize: 14 }}>طلبياتك ({orders.length})</div>
               {orders.map(o => (
-                <div key={o.id} style={{ background: '#F7F3EF', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                <div key={o.id} style={{ background: '#F0F9FF', borderRadius: 12, padding: 12, marginBottom: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <span style={{ fontWeight: 700 }}>#{String(o.id).slice(-6)}</span>
                     <span style={{ background: statusColors[o.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{statusLabels[o.status] || o.status}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: '#7A6A5A' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
-                  <div style={{ fontWeight: 700, color: '#FF6B35', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
+                  <div style={{ fontSize: 13, color: '#4B7FA0' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
+                  <div style={{ fontWeight: 700, color: '#0EA5E9', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
                 </div>
               ))}
             </div>
@@ -958,17 +1114,17 @@ function ContactModal({ settings, onClose }) {
             <div style={{ fontSize: 40 }}>🛍️</div>
             <div style={{ fontWeight: 900, fontSize: 18, marginTop: 8 }}>{settings?.store_name || 'نقاء'}</div>
           </div>
-          {settings?.contact_phone && <a href={`tel:${settings.contact_phone}`} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#FFF0EB', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ fontSize: 28 }}>📱</span><div><div style={{ fontWeight: 800, color: '#1A0A00' }}>الهاتف</div><div style={{ fontSize: 13, color: '#7A6A5A' }}>{settings.contact_phone}</div></div>
+          {settings?.contact_phone && <a href={`tel:${settings.contact_phone}`} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#E0F4FF', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ fontSize: 28 }}>📱</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>الهاتف</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_phone}</div></div>
           </a>}
           {WA && <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ fontSize: 28 }}>💬</span><div><div style={{ fontWeight: 800, color: '#1A0A00' }}>واتساب</div><div style={{ fontSize: 13, color: '#7A6A5A' }}>{WA}</div></div>
+            <span style={{ fontSize: 28 }}>💬</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>واتساب</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{WA}</div></div>
           </a>}
           {settings?.contact_address && <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f1f5f9', borderRadius: 14, padding: 14, marginBottom: 10 }}>
-            <span style={{ fontSize: 28 }}>📍</span><div><div style={{ fontWeight: 800, color: '#1A0A00' }}>العنوان</div><div style={{ fontSize: 13, color: '#7A6A5A' }}>{settings.contact_address}</div></div>
+            <span style={{ fontSize: 28 }}>📍</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>العنوان</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_address}</div></div>
           </div>}
-          {settings?.contact_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fef9c3', borderRadius: 14, padding: 14 }}>
-            <span style={{ fontSize: 28 }}>🕒</span><div><div style={{ fontWeight: 800, color: '#1A0A00' }}>ساعات العمل</div><div style={{ fontSize: 13, color: '#7A6A5A' }}>{settings.contact_hours}</div></div>
+          {settings?.contact_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#DBEAFE', borderRadius: 14, padding: 14 }}>
+            <span style={{ fontSize: 28 }}>🕒</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>ساعات العمل</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_hours}</div></div>
           </div>}
         </div>
       </div>
@@ -997,7 +1153,7 @@ function PromoCountdown({ endDate }) {
       <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>⏳</span>
       {[t.h, t.m, t.s].map((v, i) => (
         <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <span style={{ background: '#1A0A00', color: 'white', padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 900, fontFamily: 'monospace' }}>{v}</span>
+          <span style={{ background: '#0C2D44', color: 'white', padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 900, fontFamily: 'monospace' }}>{v}</span>
           {i < 2 && <span style={{ color: '#94a3b8', fontWeight: 900 }}>:</span>}
         </span>
       ))}
@@ -1178,6 +1334,19 @@ export default function Store() {
     showToast(`مرحباً ${data.name} 👋`)
   }
 
+  const handleLogout = () => {
+    setCustomer(null)
+    localStorage.removeItem('nq_customer')
+    setModal(null)
+    showToast('👋 تم تسجيل الخروج')
+  }
+
+  const handlePointsUpdate = (newPoints) => {
+    const updated = { ...customer, points: newPoints }
+    setCustomer(updated)
+    localStorage.setItem('nq_customer', JSON.stringify(updated))
+  }
+
   // ========== مكونات التابات ==========
   // ProductCard
   const ProductCard = ({ p }) => {
@@ -1204,12 +1373,12 @@ export default function Store() {
     return (
       <div className="pc" onClick={() => { setDetailProd(p); setModal('detail') }}>
         <div className="pc-img" style={{ opacity: (p.stock || 0) === 0 ? 0.45 : 1, filter: (p.stock || 0) === 0 ? 'grayscale(60%)' : 'none' }}>
-          {hasPromo && <div className="pc-promo-badge" style={{ position: 'absolute', top: 6, right: 6, background: '#FF6B35', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 800, zIndex: 2 }}><i className="fas fa-bullhorn" style={{ fontSize: 9 }} /> عرض خاص</div>}
+          {hasPromo && <div className="pc-promo-badge" style={{ position: 'absolute', top: 6, right: 6, background: '#0EA5E9', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 800, zIndex: 2 }}><i className="fas fa-bullhorn" style={{ fontSize: 9 }} /> عرض خاص</div>}
           {(p.stock || 0) === 0 && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.55)', color: 'white', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 800, zIndex: 2, whiteSpace: 'nowrap' }}>نفذ المخزون</div>}
           {p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <div className="pc-noimg">🛍️</div>}
           {isN && !hasPromo && (p.stock || 0) > 0 && <span className="badge b-new">جديد</span>}
           <button className="fav-b" onClick={e => { e.stopPropagation(); toggleWish(p.id) }}>
-            <i className="fas fa-heart" style={{ color: isW ? '#FF6B35' : '#CBD5E1' }}></i>
+            <i className="fas fa-heart" style={{ color: isW ? '#0EA5E9' : '#CBD5E1' }}></i>
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
@@ -1219,10 +1388,10 @@ export default function Store() {
               <span style={{ background: '#888', color: 'white', fontSize: 11, fontWeight: 900, padding: '2px 7px', borderRadius: 20 }}>{pct}%</span>
               <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through', fontWeight: 600 }}>{p.price}{CUR}</span>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#1A0A00' }}>{fp}{CUR}</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#0C2D44' }}>{fp}{CUR}</div>
           </div>
         ) : (
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#FF6B35' }}>{fp} {CUR}</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#0EA5E9' }}>{fp} {CUR}</div>
         )}
         {p.units && <div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
         {(p.stock || 0) < 10 && (p.stock || 0) > 0 && <div className="pc-stock">⚠️ {p.stock} كرتون فقط</div>}
@@ -1278,7 +1447,7 @@ export default function Store() {
           </div>
           {banners && banners.length > 1 && <div className="bdots">{banners.map((_, i) => <button key={i} className={`bdot${bannerIdx === i ? ' on' : ''}`} onClick={() => setBannerIdx(i)} />)}</div>}
         </div>
-        {PROMO_TEXT && <div style={{ background: 'linear-gradient(135deg,#FFF0EB,#FFE4D6)', margin: '10px 14px 0', borderRadius: 14, padding: '10px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#FF6B35', border: '1px solid #FFD5C0' }}>{PROMO_TEXT}</div>}
+        {PROMO_TEXT && <div style={{ background: 'linear-gradient(135deg,#E0F4FF,#BAE6FD)', margin: '10px 14px 0', borderRadius: 14, padding: '10px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#0EA5E9', border: '1px solid #93C5FD' }}>{PROMO_TEXT}</div>}
         {promos && promos.length > 0 && promos.find(p => p.end_date) && (
           <div className="flash-bar" onClick={() => setTab('search')}>
             <div>
@@ -1334,18 +1503,18 @@ export default function Store() {
         </div>
         {dayDeal && (
           <div className="day-deal">
-            <div style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>🌟 عرض اليوم</span>
               <span style={{ color: 'white', fontSize: 13 }}>خصم {dayDeal.discount}%</span>
             </div>
             <div style={{ display: 'flex', gap: 16, padding: 16, cursor: 'pointer' }} onClick={() => { setDetailProd(dayDeal); setModal('detail') }}>
               {dayDeal.image ? <img src={dayDeal.image} style={{ width: 90, height: 90, borderRadius: 12, objectFit: 'cover' }} /> :
-                <div style={{ width: 90, height: 90, borderRadius: 12, background: '#F8F4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>}
+                <div style={{ width: 90, height: 90, borderRadius: 12, background: '#E7F5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{dayDeal.name}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through' }}>{dayDeal.price} {CUR}</span>
-                  <span style={{ fontSize: 20, fontWeight: 900, color: '#FF6B35' }}>{(dayDeal.price * (1 - dayDeal.discount / 100)).toFixed(0)} {CUR}</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: '#0EA5E9' }}>{(dayDeal.price * (1 - dayDeal.discount / 100)).toFixed(0)} {CUR}</span>
                 </div>
                 <button className="add-b" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); addToCart(dayDeal) }}>أضف للسلة</button>
               </div>
@@ -1406,23 +1575,23 @@ export default function Store() {
             <button key={v} className={`chip${sortSel === v ? ' sel' : ''}`} onClick={() => { setSortSel(v); setPage(1) }}>{l}</button>
           ))}
         </div>
-        <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1.5px solid #F1ECE8' }}>
+        <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1.5px solid #E0F0FA' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, fontWeight: 700 }}>
-            <span style={{ color: '#1A0A00' }}>🎚️ فلتر السعر</span>
-            <span style={{ color: '#FF6B35', fontWeight: 800 }}>{priceMin.toLocaleString()} — {priceMax >= 999999 ? '∞' : priceMax.toLocaleString()} {CUR}</span>
+            <span style={{ color: '#0C2D44' }}>🎚️ فلتر السعر</span>
+            <span style={{ color: '#0EA5E9', fontWeight: 800 }}>{priceMin.toLocaleString()} — {priceMax >= 999999 ? '∞' : priceMax.toLocaleString()} {CUR}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>من</span>
             <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMin, absoluteMax)}
               onChange={e => setPriceMin(Math.min(Number(e.target.value), priceMax - 50))}
-              style={{ flex: 1, accentColor: '#FF6B35', cursor: 'pointer' }} />
+              style={{ flex: 1, accentColor: '#0EA5E9', cursor: 'pointer' }} />
             <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>إلى</span>
             <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMax, absoluteMax)}
               onChange={e => setPriceMax(Math.max(Number(e.target.value), priceMin + 50))}
-              style={{ flex: 1, accentColor: '#FF6B35', cursor: 'pointer' }} />
+              style={{ flex: 1, accentColor: '#0EA5E9', cursor: 'pointer' }} />
           </div>
           {(priceMin > 0 || priceMax < 999999) && (
-            <button onClick={() => { setPriceMin(0); setPriceMax(999999) }} style={{ fontSize: 11, color: '#FF6B35', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>✕ إلغاء فلتر السعر</button>
+            <button onClick={() => { setPriceMin(0); setPriceMax(999999) }} style={{ fontSize: 11, color: '#0EA5E9', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>✕ إلغاء فلتر السعر</button>
           )}
         </div>
         {paged.length === 0
@@ -1463,8 +1632,8 @@ export default function Store() {
               {categories.map(c => (
                 <div key={c.id} onClick={() => { setCatSel(c.id); setTab('search') }} style={{ background: 'white', borderRadius: 16, padding: 14, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.07)', transition: '.2s', overflow: 'hidden' }}>
                   {c.image ? <img src={c.image} style={{ width: 50, height: 38, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} /> :
-                    <div style={{ width: 50, height: 38, borderRadius: 10, background: '#FFF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>}
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1A0A00' }}>{c.name}</span>
+                    <div style={{ width: 50, height: 38, borderRadius: 10, background: '#E0F4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>}
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0C2D44' }}>{c.name}</span>
                 </div>
               ))}
             </div>
@@ -1489,10 +1658,10 @@ export default function Store() {
   const PromosTab = () => {
     const active = (promos || []).filter(p => p && p.active)
     const typeLabel = { percent: 'خصم نسبة %', fixed: 'خصم مبلغ ثابت', buy_x_get_y: 'اشتري X خذ Y', tier_buy: 'خصم كمية الشركة' }
-    const typeColor = { percent: '#FF6B35', fixed: '#7c3aed', buy_x_get_y: '#10b981', tier_buy: '#3b82f6' }
+    const typeColor = { percent: '#0EA5E9', fixed: '#059669', buy_x_get_y: '#10b981', tier_buy: '#3b82f6' }
     return (
       <div style={{ paddingBottom: 80 }}>
-        <div style={{ background: 'linear-gradient(135deg,#FF6B35,#7C3AED)', padding: '22px 18px 20px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#059669)', padding: '22px 18px 20px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '-40%', right: '-15%', width: 180, height: 180, background: 'rgba(255,255,255,.07)', borderRadius: '50%' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', fontWeight: 700, marginBottom: 3 }}>العروض الحصرية</div>
@@ -1507,18 +1676,18 @@ export default function Store() {
             catch { return [] }
           })()
           const promoProds = pids.length > 0 ? allP.filter(p => pids.includes(p.id) || pids.includes(String(p.id))) : allP.slice(0, 5)
-          const col = typeColor[promo.type] || '#FF6B35'
+          const col = typeColor[promo.type] || '#0EA5E9'
           const isExpired = promo.end_date && new Date(promo.end_date) < new Date()
           if (isExpired) return null
           return (
-            <div key={promo.id} style={{ background: 'white', borderRadius: 20, margin: '12px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden', border: '1.5px solid #F1ECE8' }}>
+            <div key={promo.id} style={{ background: 'white', borderRadius: 20, margin: '12px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden', border: '1.5px solid #E0F0FA' }}>
               {promo.image && <img src={promo.image} style={{ width: '100%', height: 130, objectFit: 'cover' }} />}
               <div style={{ padding: '16px 16px 10px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 800, marginBottom: 10, background: col + '18', color: col }}>
                   {typeLabel[promo.type] || promo.type}
                 </div>
                 {(promo.type === 'percent' || promo.type === 'fixed') && (
-                  <div style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', borderRadius: 50, padding: '5px 14px', fontSize: 17, fontWeight: 900, display: 'inline-block', marginBottom: 8, float: 'left', boxShadow: '0 4px 12px rgba(255,107,53,.35)' }}>
+                  <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', borderRadius: 50, padding: '5px 14px', fontSize: 17, fontWeight: 900, display: 'inline-block', marginBottom: 8, float: 'left', boxShadow: '0 4px 12px rgba(14,165,233,.35)' }}>
                     {promo.type === 'percent' ? `-${promo.discount_value}%` : `-${promo.discount_value} ${CUR}`}
                   </div>
                 )}
@@ -1530,16 +1699,16 @@ export default function Store() {
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 14px 14px' }}>
                   {promoProds.slice(0, 6).map(pp => (
                     <div key={pp.id} style={{ flexShrink: 0, width: 64, textAlign: 'center', cursor: 'pointer' }} onClick={() => { setDetailProd(pp); setModal('detail') }}>
-                      {pp.image ? <img src={pp.image} style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover', display: 'block', margin: '0 auto 4px', border: '2px solid #F1ECE8' }} /> :
-                        <div style={{ width: 60, height: 60, borderRadius: 12, background: '#F8F4F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>🛍️</div>}
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#7A6A5A', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pp.name}</div>
+                      {pp.image ? <img src={pp.image} style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover', display: 'block', margin: '0 auto 4px', border: '2px solid #E0F0FA' }} /> :
+                        <div style={{ width: 60, height: 60, borderRadius: 12, background: '#E7F5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>🛍️</div>}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4B7FA0', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pp.name}</div>
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #F1ECE8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #E0F0FA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {promo.end_date ? <PromoCountdown endDate={promo.end_date} /> : <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>⚡ بدون تاريخ انتهاء</span>}
-                <button style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', border: 'none', borderRadius: 30, padding: '8px 18px', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('search')}>تسوّق الآن</button>
+                <button style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', border: 'none', borderRadius: 30, padding: '8px 18px', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('search')}>تسوّق الآن</button>
               </div>
             </div>
           )
@@ -1565,12 +1734,12 @@ export default function Store() {
       <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h2 className="sec-title">⚡ الطلب السريع</h2>
-          <button onClick={addAll} style={{ background: 'linear-gradient(135deg,#FF6B35,#E8430E)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
+          <button onClick={addAll} style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
         </div>
         <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#FF6B35' }}>
+              <tr style={{ background: '#0EA5E9' }}>
                 <th style={{ padding: '11px 12px', textAlign: 'right', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>المنتج</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>سعر/كرتون</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الكمية (كرتون)</th>
@@ -1582,28 +1751,28 @@ export default function Store() {
                 const qty = parseInt(qtyMap[p.id]) || 0
                 const unitPrice = p.carton_price || p.price * (p.units || 12)
                 return (
-                  <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <td style={{ padding: '10px 12px', border: '1px solid #E2E8F0' }}>
+                  <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#F0F9FF', borderBottom: '1px solid #BAE6FD' }}>
+                    <td style={{ padding: '10px 12px', border: '1px solid #BAE6FD' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {p.image && <img src={p.image} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #E2E8F0' }} />}
-                        <div><div style={{ fontWeight: 700, fontSize: 13, color: '#1A0A00' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.units || 12} قطعة/كرتون</div></div>
+                        {p.image && <img src={p.image} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #BAE6FD' }} />}
+                        <div><div style={{ fontWeight: 700, fontSize: 13, color: '#0C2D44' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.units || 12} قطعة/كرتون</div></div>
                       </div>
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#FF6B35', border: '1px solid #E2E8F0' }}>{unitPrice.toFixed(0)} {CUR}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #E2E8F0' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0EA5E9', border: '1px solid #BAE6FD' }}>{unitPrice.toFixed(0)} {CUR}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #BAE6FD' }}>
                       <input type="number" min="0" value={qtyMap[p.id] || ''} onChange={e => setQtyMap(m => ({ ...m, [p.id]: e.target.value }))} placeholder="0"
-                        style={{ width: 70, textAlign: 'center', border: '2px solid #E2E8F0', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
-                        onFocus={e => e.target.style.borderColor = '#FF6B35'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        style={{ width: 70, textAlign: 'center', border: '2px solid #BAE6FD', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = '#0EA5E9'} onBlur={e => e.target.style.borderColor = '#BAE6FD'} />
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#1A0A00', border: '1px solid #E2E8F0' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0C2D44', border: '1px solid #BAE6FD' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
                   </tr>
                 )
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: '#FFF7ED' }}>
-                <td colSpan={3} style={{ padding: '12px', fontWeight: 800, color: '#1A0A00', fontSize: 14, border: '1px solid #E2E8F0', textAlign: 'right' }}>💰 الإجمالي المحدد:</td>
-                <td style={{ padding: '12px', fontWeight: 900, color: '#FF6B35', fontSize: 16, border: '1px solid #E2E8F0', textAlign: 'center' }}>
+              <tr style={{ background: '#EFF9FF' }}>
+                <td colSpan={3} style={{ padding: '12px', fontWeight: 800, color: '#0C2D44', fontSize: 14, border: '1px solid #BAE6FD', textAlign: 'right' }}>💰 الإجمالي المحدد:</td>
+                <td style={{ padding: '12px', fontWeight: 900, color: '#0EA5E9', fontSize: 16, border: '1px solid #BAE6FD', textAlign: 'center' }}>
                   {Object.entries(qtyMap).reduce((sum, [id, qty]) => {
                     const p = allP.find(x => String(x.id) === String(id))
                     const up = p ? (p.carton_price || p.price * (p.units || 12)) : 0
@@ -1613,6 +1782,62 @@ export default function Store() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+    )
+  }
+
+  // ========== شاشة التحميل (Skeleton) ==========
+  if (loading) {
+    return (
+      <div dir="rtl" style={{ background: '#F0F9FF', minHeight: '100vh' }}>
+        {/* Header skeleton */}
+        <div style={{ background: 'linear-gradient(150deg,#0284C7,#0EA5E9 55%,#06B6D4 100%)', padding: '12px 16px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
+            <div className="sk" style={{ width: 40, height: 40, borderRadius: '50%' }} />
+            <div className="sk" style={{ width: 80, height: 24, borderRadius: 8 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div className="sk" style={{ width: 64, height: 32, borderRadius: 20 }} />
+              <div className="sk" style={{ width: 64, height: 32, borderRadius: 20 }} />
+            </div>
+          </div>
+          <div style={{ background: 'white', borderRadius: 30, padding: '10px 16px', display: 'flex', gap: 8 }}>
+            <div className="sk" style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0 }} />
+            <div className="sk" style={{ flex: 1, height: 18, borderRadius: 8 }} />
+          </div>
+        </div>
+
+        {/* Banner skeleton */}
+        <div style={{ margin: '14px 14px 0', borderRadius: 20, overflow: 'hidden' }}>
+          <div className="sk" style={{ height: 175, borderRadius: 20 }} />
+        </div>
+
+        {/* Section title skeleton */}
+        <div style={{ padding: '16px 14px 12px', display: 'flex', justifyContent: 'space-between' }}>
+          <div className="sk" style={{ width: 120, height: 20, borderRadius: 8 }} />
+          <div className="sk" style={{ width: 60, height: 16, borderRadius: 8 }} />
+        </div>
+
+        {/* Product cards skeleton */}
+        <div className="sk-grid">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="sk-card">
+              <div className="sk" style={{ height: 140, borderRadius: 13, marginBottom: 10 }} />
+              <div className="sk" style={{ height: 14, borderRadius: 6, marginBottom: 6, width: '80%' }} />
+              <div className="sk" style={{ height: 14, borderRadius: 6, marginBottom: 8, width: '50%' }} />
+              <div className="sk" style={{ height: 34, borderRadius: 30 }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom nav skeleton */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', display: 'flex', justifyContent: 'space-around', padding: '10px 0 16px', borderRadius: '20px 20px 0 0', boxShadow: '0 -4px 20px rgba(0,0,0,.08)' }}>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <div className="sk" style={{ width: 24, height: 24, borderRadius: '50%' }} />
+              <div className="sk" style={{ width: 36, height: 10, borderRadius: 4 }} />
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -1755,8 +1980,8 @@ export default function Store() {
                 { q: 'هل يمكن الإلغاء بعد الطلب؟', a: 'يمكن الإلغاء قبل تأكيد الطلب عبر التواصل معنا.' },
                 { q: 'كيف أجمع نقاط؟', a: 'تحصل على نقطة واحدة مقابل كل 100 دج من إجمالي مشترياتك (بعد الخصومات). يمكنك استخدام نقاطك للحصول على خصم يصل إلى 100% من قيمة الطلب (كل 100 نقطة = 100 دج خصم).' },
               ].map((item, i) => (
-                <div key={i} style={{ marginBottom: 14, background: '#F7F3EF', borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: '#1A0A00', marginBottom: 6 }}>❓ {item.q}</div>
+                <div key={i} style={{ marginBottom: 14, background: '#F0F9FF', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0C2D44', marginBottom: 6 }}>❓ {item.q}</div>
                   <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>💡 {item.a}</div>
                 </div>
               ))}
@@ -1789,7 +2014,8 @@ export default function Store() {
       {modal === 'checkout' && <CheckoutModal cart={cart} finalTotal={checkoutTotal || cartTotal}
         onClose={() => setModal('cart')}
         onSuccess={id => { setCart([]); setThankId(id); setModal('thankyou') }}
-        currency={CUR} waNum={WA} storeName={SNAME} />}
+        currency={CUR} waNum={WA} storeName={SNAME}
+        customer={customer} onPointsUpdate={handlePointsUpdate} />}
       {modal === 'detail' && <DetailModal product={detailProd} wishlist={wishlist}
         onClose={() => setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish}
         currency={CUR} products={products} sevenAgo={sevenAgo}
@@ -1797,6 +2023,7 @@ export default function Store() {
       {modal === 'tracking' && <TrackingModal onClose={() => setModal(null)} currency={CUR} />}
       {modal === 'contact' && <ContactModal settings={settings} onClose={() => setModal(null)} />}
       {modal === 'thankyou' && <ThankyouModal orderId={thankId} storeName={SNAME} onClose={() => { setModal(null); setTab('home') }} />}
+      {modal === 'account' && customer && <AccountModal customer={customer} onClose={() => setModal(null)} onLogout={handleLogout} onUpdatePoints={handlePointsUpdate} currency={CUR} />}
     </div>
   )
 }
