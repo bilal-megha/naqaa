@@ -28,7 +28,7 @@ export default function TrackingModal({ onClose, currency }) {
     setLoading(false)
   }
 
-  const statusColors = { pending: '#38BDF8', processing: '#3b82f6', shipped: '#059669', delivered: '#10b981', cancelled: '#ef4444' }
+  const statusColors = { pending: '#38BDF8', processing: '#3b82f6', shipped: '#059669', delivered: '#059669', cancelled: '#ef4444' }
   const statusLabels = { pending: '⏳ انتظار', processing: '🔄 تجهيز', shipped: '🚚 شحن', delivered: '✅ تسليم', cancelled: '❌ ملغي' }
 
   return (
@@ -54,14 +54,14 @@ export default function TrackingModal({ onClose, currency }) {
                 <span style={{ fontWeight: 900, fontSize: 15 }}>طلب #{String(res.id).slice(-6)}</span>
                 <span style={{ background: statusColors[res.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>{statusLabels[res.status] || res.status}</span>
               </div>
-              <div style={{ color: '#4B7FA0', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
-              <div style={{ color: '#0EA5E9', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
+              <div style={{ color: '#0077B6', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
+              <div style={{ color: '#0077B6', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
               {steps.map((s, i) => {
                 const cur = steps.indexOf(res.status)
                 return (
                   <div key={s} className="trstep">
                     <div className={`trdot ${i <= cur ? 'done' : 'wait'}`}>{i <= cur ? '✓' : i + 1}</div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#0EA5E9' : '#94a3b8' }}>{labels[s]}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#0077B6' : '#94a3b8' }}>{labels[s]}</div>
                   </div>
                 )
               })}
@@ -71,13 +71,13 @@ export default function TrackingModal({ onClose, currency }) {
             <div style={{ marginTop: 16 }}>
               <div style={{ fontWeight: 800, marginBottom: 10, fontSize: 14 }}>طلبياتك ({orders.length})</div>
               {orders.map(o => (
-                <div key={o.id} style={{ background: '#F0F9FF', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                <div key={o.id} style={{ background: '#F8FAFC', borderRadius: 12, padding: 12, marginBottom: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <span style={{ fontWeight: 700 }}>#{String(o.id).slice(-6)}</span>
                     <span style={{ background: statusColors[o.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{statusLabels[o.status] || o.status}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: '#4B7FA0' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
-                  <div style={{ fontWeight: 700, color: '#0EA5E9', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
+                  <div style={{ fontSize: 13, color: '#0077B6' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
+                  <div style={{ fontWeight: 700, color: '#0077B6', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
                 </div>
               ))}
             </div>

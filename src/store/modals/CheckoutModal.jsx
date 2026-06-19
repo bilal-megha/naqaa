@@ -94,8 +94,8 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
           <div className="mhead"><h3>🔐 تأكيد الطلبية</h3><button className="mclose" onClick={onClose}>×</button></div>
           <div className="mbody" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
-            <p style={{ fontSize: 14, color: '#4B7FA0', marginBottom: 4 }}>تم إرسال كود التأكيد إلى رقم هاتفك عبر واتساب</p>
-            <p style={{ fontWeight: 700, color: '#0EA5E9', marginBottom: 16, fontSize: 15 }}>{form.phone}</p>
+            <p style={{ fontSize: 14, color: '#0077B6', marginBottom: 4 }}>تم إرسال كود التأكيد إلى رقم هاتفك عبر واتساب</p>
+            <p style={{ fontWeight: 700, color: '#0077B6', marginBottom: 16, fontSize: 15 }}>{form.phone}</p>
             <div className="otp-inputs">
               {digits.map((d, i) => (
                 <input key={i} ref={refs[i]} className="otp-input" value={d} inputMode="numeric" maxLength={1}
@@ -104,7 +104,7 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
               ))}
             </div>
             <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>أدخل الكود المكون من 4 أرقام الذي تلقيته على واتساب</p>
-            <button onClick={resendCode} style={{ background: 'none', border: 'none', color: '#0EA5E9', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>🔄 لم يصلك الكود؟ أعد الإرسال</button>
+            <button onClick={resendCode} style={{ background: 'none', border: 'none', color: '#0077B6', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>🔄 لم يصلك الكود؟ أعد الإرسال</button>
             <button className="abtn green" onClick={confirmOrder} disabled={loading || otp.length < 4}>
               {loading ? '⏳ جاري التأكيد...' : '✅ تأكيد الطلبية'}
             </button>
@@ -126,9 +126,9 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
           <p style={{ fontSize: 11, color: '#94a3b8', marginTop: -8, marginBottom: 12 }}>📱 سيُرسل كود التأكيد إلى هذا الرقم عبر واتساب</p>
           <label className="fi-label">العنوان</label>
           <textarea className="fi" rows="2" value={form.address} onChange={F('address')} style={{ resize: 'none' }} autoComplete="street-address" placeholder="أدخل عنوان التوصيل" />
-          <div style={{ background: '#E0F4FF', borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: '#EFF6FF', borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700 }}>إجمالي الطلب</span>
-            <span style={{ fontWeight: 900, color: '#0EA5E9', fontSize: 18 }}>{finalTotal.toFixed(0)} {currency}</span>
+            <span style={{ fontWeight: 900, color: '#0077B6', fontSize: 18 }}>{finalTotal.toFixed(0)} {currency}</span>
           </div>
           <button className="abtn" onClick={goToOtp}><i className="fas fa-shield-alt"></i> التالي — تأكيد بكود</button>
           <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>🔒 سيتم إرسال كود تأكيد عبر واتساب للتحقق من هويتك</p>

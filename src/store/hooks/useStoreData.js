@@ -45,8 +45,8 @@ export function useStoreData() {
       // ── جلب كل البيانات بالتوازي الكامل ────────────────
       const [rP, rB, rC, rS, rPr, rO] = await Promise.allSettled([
         supabase.from('products')
-          .select('id,name,price,carton_price,image,stock,discount,units,category_id,brand_id,created_at,disabled')
-          .or('disabled.eq.false,disabled.is.null')
+          .select('id,name,price,carton_price,image,stock,discount,units,category_id,brand_id,created_at,disabled,description')
+          .not('disabled', 'eq', true)
           .order('created_at', { ascending: false }),
         supabase.from('brands').select('id,name,image').order('name'),
         supabase.from('categories').select('id,name,image').order('name'),

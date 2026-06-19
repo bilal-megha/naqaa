@@ -73,11 +73,8 @@ export default function Store() {
   const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7)
 
 
-  // CSS والوضع الليلي
+  // وضع ليلي + زر الصعود للأعلى
   useEffect(() => {
-    if (!document.getElementById('nq-css')) {
-      const s = document.createElement('style'); s.id = 'nq-css'; s.textContent = CSS; document.head.appendChild(s)
-    }
     if (localStorage.getItem('nqDark') === '1') document.body.classList.add('dark')
     const fn = () => setShowScr(window.scrollY > 300)
     window.addEventListener('scroll', fn)
@@ -188,12 +185,12 @@ export default function Store() {
     return (
       <div className="pc" onClick={() => { setDetailProd(p); setModal('detail') }}>
         <div className="pc-img" style={{ opacity: (p.stock || 0) === 0 ? 0.45 : 1, filter: (p.stock || 0) === 0 ? 'grayscale(60%)' : 'none' }}>
-          {hasPromo && <div className="pc-promo-badge" style={{ position: 'absolute', top: 6, right: 6, background: '#0EA5E9', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 800, zIndex: 2 }}><i className="fas fa-bullhorn" style={{ fontSize: 9 }} /> عرض خاص</div>}
+          {hasPromo && <div className="pc-promo-badge" style={{ position: 'absolute', top: 6, right: 6, background: '#0077B6', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 9, fontWeight: 800, zIndex: 2 }}><i className="fas fa-bullhorn" style={{ fontSize: 9 }} /> عرض خاص</div>}
           {(p.stock || 0) === 0 && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(0,0,0,.55)', color: 'white', borderRadius: 20, padding: '4px 12px', fontSize: 11, fontWeight: 800, zIndex: 2, whiteSpace: 'nowrap' }}>نفذ المخزون</div>}
           {p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <div className="pc-noimg">🛍️</div>}
           {isN && !hasPromo && (p.stock || 0) > 0 && <span className="badge b-new">جديد</span>}
           <button className="fav-b" onClick={e => { e.stopPropagation(); toggleWish(p.id) }}>
-            <i className="fas fa-heart" style={{ color: isW ? '#0EA5E9' : '#CBD5E1' }}></i>
+            <i className="fas fa-heart" style={{ color: isW ? '#0077B6' : '#CBD5E1' }}></i>
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
@@ -203,10 +200,10 @@ export default function Store() {
               <span style={{ background: '#888', color: 'white', fontSize: 11, fontWeight: 900, padding: '2px 7px', borderRadius: 20 }}>{pct}%</span>
               <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through', fontWeight: 600 }}>{p.price}{CUR}</span>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#0C2D44' }}>{fp}{CUR}</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: '#1E293B' }}>{fp}{CUR}</div>
           </div>
         ) : (
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#0EA5E9' }}>{fp} {CUR}</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#0077B6' }}>{fp} {CUR}</div>
         )}
         {p.units && <div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
         <button className="add-b" style={{ marginTop: 8 }} disabled={(p.stock || 0) === 0} onClick={e => { e.stopPropagation(); addToCart(p) }}>
@@ -254,7 +251,7 @@ export default function Store() {
           </div>
           {banners && banners.length > 1 && <div className="bdots">{banners.map((_, i) => <button key={i} className={`bdot${bannerIdx === i ? ' on' : ''}`} onClick={() => setBannerIdx(i)} />)}</div>}
         </div>
-        {PROMO_TEXT && <div style={{ background: 'linear-gradient(135deg,#E0F4FF,#BAE6FD)', margin: '10px 14px 0', borderRadius: 14, padding: '10px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#0EA5E9', border: '1px solid #93C5FD' }}>{PROMO_TEXT}</div>}
+        {PROMO_TEXT && <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', margin: '10px 14px 0', borderRadius: 14, padding: '10px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#0077B6', border: '1px solid #93C5FD' }}>{PROMO_TEXT}</div>}
         {promos && promos.length > 0 && promos.find(p => p.end_date) && (
           <div className="flash-bar" onClick={() => setTab('search')}>
             <div>
@@ -297,12 +294,12 @@ export default function Store() {
           </div>
         )}
         <div className="promo-strip">
-          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }} onClick={() => { setSortSel('newest'); setTab('search') }}>
+          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#059669,#059669)' }} onClick={() => { setSortSel('newest'); setTab('search') }}>
             <div style={{ fontSize: 24 }}>🎁</div>
             <div style={{ color: 'white', fontWeight: 800, fontSize: 13, marginTop: 4 }}>{promos && promos.length > 0 && promos.find(p => p.type === 'buy_x_get_y') ? promos.find(p => p.type === 'buy_x_get_y').name : 'اشتري 3 خذ 4'}</div>
             <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11 }}>أرخص منتج مجاناً</div>
           </div>
-          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)' }} onClick={() => { setSortSel('price_asc'); setTab('search') }}>
+          <div className="promo-box" style={{ background: 'linear-gradient(135deg,#0077B6,#005F92)' }} onClick={() => { setSortSel('price_asc'); setTab('search') }}>
             <div style={{ fontSize: 24 }}>📦</div>
             <div style={{ color: 'white', fontWeight: 800, fontSize: 13, marginTop: 4 }}>خصم الكميات</div>
             <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 11 }}>500دج→5% | 1000دج→10%</div>
@@ -310,18 +307,18 @@ export default function Store() {
         </div>
         {dayDeal && (
           <div className="day-deal">
-            <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: '#0077B6', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'white', fontWeight: 900, fontSize: 15 }}>🌟 عرض اليوم</span>
               <span style={{ color: 'white', fontSize: 13 }}>خصم {dayDeal.discount}%</span>
             </div>
             <div style={{ display: 'flex', gap: 16, padding: 16, cursor: 'pointer' }} onClick={() => { setDetailProd(dayDeal); setModal('detail') }}>
               {dayDeal.image ? <img src={dayDeal.image} style={{ width: 90, height: 90, borderRadius: 12, objectFit: 'cover' }} /> :
-                <div style={{ width: 90, height: 90, borderRadius: 12, background: '#E7F5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>}
+                <div style={{ width: 90, height: 90, borderRadius: 12, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🛍️</div>}
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{dayDeal.name}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through' }}>{dayDeal.price} {CUR}</span>
-                  <span style={{ fontSize: 20, fontWeight: 900, color: '#0EA5E9' }}>{(dayDeal.price * (1 - dayDeal.discount / 100)).toFixed(0)} {CUR}</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: '#0077B6' }}>{(dayDeal.price * (1 - dayDeal.discount / 100)).toFixed(0)} {CUR}</span>
                 </div>
                 <button className="add-b" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); addToCart(dayDeal) }}>أضف للسلة</button>
               </div>
@@ -382,23 +379,23 @@ export default function Store() {
             <button key={v} className={`chip${sortSel === v ? ' sel' : ''}`} onClick={() => { setSortSel(v); setPage(1) }}>{l}</button>
           ))}
         </div>
-        <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1.5px solid #E0F0FA' }}>
+        <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,.06)', border: '1.5px solid #EFF6FF' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, fontWeight: 700 }}>
-            <span style={{ color: '#0C2D44' }}>🎚️ فلتر السعر</span>
-            <span style={{ color: '#0EA5E9', fontWeight: 800 }}>{priceMin.toLocaleString()} — {priceMax >= 999999 ? '∞' : priceMax.toLocaleString()} {CUR}</span>
+            <span style={{ color: '#1E293B' }}>🎚️ فلتر السعر</span>
+            <span style={{ color: '#0077B6', fontWeight: 800 }}>{priceMin.toLocaleString()} — {priceMax >= 999999 ? '∞' : priceMax.toLocaleString()} {CUR}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>من</span>
             <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMin, absoluteMax)}
               onChange={e => setPriceMin(Math.min(Number(e.target.value), priceMax - 50))}
-              style={{ flex: 1, accentColor: '#0EA5E9', cursor: 'pointer' }} />
+              style={{ flex: 1, accentColor: '#0077B6', cursor: 'pointer' }} />
             <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>إلى</span>
             <input type="range" min={0} max={absoluteMax} step={50} value={Math.min(priceMax, absoluteMax)}
               onChange={e => setPriceMax(Math.max(Number(e.target.value), priceMin + 50))}
-              style={{ flex: 1, accentColor: '#0EA5E9', cursor: 'pointer' }} />
+              style={{ flex: 1, accentColor: '#0077B6', cursor: 'pointer' }} />
           </div>
           {(priceMin > 0 || priceMax < 999999) && (
-            <button onClick={() => { setPriceMin(0); setPriceMax(999999) }} style={{ fontSize: 11, color: '#0EA5E9', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>✕ إلغاء فلتر السعر</button>
+            <button onClick={() => { setPriceMin(0); setPriceMax(999999) }} style={{ fontSize: 11, color: '#0077B6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>✕ إلغاء فلتر السعر</button>
           )}
         </div>
         {paged.length === 0
@@ -439,8 +436,8 @@ export default function Store() {
               {categories.map(c => (
                 <div key={c.id} onClick={() => { setCatSel(c.id); setTab('search') }} style={{ background: 'white', borderRadius: 16, padding: 14, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,.07)', transition: '.2s', overflow: 'hidden' }}>
                   {c.image ? <img src={c.image} style={{ width: 50, height: 38, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} /> :
-                    <div style={{ width: 50, height: 38, borderRadius: 10, background: '#E0F4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>}
-                  <span style={{ fontWeight: 700, fontSize: 14, color: '#0C2D44' }}>{c.name}</span>
+                    <div style={{ width: 50, height: 38, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>📦</div>}
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>{c.name}</span>
                 </div>
               ))}
             </div>
@@ -465,10 +462,10 @@ export default function Store() {
   const PromosTab = () => {
     const active = (promos || []).filter(p => p && p.active)
     const typeLabel = { percent: 'خصم نسبة %', fixed: 'خصم مبلغ ثابت', buy_x_get_y: 'اشتري X خذ Y', tier_buy: 'خصم كمية الشركة' }
-    const typeColor = { percent: '#0EA5E9', fixed: '#059669', buy_x_get_y: '#10b981', tier_buy: '#3b82f6' }
+    const typeColor = { percent: '#0077B6', fixed: '#059669', buy_x_get_y: '#059669', tier_buy: '#3b82f6' }
     return (
       <div style={{ paddingBottom: 80 }}>
-        <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#059669)', padding: '22px 18px 20px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: 'linear-gradient(135deg,#0077B6,#059669)', padding: '22px 18px 20px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '-40%', right: '-15%', width: 180, height: 180, background: 'rgba(255,255,255,.07)', borderRadius: '50%' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', fontWeight: 700, marginBottom: 3 }}>العروض الحصرية</div>
@@ -483,18 +480,18 @@ export default function Store() {
             catch { return [] }
           })()
           const promoProds = pids.length > 0 ? allP.filter(p => pids.includes(p.id) || pids.includes(String(p.id))) : allP.slice(0, 5)
-          const col = typeColor[promo.type] || '#0EA5E9'
+          const col = typeColor[promo.type] || '#0077B6'
           const isExpired = promo.end_date && new Date(promo.end_date) < new Date()
           if (isExpired) return null
           return (
-            <div key={promo.id} style={{ background: 'white', borderRadius: 20, margin: '12px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden', border: '1.5px solid #E0F0FA' }}>
+            <div key={promo.id} style={{ background: 'white', borderRadius: 20, margin: '12px 14px', boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden', border: '1.5px solid #EFF6FF' }}>
               {promo.image && <img src={promo.image} style={{ width: '100%', height: 130, objectFit: 'cover' }} />}
               <div style={{ padding: '16px 16px 10px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 30, fontSize: 11, fontWeight: 800, marginBottom: 10, background: col + '18', color: col }}>
                   {typeLabel[promo.type] || promo.type}
                 </div>
                 {(promo.type === 'percent' || promo.type === 'fixed') && (
-                  <div style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', borderRadius: 50, padding: '5px 14px', fontSize: 17, fontWeight: 900, display: 'inline-block', marginBottom: 8, float: 'left', boxShadow: '0 4px 12px rgba(14,165,233,.35)' }}>
+                  <div style={{ background: '#0077B6', color: 'white', borderRadius: 50, padding: '5px 14px', fontSize: 17, fontWeight: 900, display: 'inline-block', marginBottom: 8, float: 'left', boxShadow: '0 4px 12px rgba(0,119,182,.35)' }}>
                     {promo.type === 'percent' ? `-${promo.discount_value}%` : `-${promo.discount_value} ${CUR}`}
                   </div>
                 )}
@@ -506,16 +503,16 @@ export default function Store() {
                 <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '0 14px 14px' }}>
                   {promoProds.slice(0, 6).map(pp => (
                     <div key={pp.id} style={{ flexShrink: 0, width: 64, textAlign: 'center', cursor: 'pointer' }} onClick={() => { setDetailProd(pp); setModal('detail') }}>
-                      {pp.image ? <img src={pp.image} style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover', display: 'block', margin: '0 auto 4px', border: '2px solid #E0F0FA' }} /> :
-                        <div style={{ width: 60, height: 60, borderRadius: 12, background: '#E7F5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>🛍️</div>}
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#4B7FA0', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pp.name}</div>
+                      {pp.image ? <img src={pp.image} style={{ width: 60, height: 60, borderRadius: 12, objectFit: 'cover', display: 'block', margin: '0 auto 4px', border: '2px solid #EFF6FF' }} /> :
+                        <div style={{ width: 60, height: 60, borderRadius: 12, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 4px' }}>🛍️</div>}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: '#0077B6', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{pp.name}</div>
                     </div>
                   ))}
                 </div>
               )}
-              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #E0F0FA', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '10px 16px 14px', borderTop: '1px solid #EFF6FF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {promo.end_date ? <PromoCountdown endDate={promo.end_date} /> : <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>⚡ بدون تاريخ انتهاء</span>}
-                <button style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', border: 'none', borderRadius: 30, padding: '8px 18px', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('search')}>تسوّق الآن</button>
+                <button style={{ background: '#0077B6', color: 'white', border: 'none', borderRadius: 30, padding: '8px 18px', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setTab('search')}>تسوّق الآن</button>
               </div>
             </div>
           )
@@ -541,12 +538,12 @@ export default function Store() {
       <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h2 className="sec-title">⚡ الطلب السريع</h2>
-          <button onClick={addAll} style={{ background: 'linear-gradient(135deg,#0EA5E9,#0284C7)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
+          <button onClick={addAll} style={{ background: '#0077B6', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
         </div>
         <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#0EA5E9' }}>
+              <tr style={{ background: '#0077B6' }}>
                 <th style={{ padding: '11px 12px', textAlign: 'right', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>المنتج</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>سعر/كرتون</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الكمية (كرتون)</th>
@@ -558,28 +555,28 @@ export default function Store() {
                 const qty = parseInt(qtyMap[p.id]) || 0
                 const unitPrice = p.carton_price || p.price * (p.units || 12)
                 return (
-                  <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#F0F9FF', borderBottom: '1px solid #BAE6FD' }}>
-                    <td style={{ padding: '10px 12px', border: '1px solid #BAE6FD' }}>
+                  <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#F8FAFC', borderBottom: '1px solid #DBEAFE' }}>
+                    <td style={{ padding: '10px 12px', border: '1px solid #DBEAFE' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {p.image && <img src={p.image} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #BAE6FD' }} />}
-                        <div><div style={{ fontWeight: 700, fontSize: 13, color: '#0C2D44' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.units || 12} قطعة/كرتون</div></div>
+                        {p.image && <img src={p.image} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #DBEAFE' }} />}
+                        <div><div style={{ fontWeight: 700, fontSize: 13, color: '#1E293B' }}>{p.name}</div><div style={{ fontSize: 11, color: '#94a3b8' }}>{p.units || 12} قطعة/كرتون</div></div>
                       </div>
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0EA5E9', border: '1px solid #BAE6FD' }}>{unitPrice.toFixed(0)} {CUR}</td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #BAE6FD' }}>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0077B6', border: '1px solid #DBEAFE' }}>{unitPrice.toFixed(0)} {CUR}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #DBEAFE' }}>
                       <input type="number" min="0" value={qtyMap[p.id] || ''} onChange={e => setQtyMap(m => ({ ...m, [p.id]: e.target.value }))} placeholder="0"
-                        style={{ width: 70, textAlign: 'center', border: '2px solid #BAE6FD', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
-                        onFocus={e => e.target.style.borderColor = '#0EA5E9'} onBlur={e => e.target.style.borderColor = '#BAE6FD'} />
+                        style={{ width: 70, textAlign: 'center', border: '2px solid #DBEAFE', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = '#0077B6'} onBlur={e => e.target.style.borderColor = '#DBEAFE'} />
                     </td>
-                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0C2D44', border: '1px solid #BAE6FD' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#1E293B', border: '1px solid #DBEAFE' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
                   </tr>
                 )
               })}
             </tbody>
             <tfoot>
-              <tr style={{ background: '#EFF9FF' }}>
-                <td colSpan={3} style={{ padding: '12px', fontWeight: 800, color: '#0C2D44', fontSize: 14, border: '1px solid #BAE6FD', textAlign: 'right' }}>💰 الإجمالي المحدد:</td>
-                <td style={{ padding: '12px', fontWeight: 900, color: '#0EA5E9', fontSize: 16, border: '1px solid #BAE6FD', textAlign: 'center' }}>
+              <tr style={{ background: '#F8FAFC' }}>
+                <td colSpan={3} style={{ padding: '12px', fontWeight: 800, color: '#1E293B', fontSize: 14, border: '1px solid #DBEAFE', textAlign: 'right' }}>💰 الإجمالي المحدد:</td>
+                <td style={{ padding: '12px', fontWeight: 900, color: '#0077B6', fontSize: 16, border: '1px solid #DBEAFE', textAlign: 'center' }}>
                   {Object.entries(qtyMap).reduce((sum, [id, qty]) => {
                     const p = allP.find(x => String(x.id) === String(id))
                     const up = p ? (p.carton_price || p.price * (p.units || 12)) : 0
@@ -597,9 +594,9 @@ export default function Store() {
   // ========== شاشة التحميل (Skeleton) ==========
   if (loading) {
     return (
-      <div dir="rtl" style={{ background: '#F0F9FF', minHeight: '100vh' }}>
+      <div dir="rtl" style={{ background: '#F8FAFC', minHeight: '100vh' }}>
         {/* Header skeleton */}
-        <div style={{ background: 'linear-gradient(150deg,#0284C7,#0EA5E9 55%,#06B6D4 100%)', padding: '12px 16px 14px' }}>
+        <div style={{ background: 'linear-gradient(150deg,#005F92,#0077B6 55%,#06B6D4 100%)', padding: '12px 16px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
             <div className="sk" style={{ width: 40, height: 40, borderRadius: '50%' }} />
             <div className="sk" style={{ width: 80, height: 24, borderRadius: 8 }} />
@@ -787,8 +784,8 @@ export default function Store() {
                 { q: 'هل يمكن الإلغاء بعد الطلب؟', a: 'يمكن الإلغاء قبل تأكيد الطلب عبر التواصل معنا.' },
                 { q: 'كيف أجمع نقاط؟', a: 'تحصل على نقطة واحدة مقابل كل 100 دج من إجمالي مشترياتك (بعد الخصومات). يمكنك استخدام نقاطك للحصول على خصم يصل إلى 100% من قيمة الطلب (كل 100 نقطة = 100 دج خصم).' },
               ].map((item, i) => (
-                <div key={i} style={{ marginBottom: 14, background: '#F0F9FF', borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0C2D44', marginBottom: 6 }}>❓ {item.q}</div>
+                <div key={i} style={{ marginBottom: 14, background: '#F8FAFC', borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#1E293B', marginBottom: 6 }}>❓ {item.q}</div>
                   <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>💡 {item.a}</div>
                 </div>
               ))}

@@ -55,9 +55,9 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                 <div key={i.id} className="ci">
                   {i.image ? <img src={i.image} className="ci-img" alt="" /> : <div className="ci-img">🛍️</div>}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0C2D44' }}>{i.name}</div>
-                    <div style={{ color: '#0EA5E9', fontWeight: 900, fontSize: 15, marginTop: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#4B7FA0' }}>سعر الكرتون: </span>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>{i.name}</div>
+                    <div style={{ color: '#0077B6', fontWeight: 900, fontSize: 15, marginTop: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0077B6' }}>سعر الكرتون: </span>
                       {i.price} {currency} × {i.qty} كرتون = {(i.price * i.qty).toFixed(0)} {currency}
                     </div>
                     <div className="qty-row">
@@ -80,13 +80,13 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
               {cartTotal < freeShip && (
                 <div style={{ background: '#EFF9FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#C2410C', marginBottom: 5 }}>
-                    🚚 أضف <strong style={{ color: '#0EA5E9', fontSize: 15 }}>{(freeShip - cartTotal).toFixed(0)} {currency}</strong> للتوصيل المجاني!
+                    🚚 أضف <strong style={{ color: '#0077B6', fontSize: 15 }}>{(freeShip - cartTotal).toFixed(0)} {currency}</strong> للتوصيل المجاني!
                   </div>
-                  <div style={{ background: '#BAE6FD', borderRadius: 30, height: 7, overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, (cartTotal / freeShip) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#0EA5E9,#10b981)', borderRadius: 30, transition: 'width .4s' }} />
+                  <div style={{ background: '#DBEAFE', borderRadius: 30, height: 7, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, (cartTotal / freeShip) * 100)}%`, height: '100%', background: 'linear-gradient(90deg,#0077B6,#059669)', borderRadius: 30, transition: 'width .4s' }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
-                    <span>0 {currency}</span><span style={{ color: '#10b981', fontWeight: 700 }}>🎁 {freeShip} {currency} = توصيل مجاني</span>
+                    <span>0 {currency}</span><span style={{ color: '#059669', fontWeight: 700 }}>🎁 {freeShip} {currency} = توصيل مجاني</span>
                   </div>
                 </div>
               )}
@@ -99,37 +99,37 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
               {/* شريط تقدم النقاط */}
               <div style={{ background: '#DBEAFE', borderRadius: 14, padding: '12px 14px', margin: '12px 0', border: '1px solid #34D399' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
-                  <span style={{ color: '#0369A1' }}>⭐ ستكسب من هذا الطلب</span>
-                  <span style={{ color: '#0EA5E9' }}>{pointsEarned} نقطة</span>
+                  <span style={{ color: '#004F7C' }}>⭐ ستكسب من هذا الطلب</span>
+                  <span style={{ color: '#0077B6' }}>{pointsEarned} نقطة</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 4 }}>
                   <span>نقاطك الحالية: {currentPoints}</span>
                   <span>→ بعد الطلب: {totalAfter}</span>
                 </div>
-                <div style={{ background: '#BAE6FD', borderRadius: 30, height: 8, overflow: 'hidden' }}>
+                <div style={{ background: '#DBEAFE', borderRadius: 30, height: 8, overflow: 'hidden' }}>
                   <div style={{
                     width: `${Math.min(100, (totalAfter / 1000) * 100)}%`,
                     height: '100%',
-                    background: 'linear-gradient(90deg,#34D399,#10B981)',
+                    background: 'linear-gradient(90deg,#34D399,#059669)',
                     borderRadius: 30,
                     transition: 'width .5s'
                   }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
                   <span>0</span>
-                  <span style={{ fontWeight: 700, color: '#10B981' }}>🏅 1000 نقطة = مستوى VIP</span>
+                  <span style={{ fontWeight: 700, color: '#059669' }}>🏅 1000 نقطة = مستوى VIP</span>
                 </div>
               </div>
 
               <div className="prog-bar-wrap">
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700 }}>
                   {currentTier
-                    ? <span style={{ color: '#10b981' }}>🎉 خصم {currentTier.disc}% مفعّل! وفّرت {volDisc.toFixed(0)} {currency}</span>
+                    ? <span style={{ color: '#059669' }}>🎉 خصم {currentTier.disc}% مفعّل! وفّرت {volDisc.toFixed(0)} {currency}</span>
                     : nextTier
                       ? <span>أضف {(nextTier.min - cartTotal).toFixed(0)} {currency} للحصول على {nextTier.label}</span>
                       : <span>🏆 أقصى خصم محقق!</span>
                   }
-                  <span style={{ color: '#0EA5E9' }}>{Math.min(100, (cartTotal / 2000 * 100)).toFixed(0)}%</span>
+                  <span style={{ color: '#0077B6' }}>{Math.min(100, (cartTotal / 2000 * 100)).toFixed(0)}%</span>
                 </div>
                 <div className="prog-track">
                   <div className="prog-fill" style={{ width: `${Math.min(100, cartTotal / 2000 * 100)}%` }}></div>
@@ -145,7 +145,7 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                     <div style={{ fontWeight: 800, fontSize: 13 }}>⭐ خصم النقاط</div>
                     <div style={{ fontSize: 11, color: '#64748b' }}>لديك {customer.points} نقطة</div>
                   </div>
-                  <div style={{ fontWeight: 900, color: '#0EA5E9', fontSize: 16 }}>
+                  <div style={{ fontWeight: 900, color: '#0077B6', fontSize: 16 }}>
                     - {pointsDiscount.toFixed(0)} {currency}
                   </div>
                 </div>
@@ -158,7 +158,7 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 18, marginBottom: 16 }}>
                 <span>الإجمالي</span>
-                <span style={{ color: '#0EA5E9' }}>{finalTotal.toFixed(0)} {currency}</span>
+                <span style={{ color: '#0077B6' }}>{finalTotal.toFixed(0)} {currency}</span>
               </div>
               <button className="abtn" onClick={() => onCheckout(finalTotal, buy3Disc + volDisc + pointsDiscount)}>
                 <i className="fas fa-credit-card"></i> إتمام الشراء

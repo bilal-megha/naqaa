@@ -14,17 +14,17 @@ export default function ContactModal({ settings, onClose }) {
             <div style={{ fontSize: 40 }}>🛍️</div>
             <div style={{ fontWeight: 900, fontSize: 18, marginTop: 8 }}>{settings?.store_name || 'نقاء'}</div>
           </div>
-          {settings?.contact_phone && <a href={`tel:${settings.contact_phone}`} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#E0F4FF', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ fontSize: 28 }}>📱</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>الهاتف</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_phone}</div></div>
+          {settings?.contact_phone && <a href={`tel:${settings.contact_phone}`} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#EFF6FF', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ fontSize: 28 }}>📱</span><div><div style={{ fontWeight: 800, color: '#1E293B' }}>الهاتف</div><div style={{ fontSize: 13, color: '#0077B6' }}>{settings.contact_phone}</div></div>
           </a>}
           {WA && <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f0fdf4', borderRadius: 14, padding: 14, marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ fontSize: 28 }}>💬</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>واتساب</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{WA}</div></div>
+            <span style={{ fontSize: 28 }}>💬</span><div><div style={{ fontWeight: 800, color: '#1E293B' }}>واتساب</div><div style={{ fontSize: 13, color: '#0077B6' }}>{WA}</div></div>
           </a>}
           {settings?.contact_address && <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f1f5f9', borderRadius: 14, padding: 14, marginBottom: 10 }}>
-            <span style={{ fontSize: 28 }}>📍</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>العنوان</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_address}</div></div>
+            <span style={{ fontSize: 28 }}>📍</span><div><div style={{ fontWeight: 800, color: '#1E293B' }}>العنوان</div><div style={{ fontSize: 13, color: '#0077B6' }}>{settings.contact_address}</div></div>
           </div>}
           {settings?.contact_hours && <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#DBEAFE', borderRadius: 14, padding: 14 }}>
-            <span style={{ fontSize: 28 }}>🕒</span><div><div style={{ fontWeight: 800, color: '#0C2D44' }}>ساعات العمل</div><div style={{ fontSize: 13, color: '#4B7FA0' }}>{settings.contact_hours}</div></div>
+            <span style={{ fontSize: 28 }}>🕒</span><div><div style={{ fontWeight: 800, color: '#1E293B' }}>ساعات العمل</div><div style={{ fontSize: 13, color: '#0077B6' }}>{settings.contact_hours}</div></div>
           </div>}
         </div>
       </div>
