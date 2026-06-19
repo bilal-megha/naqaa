@@ -1,139 +1,54 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+/**
+ * @file pages/AboutUs.jsx
+ * @description تحرير محتوى صفحة "من نحن" التي تظهر للزبائن
+ */
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase.js'
-import { CLR, S, CUR, WA_DEFAULT } from '../styles/constants.js'
-import { softDelete, logActivity, printThermal, printA4, NumInput, PhoneInput } from '../styles/helpers.js'
-import useToast from '../hooks/useToast.jsx'
-import useConfirm from '../hooks/useConfirm.jsx'
+import { CLR, S } from '../constants.js'
+import { logActivity } from '../utils.js'
 
+const DEFAULT_CONTENT = 'نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة.'
+
+/**
+ * صفحة "من نحن"
+ * @param {{ showToast: Function }} props
+ */
 export default function AboutUs({ showToast }) {
-
-  const [content, setContent] = useState("");
-
-  const [saving, setSaving] = useState(false);
+  const [content, setContent] = useState('')
+  const [saving,  setSaving]  = useState(false)
 
   useEffect(() => {
-
-    supabase
-
-      .from("settings")
-
-      .select("value")
-
-      .eq("key", "about_us")
-
-      .maybeSingle()
-
-      .then(({ data }) =>
-
-        setContent(
-
-          data?.value ||
-
-            "نقاء — متجر إلكتروني جزائري متخصص في توزيع المواد الغذائية ومنتجات العناية الشخصية.\n\nتأسس المتجر بهدف تقديم أفضل المنتجات بأسعار تنافسية مع ضمان الجودة والخدمة الممتازة."
-
-        )
-
-      );
-
-  }, []);
+    supabase.from('settings').select('value').eq('key', 'about_us').maybeSingle()
+      .then(({ data }) => setContent(data?.value || DEFAULT_CONTENT))
+  }, [])
 
   const save = async () => {
-
-    setSaving(true);
-
+    setSaving(true)
     try {
-
-      await supabase.from("settings").upsert({ key: "about_us", value: content });
-
-      await logActivity("تحديث من نحن", "تم تحديث صفحة من نحن");
-
-      showToast("✅ تم الحفظ");
-
+      await supabase.from('settings').upsert({ key: 'about_us', value: content })
+      await logActivity('تحديث من نحن', 'تم تحديث صفحة من نحن')
+      showToast('✅ تم الحفظ')
     } catch (err) {
-
-      showToast("❌ خطأ: " + err.message, "error");
-
+      showToast('❌ خطأ: ' + err.message, 'error')
     } finally {
-
-      setSaving(false);
-
+      setSaving(false)
     }
-
-  };
+  }
 
   return (
-
     <div>
-
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
-
-        🏢 من نحن
-
-      </h1>
-
+      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>🏢 من نحن</h1>
       <div style={S.card}>
-
         <label style={S.label}>محتوى الصفحة</label>
-
-        <textarea
-
-          style={{ ...S.input, minHeight: 200, resize: "vertical", marginBottom: 14 }}
-
-          value={content}
-
-          onChange={(e) => setContent(e.target.value)}
-
-        />
-
-        <button style={S.btn} onClick={save} disabled={saving}>
-
-          {saving ? "⏳..." : "💾 حفظ"}
-
-        </button>
-
+        <textarea style={{ ...S.input, minHeight: 200, resize: 'vertical', marginBottom: 14 }} value={content} onChange={e => setContent(e.target.value)} />
+        <button style={S.btn} onClick={save} disabled={saving}>{saving ? '⏳...' : '💾 حفظ'}</button>
       </div>
-
       {content && (
-
         <div style={S.card}>
-
           <h3 style={{ fontWeight: 800, marginBottom: 10 }}>معاينة</h3>
-
-          <div
-
-            style={{
-
-              whiteSpace: "pre-wrap",
-
-              lineHeight: 1.8,
-
-              color: CLR.textSm,
-
-              fontSize: 14,
-
-            }}
-
-          >
-
-            {content}
-
-          </div>
-
+          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, color: CLR.textSm, fontSize: 14 }}>{content}</div>
         </div>
-
       )}
-
     </div>
-
-  );
-
+  )
 }
-
-
-
-/* ══════════════════════════════════════════
-
-   📞 اتصل بنا
-
-══════════════════════════════════════════ */
-
