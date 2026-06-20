@@ -23,7 +23,7 @@ export default function PromoCountdown({ endDate }) {
       <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>⏳</span>
       {[t.h, t.m, t.s].map((v, i) => (
         <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <span style={{ background: '#1E293B', color: 'white', padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 900, fontFamily: 'monospace' }}>{v}</span>
+          <span style={{ background: '#0D1B2A', color: 'white', padding: '3px 6px', borderRadius: 6, fontSize: 13, fontWeight: 900, fontFamily: 'monospace' }}>{v}</span>
           {i < 2 && <span style={{ color: '#94a3b8', fontWeight: 900 }}>:</span>}
         </span>
       ))}

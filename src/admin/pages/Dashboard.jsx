@@ -278,7 +278,7 @@ export default function Dashboard({ user, showToast }) {
 
       const [{ data: prods }, { data: ords }, { data: purcs }, { data: exps }, { data: revs }] = await Promise.all([
 
-        supabase.from('products').select('id,name,stock,min_stock,price').order('name'),
+        supabase.from('products').select('id,name,stock,price,disabled').order('name'),
 
         supabase.from('orders').select('*').order('id', { ascending: false }),
 
@@ -330,15 +330,15 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ عدد المنتجات
 
-      const totalProducts = (prods || []).length
+      const totalProducts = (prods || []).filter(p => p.disabled !== true).length
 
       
 
       // ✅ المنتجات منخفضة المخزون
 
-      const minStk = p => (p.min_stock || 5)
+      const minStk = () => 5 // حد المخزون المنخفض الافتراضي
 
-      const lowStockItems = (prods || []).filter(p => (p.stock || 0) < minStk(p))
+      const lowStockItems = (prods || []).filter(p => p.disabled !== true && (p.stock || 0) <= minStk())
 
       
 

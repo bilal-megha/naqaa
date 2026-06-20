@@ -30,7 +30,7 @@ export default function LoginModal({ onClose, onLogin, onRegister }) {
       <div className="msheet center">
         <div style={{ textAlign: 'center', padding: '24px 18px 0' }}>
           <div style={{ fontSize: 40 }}>🛍️</div>
-          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#1E293B', margin: '8px 0 4px' }}>نقاء</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0D1B2A', margin: '8px 0 4px' }}>نقاء</h2>
         </div>
         <div className="mbody">
           <label className="fi-label">البريد الإلكتروني</label>
@@ -40,7 +40,7 @@ export default function LoginModal({ onClose, onLogin, onRegister }) {
           <button className="abtn" onClick={submit} disabled={loading}>{loading ? '⏳ جاري الدخول...' : '🔐 دخول'}</button>
           <button className="abtn purple" onClick={onRegister}>📝 إنشاء حساب جديد</button>
           <div style={{ textAlign: 'center', marginTop: 8 }}>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#0077B6', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600 }}>متابعة كزائر</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#1565C0', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', fontWeight: 600 }}>متابعة كزائر</button>
           </div>
         </div>
       </div>

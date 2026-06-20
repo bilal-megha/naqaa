@@ -67,7 +67,7 @@ export default function RegisterModal({ onClose, onSuccess }) {
         <div className="msheet center">
           <div className="mhead"><h3>📱 تأكيد الحساب</h3><button className="mclose" onClick={onClose}>×</button></div>
           <div className="mbody" style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: '#0077B6', marginBottom: 16 }}>أدخل كود التحقق المكون من 4 أرقام</p>
+            <p style={{ fontSize: 14, color: '#1565C0', marginBottom: 16 }}>أدخل كود التحقق المكون من 4 أرقام</p>
             <div className="otp-inputs">
               {digits.map((d, i) => (
                 <input key={i} ref={refs[i]} className="otp-input" value={d} inputMode="numeric" maxLength={1}
@@ -75,12 +75,12 @@ export default function RegisterModal({ onClose, onSuccess }) {
                   onKeyDown={e => { if (e.key === 'Backspace' && !d && i > 0) refs[i - 1].current?.focus() }} />
               ))}
             </div>
-            <div style={{ background: '#DBEAFE', borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13 }}>
-              🔑 كودك: <strong style={{ fontSize: 20, color: '#0077B6' }}>{genOtp}</strong>
+            <div style={{ background: '#C7D9F5', borderRadius: 12, padding: 12, marginBottom: 16, fontSize: 13 }}>
+              🔑 كودك: <strong style={{ fontSize: 20, color: '#1565C0' }}>{genOtp}</strong>
               <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>في الإصدار الكامل يُرسل على واتساب تلقائياً</p>
             </div>
             <button className="abtn" onClick={verify} disabled={loading || otp.length < 4}>{loading ? '⏳...' : '✅ تأكيد التسجيل'}</button>
-            <button style={{ background: 'none', border: 'none', color: '#0077B6', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            <button style={{ background: 'none', border: 'none', color: '#1565C0', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
               onClick={() => { setStep(1); setDigits(['', '', '', '']) }}>← تعديل البيانات</button>
           </div>
         </div>

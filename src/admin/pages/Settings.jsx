@@ -21,6 +21,8 @@ export default function Settings({ showToast }) {
     contact_whatsapp: WA_DEFAULT,
 
     free_shipping_threshold: "5000",
+    points_per_100: "1",
+    points_to_dzd: "1",
 
     shipping_cost: "500",
 

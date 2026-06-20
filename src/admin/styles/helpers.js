@@ -6,8 +6,10 @@ import { supabase } from '../../lib/supabase.js'
 export const logActivity = async (action, details = '') => {
   try {
     await supabase.from('activity_log').insert({
-      id: Date.now(), action, details,
-      date: new Date().toLocaleString('ar-DZ'),
+      id: Date.now(),
+      action,
+      details,
+      username: 'admin',
       created_at: new Date().toISOString(),
     })
   } catch (err) { console.error('logActivity error:', err) }

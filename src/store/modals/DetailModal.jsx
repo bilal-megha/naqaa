@@ -16,7 +16,7 @@ export default function DetailModal({ product, wishlist, onClose, onAddCart, onT
       <div className="msheet">
         <div className="mhandle"></div>
         {p.image ? <img src={p.image} style={{ width: '100%', height: 260, objectFit: 'cover' }} alt={p.name} /> :
-          <div style={{ width: '100%', height: 200, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 }}>🛍️</div>}
+          <div style={{ width: '100%', height: 200, background: '#EEF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 56 }}>🛍️</div>}
         <div className="mhead">
           <h3 style={{ flex: 1, fontSize: 15 }}>{p.name}</h3>
           <button className="mclose" onClick={onClose}>×</button>
@@ -25,14 +25,14 @@ export default function DetailModal({ product, wishlist, onClose, onAddCart, onT
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div>
               {disc > 0 && <span style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'line-through', marginLeft: 8 }}>{p.price} {currency}</span>}
-              <span style={{ fontSize: 24, fontWeight: 900, color: '#0077B6' }}>{finalPrice} {currency}</span>
+              <span style={{ fontSize: 24, fontWeight: 900, color: '#1565C0' }}>{finalPrice} {currency}</span>
               {disc > 0 && <span className="pc-disc" style={{ marginRight: 8 }}>-{disc}%</span>}
             </div>
-            <button onClick={() => onToggleWish(p.id)} style={{ width: 40, height: 40, borderRadius: '50%', background: wishlist.includes(p.id) ? '#EFF6FF' : '#F8FAFC', border: 'none', cursor: 'pointer', fontSize: 20 }}>
-              <i className="fas fa-heart" style={{ color: wishlist.includes(p.id) ? '#0077B6' : '#CBD5E1' }}></i>
+            <button onClick={() => onToggleWish(p.id)} style={{ width: 40, height: 40, borderRadius: '50%', background: wishlist.includes(p.id) ? '#EEF4FF' : '#F8FAFC', border: 'none', cursor: 'pointer', fontSize: 20 }}>
+              <i className="fas fa-heart" style={{ color: wishlist.includes(p.id) ? '#1565C0' : '#CBD5E1' }}></i>
             </button>
           </div>
-          {p.carton_price && <p style={{ color: '#0077B6', fontSize: 13, marginBottom: 8 }}>الكرتون ({p.units || 12} قطعة): {p.carton_price} {currency}</p>}
+          {p.carton_price && <p style={{ color: '#1565C0', fontSize: 13, marginBottom: 8 }}>الكرتون ({p.units || 12} قطعة): {p.carton_price} {currency}</p>}
           {(p.stock || 0) > 0 && (p.stock || 0) < 10 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
           {(p.stock || 0) === 0 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>❌ نفذ من المخزون</p>}
 
@@ -69,7 +69,7 @@ export default function DetailModal({ product, wishlist, onClose, onAddCart, onT
                     {r.image ? <img src={r.image} style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover' }} /> :
                       <div style={{ width: 80, height: 80, borderRadius: 12, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🛍️</div>}
                     <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>{r.name}</div>
-                    <div style={{ fontSize: 12, color: '#0077B6', fontWeight: 800 }}>{r.price} {currency}</div>
+                    <div style={{ fontSize: 12, color: '#1565C0', fontWeight: 800 }}>{r.price} {currency}</div>
                   </div>
                 ))}
               </div>
@@ -124,11 +124,11 @@ function ReviewsSection({ productId, currency }) {
       {reviews.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, background: '#EFF9FF', borderRadius: 12, padding: 14 }}>
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
-            <div style={{ fontSize: 36, fontWeight: 900, color: '#0077B6', lineHeight: 1 }}>{avgR}</div>
+            <div style={{ fontSize: 36, fontWeight: 900, color: '#1565C0', lineHeight: 1 }}>{avgR}</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 1, margin: '4px 0' }}>
-              {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= Math.round(avgR) ? '#0077B6' : '#DBEAFE', fontSize: 14 }}>★</span>)}
+              {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= Math.round(avgR) ? '#1565C0' : '#C7D9F5', fontSize: 14 }}>★</span>)}
             </div>
-            <div style={{ fontSize: 11, color: '#0077B6' }}>{reviews.length} تقييم</div>
+            <div style={{ fontSize: 11, color: '#1565C0' }}>{reviews.length} تقييم</div>
           </div>
           <div style={{ flex: 1 }}>
             {[5, 4, 3, 2, 1].map(n => {
@@ -136,10 +136,10 @@ function ReviewsSection({ productId, currency }) {
               const pct = reviews.length ? Math.round(cnt / reviews.length * 100) : 0
               return (
                 <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 11, color: '#0077B6', width: 8, textAlign: 'center' }}>{n}</span>
-                  <span style={{ color: '#0077B6', fontSize: 11 }}>★</span>
-                  <div style={{ flex: 1, background: '#DBEAFE', borderRadius: 30, height: 5, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: '#0077B6', borderRadius: 30, transition: 'width .5s' }} />
+                  <span style={{ fontSize: 11, color: '#1565C0', width: 8, textAlign: 'center' }}>{n}</span>
+                  <span style={{ color: '#1565C0', fontSize: 11 }}>★</span>
+                  <div style={{ flex: 1, background: '#C7D9F5', borderRadius: 30, height: 5, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: '#1565C0', borderRadius: 30, transition: 'width .5s' }} />
                   </div>
                   <span style={{ fontSize: 10, color: '#94a3b8', width: 18, textAlign: 'left' }}>{cnt}</span>
                 </div>
@@ -151,29 +151,29 @@ function ReviewsSection({ productId, currency }) {
       <h3 style={{ fontWeight: 800, marginBottom: 12, fontSize: 15 }}>⭐ التقييمات ({reviews.length})</h3>
       {cust ? (
         <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#1E293B' }}>🌟 أضف تقييمك</p>
+          <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#0D1B2A' }}>🌟 أضف تقييمك</p>
           <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
             {[1, 2, 3, 4, 5].map(n => (
               <span key={n} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} onClick={() => setRating(n)}
-                style={{ fontSize: 30, cursor: 'pointer', transition: 'transform .15s', color: (hover || rating) >= n ? '#0077B6' : '#DBEAFE', transform: (hover || rating) >= n ? 'scale(1.15)' : 'scale(1)' }}>★</span>
+                style={{ fontSize: 30, cursor: 'pointer', transition: 'transform .15s', color: (hover || rating) >= n ? '#1565C0' : '#C7D9F5', transform: (hover || rating) >= n ? 'scale(1.15)' : 'scale(1)' }}>★</span>
             ))}
-            {rating > 0 && <span style={{ fontSize: 12, color: '#0077B6', marginRight: 4, alignSelf: 'center' }}>{['', 'سيء', 'مقبول', 'جيد', 'جيد جداً', 'ممتاز'][rating]}</span>}
+            {rating > 0 && <span style={{ fontSize: 12, color: '#1565C0', marginRight: 4, alignSelf: 'center' }}>{['', 'سيء', 'مقبول', 'جيد', 'جيد جداً', 'ممتاز'][rating]}</span>}
           </div>
           <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="اكتب تعليقك (اختياري)..." maxLength={300} rows={2}
-            style={{ border: '1.5px solid #DBEAFE', borderRadius: 10, padding: '9px 12px', width: '100%', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'none', background: 'white', boxSizing: 'border-box', marginBottom: 8 }}
-            onFocus={e => e.target.style.borderColor = '#0077B6'} onBlur={e => e.target.style.borderColor = '#DBEAFE'} />
+            style={{ border: '1.5px solid #C7D9F5', borderRadius: 10, padding: '9px 12px', width: '100%', fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'none', background: 'white', boxSizing: 'border-box', marginBottom: 8 }}
+            onFocus={e => e.target.style.borderColor = '#1565C0'} onBlur={e => e.target.style.borderColor = '#C7D9F5'} />
           <button className="abtn" onClick={submit} disabled={saving || !rating} style={{ marginBottom: 0, padding: '10px', fontSize: 13, opacity: !rating ? 0.5 : 1 }}>{saving ? '⏳ جاري الإرسال...' : '✅ إرسال التقييم'}</button>
         </div>
       ) : (
-        <p style={{ fontSize: 13, color: '#0077B6', marginBottom: 12, textAlign: 'center', padding: '8px', background: '#F8FAFC', borderRadius: 10 }}>🔐 <strong>سجّل دخولك</strong> لإضافة تقييم</p>
+        <p style={{ fontSize: 13, color: '#1565C0', marginBottom: 12, textAlign: 'center', padding: '8px', background: '#F8FAFC', borderRadius: 10 }}>🔐 <strong>سجّل دخولك</strong> لإضافة تقييم</p>
       )}
       {reviews.map(r => (
         <div key={r.id} style={{ borderBottom: '1px solid #E0F0FA', padding: '12px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
             <div>
-              <strong style={{ fontSize: 13, color: '#1E293B' }}>{r.customer_name}</strong>
+              <strong style={{ fontSize: 13, color: '#0D1B2A' }}>{r.customer_name}</strong>
               <div style={{ display: 'flex', gap: 1, marginTop: 2 }}>
-                {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= r.rating ? '#0077B6' : '#DBEAFE', fontSize: 13 }}>★</span>)}
+                {[1, 2, 3, 4, 5].map(n => <span key={n} style={{ color: n <= r.rating ? '#1565C0' : '#C7D9F5', fontSize: 13 }}>★</span>)}
               </div>
             </div>
             <span style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(r.created_at).toLocaleDateString('ar-DZ')}</span>
@@ -194,8 +194,8 @@ function ThankyouModal({ orderId, storeName, onClose }) {
         <div className="mbody" style={{ textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
           <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>تمت الطلبية بنجاح!</h2>
-          <p style={{ color: '#0077B6', marginBottom: 6 }}>تم تأكيد طلبك وبدأ التجهيز</p>
-          <p style={{ color: '#0077B6', fontWeight: 800, fontSize: 18, marginBottom: 6 }}>رقم الطلب: {orderId}</p>
+          <p style={{ color: '#1565C0', marginBottom: 6 }}>تم تأكيد طلبك وبدأ التجهيز</p>
+          <p style={{ color: '#1565C0', fontWeight: 800, fontSize: 18, marginBottom: 6 }}>رقم الطلب: {orderId}</p>
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>ستصلك رسالة واتساب بتفاصيل التوصيل</p>
           <button className="abtn" onClick={onClose}><i className="fas fa-home"></i> العودة للمتجر</button>
         </div>

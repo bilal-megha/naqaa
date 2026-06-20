@@ -50,7 +50,7 @@ export default function StoreManager({ showToast }) {
 
         setAnnounceBar(map["announce_bar"] || "");
 
-        setPrimaryColor(map["primary_color"] || "#dc2626");
+        setPrimaryColor(map["primary_color"] || "#1565C0");
 
         setStoreLogo(map["store_logo"] || "");
 
@@ -171,6 +171,7 @@ export default function StoreManager({ showToast }) {
         supabase.from("settings").upsert({ key: "announce_bar", value: announceBar }),
 
         supabase.from("settings").upsert({ key: "primary_color", value: primaryColor }),
+        supabase.from("settings").upsert({ key: "accent_color", value: "#FF6D00" }),
 
         supabase.from("settings").upsert({ key: "store_logo", value: storeLogo }),
 

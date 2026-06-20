@@ -54,14 +54,14 @@ export default function TrackingModal({ onClose, currency }) {
                 <span style={{ fontWeight: 900, fontSize: 15 }}>طلب #{String(res.id).slice(-6)}</span>
                 <span style={{ background: statusColors[res.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '3px 10px', fontSize: 12, fontWeight: 700 }}>{statusLabels[res.status] || res.status}</span>
               </div>
-              <div style={{ color: '#0077B6', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
-              <div style={{ color: '#0077B6', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
+              <div style={{ color: '#1565C0', fontSize: 13 }}>{res.customer_name} — {res.phone}</div>
+              <div style={{ color: '#1565C0', fontWeight: 900, fontSize: 18, margin: '6px 0' }}>{Number(res.total).toFixed(0)} {currency}</div>
               {steps.map((s, i) => {
                 const cur = steps.indexOf(res.status)
                 return (
                   <div key={s} className="trstep">
                     <div className={`trdot ${i <= cur ? 'done' : 'wait'}`}>{i <= cur ? '✓' : i + 1}</div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#0077B6' : '#94a3b8' }}>{labels[s]}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: i <= cur ? '#1565C0' : '#94a3b8' }}>{labels[s]}</div>
                   </div>
                 )
               })}
@@ -76,8 +76,8 @@ export default function TrackingModal({ onClose, currency }) {
                     <span style={{ fontWeight: 700 }}>#{String(o.id).slice(-6)}</span>
                     <span style={{ background: statusColors[o.status] || '#94a3b8', color: 'white', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>{statusLabels[o.status] || o.status}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: '#0077B6' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
-                  <div style={{ fontWeight: 700, color: '#0077B6', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
+                  <div style={{ fontSize: 13, color: '#1565C0' }}>{new Date(o.created_at).toLocaleDateString('ar-DZ')}</div>
+                  <div style={{ fontWeight: 700, color: '#1565C0', marginTop: 4 }}>{Number(o.total).toFixed(0)} {currency}</div>
                 </div>
               ))}
             </div>

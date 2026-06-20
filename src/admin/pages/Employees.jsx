@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import CryptoJS from 'crypto-js'
 import { supabase } from '../../lib/supabase.js'
 import { CLR, S, CUR, WA_DEFAULT } from '../styles/constants.js'
 import { softDelete, logActivity, printThermal, printA4 } from '../styles/helpers.js'
 import { NumInput, PhoneInput } from '../styles/FormInputs.jsx'
 import useToast from '../hooks/useToast.jsx'
 import useConfirm from '../hooks/useConfirm.jsx'
+
+const hashPwd = p => CryptoJS.SHA256(p).toString()
 
 export default function Employees() {
 
