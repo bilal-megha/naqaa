@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react'
 import { loadAll } from './lib/db.js'
 
 // تحميل الصفحتين
-// ✅ تم تحديث المسار: الإدارة الآن مقسّمة في src/admin/ (index.jsx + pages/ + components/ + hooks/)
-import Admin from './admin/index.jsx'
+import Admin from './admin/Admin.jsx'
 import Store from './store/Store.jsx'
 
 export default function Router() {
