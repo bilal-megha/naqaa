@@ -1,19 +1,18 @@
 /**
- * @file components/Toast.jsx
- * @description مكوّن عرض الإشعارات المؤقتة (Toast) — يُستخدم عبر useToast hook
+ * @file Toast.jsx
+ * @description مكوّن إشعار Toast يظهر ثم يختفي تلقائياً
  */
 import { useEffect } from 'react'
-import { CLR } from '../constants.js'
+import { CLR } from '../styles/constants.js'
 
 /**
- * مكوّن Toast — يظهر رسالة لمدة 3.2 ثانية ثم يختفي تلقائياً
  * @param {{ msg: string, type: 'success'|'error'|'info', onDone: Function }} props
  */
 export default function Toast({ msg, type, onDone }) {
   useEffect(() => {
     const t = setTimeout(onDone, 3200)
     return () => clearTimeout(t)
-  }, [onDone])
+  }, [])
 
   const cfg = {
     success: { bg: CLR.success, icon: '✅' },
