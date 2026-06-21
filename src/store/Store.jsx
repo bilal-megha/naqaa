@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './store.css'
 
-import { supabase } from '../lib/supabase.js'
+import { supabase }       from '../lib/supabase.js'
 import { showToast }      from './utils.js'
 import { useStoreData }   from './hooks/useStoreData.js'
 import { useTimer }       from './hooks/useTimer.jsx'
@@ -459,6 +459,171 @@ export default function Store() {
         <h1 style={{ color: 'white', fontSize: 28, fontWeight: 900 }}>نقاء</h1>
         <p style={{ color: 'rgba(255,255,255,.8)', fontSize: 16, maxWidth: 340, lineHeight: 1.8 }}>{settings?.maintenance_msg || 'المتجر في طور التحديث، سنعود قريباً 🔧'}</p>
         <a href={`https://wa.me/${settings?.whatsapp_number || settings?.admin_phone || '213696668065'}`} target="_blank" style={{ background: '#25D366', color: 'white', padding: '14px 32px', borderRadius: 30, textDecoration: 'none', fontWeight: 800, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><i className="fab fa-whatsapp"></i> تواصل معنا</a>
+      </div>
+    )
+  }
+
+  // ========== Search Tab ==========
+  const SearchTab = () => {
+    const getBrand = id => brands.find(b => b.id == id)
+    const getCat = id => categories.find(c => c.id == id)
+    return (
+      <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
+        {/* فلاتر */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 12 }}>
+          <select value={catSel} onChange={e => { setCatSel(e.target.value); setPage(1) }}
+            style={{ border: '1.5px solid #E2E8F0', borderRadius: 20, padding: '6px 12px', fontSize: 12, fontFamily: 'inherit', background: 'white', cursor: 'pointer', flexShrink: 0 }}>
+            <option value="all">كل الفئات</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={brandSel} onChange={e => { setBrandSel(e.target.value); setPage(1) }}
+            style={{ border: '1.5px solid #E2E8F0', borderRadius: 20, padding: '6px 12px', fontSize: 12, fontFamily: 'inherit', background: 'white', cursor: 'pointer', flexShrink: 0 }}>
+            <option value="all">كل الماركات</option>
+            {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <select value={sortSel} onChange={e => { setSortSel(e.target.value); setPage(1) }}
+            style={{ border: '1.5px solid #E2E8F0', borderRadius: 20, padding: '6px 12px', fontSize: 12, fontFamily: 'inherit', background: 'white', cursor: 'pointer', flexShrink: 0 }}>
+            <option value="newest">الأحدث</option>
+            <option value="price_asc">السعر: الأقل</option>
+            <option value="price_desc">السعر: الأعلى</option>
+            <option value="disc">الأكثر خصماً</option>
+          </select>
+        </div>
+        {/* رأس النتائج */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{filtered.length} منتج</span>
+          {(brandSel !== 'all' || catSel !== 'all' || debouncedSearch) && (
+            <button onClick={() => { setBrandSel('all'); setCatSel('all'); setSearch(''); setPage(1) }}
+              style={{ fontSize: 12, color: '#1565C0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+              ✕ مسح الفلاتر
+            </button>
+          )}
+        </div>
+        {/* الشبكة */}
+        {paged.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: 48 }}>🔍</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 12 }}>لا توجد نتائج</div>
+          </div>
+        ) : (
+          <div className="pg">{paged.map(p => <ProductCard key={p.id} p={p} />)}</div>
+        )}
+        {/* التصفح */}
+        {PAGES > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+            {Array.from({ length: PAGES }, (_, i) => i + 1).map(n => (
+              <button key={n} onClick={() => { setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid',
+                  borderColor: page === n ? '#1565C0' : '#E2E8F0',
+                  background: page === n ? '#1565C0' : 'white',
+                  color: page === n ? 'white' : '#475569',
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                {n}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ========== Cats Tab ==========
+  const CatsTab = () => (
+    <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
+      {categories.length > 0 && (
+        <>
+          <div className="sec-head"><span className="sec-title">📂 الفئات</span></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 24 }}>
+            {categories.map(c => (
+              <div key={c.id} onClick={() => { setCatSel(c.id); setTab('search') }}
+                style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#EEF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {c.image ? <img src={c.image} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 22 }}>📁</span>}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0D1B2A' }}>{c.name}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{allP.filter(p => p.category_id == c.id).length} منتج</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {brands.length > 0 && (
+        <>
+          <div className="sec-head"><span className="sec-title">🏷️ الماركات</span></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+            {brands.map(b => (
+              <div key={b.id} onClick={() => { setBrandSel(b.id); setTab('search') }}
+                style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: 14 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                  {b.image ? <img src={b.image} alt={b.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 22 }}>🏷️</span>}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#0D1B2A' }}>{b.name}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{allP.filter(p => p.brand_id == b.id).length} منتج</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+
+  // ========== Wish Tab ==========
+  const WishTab = () => {
+    const wishProds = allP.filter(p => wishlist.includes(p.id))
+    return (
+      <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
+        <div className="sec-head"><span className="sec-title">❤️ المفضلة ({wishProds.length})</span></div>
+        {wishProds.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: 52 }}>💔</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 14 }}>قائمة المفضلة فارغة</div>
+            <div style={{ fontSize: 13, marginTop: 6 }}>أضف منتجات بالضغط على ❤️</div>
+          </div>
+        ) : (
+          <div className="pg">{wishProds.map(p => <ProductCard key={p.id} p={p} />)}</div>
+        )}
+      </div>
+    )
+  }
+
+  // ========== Promos Tab ==========
+  const PromosTab = () => {
+    const promoProds = allP.filter(p => {
+      if (Number(p.discount) > 0) return true
+      if (!promos || promos.length === 0) return false
+      return promos.some(pr => {
+        if (!pr.active) return false
+        if (pr.end_date && new Date(pr.end_date) < new Date()) return false
+        const ids = typeof pr.product_ids === 'string' ? JSON.parse(pr.product_ids || '[]') : (pr.product_ids || [])
+        return ids.length === 0 || ids.includes(p.id) || ids.includes(String(p.id))
+      })
+    })
+    return (
+      <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
+        {promos && promos.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            {promos.map(pr => (
+              <div key={pr.id} style={{ background: 'linear-gradient(135deg,#1565C0,#0D47A1)', borderRadius: 16, padding: '14px 16px', marginBottom: 10, color: 'white' }}>
+                <div style={{ fontWeight: 900, fontSize: 16 }}>{pr.name}</div>
+                {pr.description && <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>{pr.description}</div>}
+                {pr.end_date && <div style={{ fontSize: 11, opacity: 0.7, marginTop: 6 }}>⏳ ينتهي: {new Date(pr.end_date).toLocaleDateString('ar-DZ')}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="sec-head"><span className="sec-title">🎯 منتجات العروض ({promoProds.length})</span></div>
+        {promoProds.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: 52 }}>🎯</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginTop: 14 }}>لا توجد عروض حالياً</div>
+          </div>
+        ) : (
+          <div className="pg">{promoProds.map(p => <ProductCard key={p.id} p={p} />)}</div>
+        )}
       </div>
     )
   }
