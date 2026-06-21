@@ -276,19 +276,24 @@ export default function Dashboard({ user, showToast }) {
 
     try {
 
-      const [{ data: prods }, { data: ords }, { data: purcs }, { data: exps }, { data: revs }] = await Promise.all([
+      // جلب البيانات مع معالجة كل خطأ على حدة
+      const safeQuery = async (q) => {
+        try {
+          const res = await q
+          if (res.error) { console.error('❌ Supabase:', res.error.message, res.error); return [] }
+          return res.data || []
+        } catch(e) { console.error('❌ Query error:', e); return [] }
+      }
 
-        supabase.from('products').select('id,name,stock,price,disabled').order('name'),
-
-        supabase.from('orders').select('*').order('id', { ascending: false }),
-
-        supabase.from('purchases').select('total'),
-
-        supabase.from('expenses').select('amount'),
-
-        supabase.from('reviews').select('rating').catch(() => ({ data: [] })),
-
+      const [prods, ords, purcs, exps, revs] = await Promise.all([
+        safeQuery(supabase.from('products').select('id,name,stock,price,disabled,min_stock')),
+        safeQuery(supabase.from('orders').select('*').order('id', { ascending: false })),
+        safeQuery(supabase.from('purchases').select('total')),
+        safeQuery(supabase.from('expenses').select('amount')),
+        safeQuery(supabase.from('reviews').select('rating')),
       ])
+
+      console.log('📦 products loaded:', prods.length, prods.slice(0,2))
 
       
 
@@ -308,7 +313,7 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ مبيعات اليوم
 
-      const todayO = (ords || []).filter(o => {
+      const todayO = ords.filter(o => {
 
         const d = new Date(o.created_at || o.date)
 
@@ -320,23 +325,28 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ إجمالي المبيعات
 
-      const sales = (ords || []).reduce((s, o) => s + Number(o.total), 0)
+      const sales = ords.reduce((s, o) => s + Number(o.total), 0)
 
-      const pur = (purcs || []).reduce((s, p) => s + Number(p.total), 0)
+      const pur = purcs.reduce((s, p) => s + Number(p.total), 0)
 
-      const exp = (exps || []).reduce((s, e) => s + Number(e.amount), 0)
+      const exp = exps.reduce((s, e) => s + Number(e.amount), 0)
 
       
 
       // ✅ عدد المنتجات
 
       // ✅ فلترة المنتجات النشطة (disabled قد تكون boolean أو string من Supabase)
-      const activeProd = (prods || []).filter(p => p.disabled !== true && p.disabled !== 'true' && p.disabled !== 1)
+      const activeProd = prods.filter(p => !p.disabled && p.disabled !== 'true')
       const totalProducts = activeProd.length
+      console.log('📦 totalProducts:', totalProducts)
 
-      // ✅ المنتجات منخفضة المخزون أو المنعدمة (stock === 0 أو أقل من 5)
-      const MIN_STOCK = 5
-      const lowStockItems = activeProd.filter(p => (Number(p.stock) || 0) <= MIN_STOCK)
+      // ✅ المنتجات منخفضة المخزون (stock أقل من min_stock الخاص بكل منتج أو صفر)
+      const lowStockItems = activeProd.filter(p => {
+        const stock = Number(p.stock) || 0
+        const minStk = Number(p.min_stock) || 5
+        return stock <= minStk
+      })
+      console.log('⚠️ lowStock:', lowStockItems.length)
 
       
 
@@ -344,7 +354,7 @@ export default function Dashboard({ user, showToast }) {
 
       const week7 = Array(7).fill(0)
 
-      ;(ords || []).forEach(o => {
+      ;ords.forEach(o => {
 
         const d = new Date(o.created_at || o.date)
 
@@ -360,7 +370,7 @@ export default function Dashboard({ user, showToast }) {
 
       const wk4 = Array(4).fill(0)
 
-      ;(ords || []).forEach(o => {
+      ;ords.forEach(o => {
 
         const d = new Date(o.created_at || o.date)
 
@@ -374,7 +384,7 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ مبيعات هذا الشهر
 
-      const thisM = (ords || []).filter(o => { 
+      const thisM = ords.filter(o => { 
 
         const d = new Date(o.created_at || o.date)
 
@@ -386,7 +396,7 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ مبيعات الشهر الماضي
 
-      const lastM = (ords || []).filter(o => { 
+      const lastM = ords.filter(o => { 
 
         const d = new Date(o.created_at || o.date)
 
@@ -414,7 +424,7 @@ export default function Dashboard({ user, showToast }) {
 
         products: totalProducts,
 
-        orders: (ords || []).length,
+        orders: ords.length,
 
         sales: sales,
 
@@ -440,7 +450,7 @@ export default function Dashboard({ user, showToast }) {
 
       
 
-      setRecent((ords || []).slice(0, 8))
+      setRecent(ords.slice(0, 8))
 
       setLowStock(lowStockItems)
 
