@@ -492,10 +492,7 @@ export default function PromotionsManager() {
 
         </div>
 
-
-
-        <div style={{ marginTop: 12 }}>
-
+        <div style={ marginTop: 12 }>
           <label style={S.label}>صورة بانر العرض (1200×400)</label>
 
           <input style={S.input} type="file" accept="image/*" onChange={handleImg} />
