@@ -204,11 +204,11 @@ export default function Products() {
 
           .from("product_categories")
 
-          .upsert(
+          .insert(
 
             selCats.map((cid) => ({
 
-              id: Date.now() + Math.random(),
+              id: Date.now() + Math.floor(Math.random() * 999999),
 
               product_id: row.id,
 
@@ -218,7 +218,7 @@ export default function Products() {
 
           )
 
-          .catch(() => {});
+          .then(({ error: e }) => { if (e) console.error('❌ product_categories:', e.message) });
 
       }
 
