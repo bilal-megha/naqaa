@@ -41,8 +41,6 @@ export default function PromotionsManager() {
       ]);
       setProducts(p || []);
       setPromos(pr || []);
-      console.log("✅ تم تحميل المنتجات:", p?.length || 0);
-      console.log("✅ تم تحميل العروض:", pr?.length || 0);
     } catch (err) {
       console.error("❌ خطأ في تحميل العروض:", err);
       showToast("❌ خطأ في تحميل البيانات", "error");
