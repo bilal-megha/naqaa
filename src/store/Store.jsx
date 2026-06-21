@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import './store.css'
 
+import { supabase } from '../lib/supabase.js'
 import { showToast }      from './utils.js'
 import { useStoreData }   from './hooks/useStoreData.js'
 import { useTimer }       from './hooks/useTimer.jsx'
