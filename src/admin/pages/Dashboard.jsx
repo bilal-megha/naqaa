@@ -330,15 +330,13 @@ export default function Dashboard({ user, showToast }) {
 
       // ✅ عدد المنتجات
 
-      const totalProducts = (prods || []).filter(p => p.disabled !== true).length
+      // ✅ فلترة المنتجات النشطة (disabled قد تكون boolean أو string من Supabase)
+      const activeProd = (prods || []).filter(p => p.disabled !== true && p.disabled !== 'true' && p.disabled !== 1)
+      const totalProducts = activeProd.length
 
-      
-
-      // ✅ المنتجات منخفضة المخزون
-
-      const minStk = () => 5 // حد المخزون المنخفض الافتراضي
-
-      const lowStockItems = (prods || []).filter(p => p.disabled !== true && (p.stock || 0) <= minStk())
+      // ✅ المنتجات منخفضة المخزون أو المنعدمة (stock === 0 أو أقل من 5)
+      const MIN_STOCK = 5
+      const lowStockItems = activeProd.filter(p => (Number(p.stock) || 0) <= MIN_STOCK)
 
       
 
