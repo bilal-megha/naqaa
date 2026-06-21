@@ -1,0 +1,21 @@
+/**
+ * @file useToast.jsx
+ * @description Hook لإدارة إشعارات Toast في لوحة الإدارة
+ */
+import { useState } from 'react'
+import Toast from '../components/Toast.jsx'
+
+/**
+ * Hook يُعيد [showToast, ToastUI]
+ * @returns {[Function, JSX.Element|null]}
+ * @example
+ * const [showToast, ToastUI] = useToast()
+ * showToast('تم الحفظ بنجاح')
+ * showToast('حدث خطأ', 'error')
+ */
+export default function useToast() {
+  const [t, setT] = useState(null)
+  const show = (msg, type = 'success') => setT({ msg, type })
+  const UI = t ? <Toast msg={t.msg} type={t.type} onDone={() => setT(null)} /> : null
+  return [show, UI]
+}
