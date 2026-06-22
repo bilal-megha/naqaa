@@ -3,7 +3,8 @@
  * @description المكوّن الرئيسي للوحة الإدارة — نقاء v8
  * يستورد كل الصفحات والمكونات ويدير التنقل والصلاحيات والجلسة
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase.js'
 import { CLR } from './styles/constants.js'
 import useToast from './hooks/useToast.jsx'
 
@@ -34,10 +35,13 @@ import DataBackup     from './pages/DataBackup.jsx'
 import AboutUs        from './pages/AboutUs.jsx'
 import ContactUs      from './pages/ContactUs.jsx'
 import ReturnPolicy   from './pages/ReturnPolicy.jsx'
+import POS            from './pages/POS.jsx'
+import ProductMovement from './pages/ProductMovement.jsx'
 
 /** قائمة أقسام لوحة الإدارة مع أيقوناتها وصلاحياتها */
 const SECTIONS = [
   { id: 'dashboard',    icon: '📊', label: 'لوحة القيادة',        perm: 'dashboard'    },
+  { id: 'pos',          icon: '🖥️', label: 'نقطة البيع (POS)',    perm: 'orders'       },
   { id: 'products',     icon: '📦', label: 'المنتجات',            perm: 'products'     },
   { id: 'categories',  icon: '📂', label: 'الفئات',              perm: 'categories'   },
   { id: 'brands',      icon: '🏷️', label: 'العلامات التجارية',   perm: 'brands'       },
@@ -51,6 +55,7 @@ const SECTIONS = [
   { id: 'promotions',  icon: '🎯', label: 'العروض',              perm: 'promotions'   },
   { id: 'notifications',icon:'🔔', label: 'الإشعارات',           perm: 'notifications'},
   { id: 'reports',     icon: '📈', label: 'التقارير',            perm: 'reports'      },
+  { id: 'productMovement', icon: '🔄', label: 'حركة المنتج',     perm: 'reports'      },
   { id: 'expenses',    icon: '💸', label: 'المصاريف',            perm: 'expenses'     },
   { id: 'activityLog', icon: '📋', label: 'سجل النشاطات',        perm: 'activityLog'  },
   { id: 'storeManager',icon: '🎨', label: 'إدارة المتجر',        perm: 'storeManager' },
@@ -64,8 +69,8 @@ const SECTIONS = [
 
 /** مجموعات القائمة الجانبية */
 const NAV_GROUPS = [
-  { label: 'الرئيسية',           items: ['dashboard'] },
-  { label: 'المنتجات والمخزون',  items: ['products','categories','brands','inventory'] },
+  { label: 'الرئيسية',           items: ['dashboard','pos'] },
+  { label: 'المنتجات والمخزون',  items: ['products','categories','brands','inventory','productMovement'] },
   { label: 'المبيعات',           items: ['orders','promotions','coupons'] },
   { label: 'الموارد',            items: ['purchases','suppliers','expenses'] },
   { label: 'العملاء',            items: ['customers','notifications'] },
@@ -76,6 +81,73 @@ const NAV_GROUPS = [
  * المكوّن الرئيسي للوحة الإدارة
  * يدير: الجلسة، الصلاحيات، التنقل، القائمة الجانبية، الهيدر
  */
+// ── مكوّن البحث العالمي ──
+function GlobalSearch({ onNavigate }) {
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (!q || q.length < 2) { setResults([]); setOpen(false); return }
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const [{ data: prods }, { data: custs }, { data: ords }] = await Promise.all([
+          supabase.from('products').select('id,name,stock,price').ilike('name', `%${q}%`).limit(5),
+          supabase.from('customers').select('id,name,phone').ilike('name', `%${q}%`).limit(5),
+          supabase.from('orders').select('id,customer_name,total,invoice_num').or(`customer_name.ilike.%${q}%,invoice_num.ilike.%${q}%`).limit(5),
+        ])
+        const res = []
+        ;(prods||[]).forEach(p => res.push({ type:'product', icon:'📦', label:p.name, sub:`مخزون: ${p.stock} | ${p.price} دج`, action:() => onNavigate('products') }))
+        ;(custs||[]).forEach(c => res.push({ type:'customer', icon:'👥', label:c.name, sub:c.phone||'', action:() => onNavigate('customers') }))
+        ;(ords||[]).forEach(o => res.push({ type:'order', icon:'📋', label:`فاتورة ${o.invoice_num||o.id}`, sub:`${o.customer_name} — ${Number(o.total).toFixed(0)} دج`, action:() => onNavigate('orders') }))
+        setResults(res); setOpen(res.length > 0)
+      } catch {}
+      setLoading(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [q, onNavigate])
+
+  return (
+    <div ref={ref} style={{ position:'relative', flex:1, maxWidth:360, margin:'0 16px' }}>
+      <div style={{ position:'relative' }}>
+        <input
+          value={q} onChange={e => setQ(e.target.value)}
+          onFocus={() => results.length > 0 && setOpen(true)}
+          placeholder="🔍 بحث في المنتجات، العملاء، الفواتير..."
+          style={{ width:'100%', padding:'7px 14px 7px 36px', border:'1.5px solid #e2e8f0', borderRadius:20, fontSize:13, fontFamily:'inherit', background:'#f8fafc', outline:'none', direction:'rtl', boxSizing:'border-box' }}
+        />
+        {loading && <div style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:12 }}>⏳</div>}
+        {q && <button onClick={() => { setQ(''); setResults([]); setOpen(false) }} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:14 }}>✕</button>}
+      </div>
+      {open && results.length > 0 && (
+        <div style={{ position:'absolute', top:'calc(100% + 6px)', right:0, left:0, background:'white', border:'1.5px solid #e2e8f0', borderRadius:12, boxShadow:'0 8px 24px rgba(0,0,0,.12)', zIndex:9999, overflow:'hidden' }}>
+          {results.map((r, i) => (
+            <div key={i} onClick={() => { r.action(); setQ(''); setOpen(false) }}
+              style={{ padding:'10px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:10, borderBottom:'1px solid #f1f5f9', transition:'background .15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+              onMouseLeave={e => e.currentTarget.style.background = 'white'}>
+              <span style={{ fontSize:18 }}>{r.icon}</span>
+              <div>
+                <div style={{ fontWeight:700, fontSize:13, color:'#0D1B2A' }}>{r.label}</div>
+                {r.sub && <div style={{ fontSize:11, color:'#94a3b8' }}>{r.sub}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Admin() {
   const [user,      setUser]      = useState(null)
   const [section,   setSection]   = useState('dashboard')
@@ -159,6 +231,8 @@ export default function Admin() {
       case 'promotions':   return <Promotions />
       case 'notifications':return <Notifications />
       case 'reports':      return <Reports />
+      case 'pos':          return <POS />
+      case 'productMovement': return <ProductMovement />
       case 'expenses':     return <Expenses />
       case 'activityLog':  return <ActivityLog />
       case 'recycle':      return <RecycleBin />
@@ -288,6 +362,10 @@ export default function Admin() {
               {curSection?.icon} {curSection?.label}
             </div>
           </div>
+
+          {/* ── بحث عالمي ── */}
+          <GlobalSearch onNavigate={setActive} />
+
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:CLR.textSm, background:CLR.bg,
               borderRadius:6, padding:'4px 10px', border:`1px solid ${CLR.border}`, fontWeight:600 }}>
