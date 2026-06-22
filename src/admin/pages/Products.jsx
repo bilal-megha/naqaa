@@ -6,112 +6,13 @@ import { NumInput, PhoneInput } from '../styles/FormInputs.jsx'
 import useToast from '../hooks/useToast.jsx'
 import useConfirm from '../hooks/useConfirm.jsx'
 
-// ── مكوّن قارئ الباركود بالكاميرا ──
-function BarcodeScanner({ onDetected, onClose }) {
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
-  const [error, setError] = useState('')
-  const [manualCode, setManualCode] = useState('')
-  const [scanning, setScanning] = useState(false)
-
-  useEffect(() => {
-    startCamera()
-    return () => stopCamera()
-  }, [])
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop())
-      streamRef.current = null
-    }
-  }
-
-  const startCamera = async () => {
-    try {
-      setScanning(true)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      })
-      streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
-
-      // استخدام BarcodeDetector إذا كان متاحاً (Chrome على Android)
-      if ('BarcodeDetector' in window) {
-        const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e'] })
-        const scan = async () => {
-          if (!videoRef.current || !streamRef.current) return
-          try {
-            const barcodes = await detector.detect(videoRef.current)
-            if (barcodes.length > 0) {
-              stopCamera()
-              onDetected(barcodes[0].rawValue)
-              return
-            }
-          } catch {}
-          if (streamRef.current) setTimeout(scan, 300)
-        }
-        videoRef.current.addEventListener('play', () => setTimeout(scan, 500))
-      } else {
-        setError('المتصفح لا يدعم قراءة الباركود التلقائية — استخدم Chrome على Android أو أدخل الرقم يدوياً')
-      }
-    } catch (err) {
-      setError('تعذّر فتح الكاميرا: ' + err.message)
-      setScanning(false)
-    }
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', direction: 'rtl' }}>
-      <div style={{ background: 'white', borderRadius: 20, padding: 24, width: 360, maxWidth: '95vw' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>📷 مسح الباركود</h3>
-          <button onClick={() => { stopCamera(); onClose() }} style={{ background: '#fee2e2', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#dc2626' }}>✕</button>
-        </div>
-
-        {/* مربع الكاميرا */}
-        <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', background: '#000', marginBottom: 16 }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
-          {/* خط المسح */}
-          <div style={{ position: 'absolute', top: '50%', left: '10%', right: '10%', height: 2, background: '#ef4444', boxShadow: '0 0 8px #ef4444', animation: 'scan-line 1.5s ease-in-out infinite alternate' }} />
-          {/* إطار */}
-          <div style={{ position: 'absolute', inset: 0, border: '3px solid rgba(255,255,255,.3)', borderRadius: 14, pointerEvents: 'none' }} />
-          <style>{`@keyframes scan-line { from { top: 30% } to { top: 70% } }`}</style>
-        </div>
-
-        {error ? (
-          <div style={{ background: '#fff1f2', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#dc2626', marginBottom: 14 }}>⚠️ {error}</div>
-        ) : (
-          <div style={{ textAlign: 'center', fontSize: 13, color: '#64748b', marginBottom: 14 }}>
-            🔍 وجّه الكاميرا نحو الباركود... سيُقرأ تلقائياً
-          </div>
-        )}
-
-        {/* إدخال يدوي */}
-        <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 6 }}>أو أدخل الباركود يدوياً:</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input style={{ ...S.input, flex: 1, fontSize: 15 }}
-              value={manualCode} onChange={e => setManualCode(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && manualCode.trim()) { stopCamera(); onDetected(manualCode.trim()) } }}
-              placeholder="اكتب الرقم + Enter" />
-            <button style={{ ...S.btn, padding: '8px 14px', fontSize: 13 }}
-              onClick={() => { if (manualCode.trim()) { stopCamera(); onDetected(manualCode.trim()) } }}>
-              ✅
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+export default function Products() {
 
   const [showToast, ToastUI] = useToast();
 
   const [askConfirm, ConfirmUI] = useConfirm();
 
   const [products, setProducts] = useState([]);
-
-  const [showScanner, setShowScanner] = useState(false);
 
   const [brands, setBrands] = useState([]);
 
@@ -303,11 +204,11 @@ function BarcodeScanner({ onDetected, onClose }) {
 
           .from("product_categories")
 
-          .upsert(
+          .insert(
 
             selCats.map((cid) => ({
 
-              id: Date.now() + Math.random(),
+              id: Date.now() + Math.floor(Math.random() * 999999),
 
               product_id: row.id,
 
@@ -317,7 +218,7 @@ function BarcodeScanner({ onDetected, onClose }) {
 
           )
 
-          .catch(() => {});
+          .then(({ error: e }) => { if (e) console.error('❌ product_categories:', e.message) });
 
       }
 
@@ -481,17 +382,6 @@ function BarcodeScanner({ onDetected, onClose }) {
 
       {ToastUI}
 
-      {showScanner && (
-        <BarcodeScanner
-          onDetected={(code) => {
-            setForm(f => ({ ...f, sku: code }))
-            setShowScanner(false)
-            showToast(`✅ تم قراءة الباركود: ${code}`)
-          }}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
-
       {ConfirmUI}
 
       <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 20 }}>📦 المنتجات</h1>
@@ -588,14 +478,7 @@ function BarcodeScanner({ onDetected, onClose }) {
 
             <label style={S.label}>الباركود / SKU</label>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input style={{ ...S.input, flex: 1 }} value={form.sku} onChange={F("sku")} placeholder="اختياري — أو امسح بالكاميرا" />
-              <button type="button" onClick={() => setShowScanner(true)}
-                style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', color: 'white', border: 'none', borderRadius: 10, padding: '0 14px', cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
-                title="مسح الباركود بالكاميرا">
-                📷
-              </button>
-            </div>
+            <input style={S.input} value={form.sku} onChange={F("sku")} placeholder="اختياري" />
 
           </div>
 

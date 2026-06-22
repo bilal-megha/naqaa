@@ -35,18 +35,6 @@ export default function Customers() {
 
     address: "",
 
-    wilaya: "",
-
-    activite: "",
-
-    rc: "",
-
-    nif: "",
-
-    nis: "",
-
-    art: "",
-
     password: "",
 
     tier: "M1",
@@ -184,12 +172,6 @@ export default function Customers() {
         phone: form.phone,
 
         address: form.address,
-        wilaya: form.wilaya,
-        activite: form.activite,
-        rc: form.rc,
-        nif: form.nif,
-        nis: form.nis,
-        art: form.art,
 
         tier: form.tier,
 
@@ -225,7 +207,7 @@ export default function Customers() {
 
       showToast(form.id ? "✅ تم التعديل" : "✅ تمت الإضافة");
 
-      setForm({ id: "", name: "", email: "", phone: "", address: "", wilaya: "", activite: "", rc: "", nif: "", nis: "", art: "", password: "", tier: "M1", group: "" });
+      setForm({ id: "", name: "", email: "", phone: "", address: "", password: "", tier: "M1", group: "" });
 
       await load();
 
@@ -256,12 +238,6 @@ export default function Customers() {
       phone: c.phone || "",
 
       address: c.address || "",
-      wilaya: c.wilaya || "",
-      activite: c.activite || "",
-      rc: c.rc || "",
-      nif: c.nif || "",
-      nis: c.nis || "",
-      art: c.art || "",
 
       password: "",
 
@@ -283,44 +259,7 @@ export default function Customers() {
 
 
 
-  const [showDebtModal, setShowDebtModal] = useState(null) // { customer, amount }
-  const [debtPayment, setDebtPayment] = useState('')
-
-  const payDebt = async () => {
-    if (!showDebtModal || !debtPayment) return
-    const payment = parseFloat(debtPayment) || 0
-    const currentDebt = parseFloat(showDebtModal.customer.debt || 0)
-    const orderTotal = parseFloat(showDebtModal.orderTotal || 0)
-
-    let newDebt
-    if (orderTotal > 0) {
-      // دفع على طلبية: إذا الدفع > قيمة الطلبية → الفارق ينقص من الدين
-      if (payment >= orderTotal) {
-        const extra = payment - orderTotal
-        newDebt = Math.max(0, currentDebt - extra)
-      } else {
-        // الدفع أقل من الطلبية → الفارق يضاف للدين
-        newDebt = currentDebt + (orderTotal - payment)
-      }
-    } else {
-      // دفع مباشر على الدين
-      newDebt = Math.max(0, currentDebt - payment)
-    }
-
-    await supabase.from('customers').update({ debt: newDebt }).eq('id', showDebtModal.customer.id)
-    await logActivity('دفع دين', `العميل ${showDebtModal.customer.name}: دفع ${payment} دج، الدين الجديد: ${newDebt} دج`)
-    showToast(`✅ تم تسجيل الدفع — الدين المتبقي: ${newDebt.toFixed(2)} دج`)
-    setShowDebtModal(null); setDebtPayment(''); await load()
-  }
-
-  const addDebt = async (customerId, amount) => {
-    const c = items.find(x => x.id == customerId)
-    if (!c) return
-    const newDebt = parseFloat(c.debt || 0) + parseFloat(amount || 0)
-    await supabase.from('customers').update({ debt: newDebt }).eq('id', customerId)
-  }
-
-
+  const tierLabel = (t) => ({ M1: "🥉 M1 عادي", M2: "🥈 M2 مميز", M3: "🥇 M3 VIP" }[t] || t);
 
 
 
@@ -436,88 +375,82 @@ export default function Customers() {
 
         </h3>
 
-        {/* ── القسم 1: المعلومات الأساسية ── */}
-        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#1565C0', marginBottom: 12 }}>👤 المعلومات الأساسية</div>
-          <div style={S.grid2}>
-            <div>
-              <label style={S.label}>الاسم / CLIENT *</label>
-              <input style={S.input} value={form.name} onChange={F("name")} placeholder="مثال: MAHDI SAID" />
-            </div>
-            <div>
-              <label style={S.label}>النشاط / ACTIVITE</label>
-              <input style={S.input} value={form.activite} onChange={F("activite")} placeholder="نوع النشاط التجاري" />
-            </div>
-            <div>
-              <label style={S.label}>الهاتف / TEL</label>
-              <PhoneInput value={form.phone} onChange={F("phone")} placeholder="مثال: 0555123456" />
-            </div>
-            <div>
-              <label style={S.label}>البريد الإلكتروني</label>
-              <input style={S.input} value={form.email} onChange={F("email")} placeholder="exemple@mail.com" />
-            </div>
-          </div>
-        </div>
+        <div style={S.grid2}>
 
-        {/* ── القسم 2: العنوان ── */}
-        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#1565C0', marginBottom: 12 }}>📍 العنوان / ADRESSE</div>
-          <div style={S.grid2}>
-            <div>
-              <label style={S.label}>العنوان التفصيلي</label>
-              <input style={S.input} value={form.address} onChange={F("address")} placeholder="مثال: DOUFANA - OULED FADEL" />
-            </div>
-            <div>
-              <label style={S.label}>الولاية / WILAYA</label>
-              <input style={S.input} value={form.wilaya} onChange={F("wilaya")} placeholder="مثال: BATNA, ALGERIE" />
-            </div>
-          </div>
-        </div>
+          <div>
 
-        {/* ── القسم 3: المعرفات الجبائية ── */}
-        <div style={{ background: '#fffbeb', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid #fcd34d' }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#92400e', marginBottom: 12 }}>🏛️ المعرفات الجبائية (اختياري)</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={S.label}>RC N°</label>
-              <input style={S.input} value={form.rc} onChange={F("rc")} placeholder="مثال: 05/00-1191251A18" />
-            </div>
-            <div>
-              <label style={S.label}>NIF N°</label>
-              <input style={S.input} value={form.nif} onChange={F("nif")} placeholder="مثال: 199005500015930" />
-            </div>
-            <div>
-              <label style={S.label}>NIS N°</label>
-              <input style={S.input} value={form.nis} onChange={F("nis")} placeholder="NIS..." />
-            </div>
-            <div>
-              <label style={S.label}>N° Art.</label>
-              <input style={S.input} value={form.art} onChange={F("art")} placeholder="مثال: 05310025119" />
-            </div>
-          </div>
-        </div>
+            <label style={S.label}>الاسم *</label>
 
-        {/* ── القسم 4: إعدادات الحساب ── */}
-        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '14px 16px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
-          <div style={{ fontWeight: 800, fontSize: 13, color: '#1565C0', marginBottom: 12 }}>⚙️ إعدادات الحساب</div>
-          <div style={S.grid2}>
-            <div>
-              <label style={S.label}>الرتبة</label>
-              <select style={S.input} value={form.tier} onChange={F("tier")}>
-                <option value="M1">🥉 M1 — عميل عادي</option>
-                <option value="M2">🥈 M2 — عميل مميز</option>
-                <option value="M3">🥇 M3 — عميل VIP</option>
-              </select>
-            </div>
-            <div>
-              <label style={S.label}>المجموعة</label>
-              <input style={S.input} value={form.group} onChange={F("group")} placeholder="مثال: ولاية باتنة" />
-            </div>
-            <div>
-              <label style={S.label}>كلمة المرور</label>
-              <input style={S.input} type="password" value={form.password} onChange={F("password")} placeholder="اتركه فارغاً للإبقاء على الحالية" />
-            </div>
+            <input style={S.input} value={form.name} onChange={F("name")} />
+
           </div>
+
+          <div>
+
+            <label style={S.label}>البريد</label>
+
+            <input style={S.input} value={form.email} onChange={F("email")} />
+
+          </div>
+
+          <div>
+
+            <label style={S.label}>الهاتف</label>
+
+            <PhoneInput value={form.phone} onChange={F("phone")} placeholder="مثال: 0555123456" />
+
+          </div>
+
+          <div>
+
+            <label style={S.label}>العنوان</label>
+
+            <input style={S.input} value={form.address} onChange={F("address")} />
+
+          </div>
+
+          <div>
+
+            <label style={S.label}>كلمة المرور</label>
+
+            <input style={S.input} type="password" value={form.password} onChange={F("password")} />
+
+          </div>
+
+          <div>
+
+            <label style={S.label}>الرتبة</label>
+
+            <select style={S.input} value={form.tier} onChange={F("tier")}>
+
+              <option value="M1">🥉 M1 — عميل عادي</option>
+
+              <option value="M2">🥈 M2 — عميل مميز</option>
+
+              <option value="M3">🥇 M3 — عميل VIP</option>
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label style={S.label}>المجموعة</label>
+
+            <input
+
+              style={S.input}
+
+              value={form.group}
+
+              onChange={F("group")}
+
+              placeholder="مثال: عملاء مميزين, ولاية الجزائر"
+
+            />
+
+          </div>
+
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
@@ -708,8 +641,6 @@ export default function Customers() {
 
                 <th style={S.th}>النقاط</th>
 
-                <th style={{ ...S.th, color: '#dc2626', background: '#fff1f2' }}>💰 الدين (كريدي)</th>
-
                 <th style={S.th}>إجراءات</th>
 
               </tr>
@@ -822,23 +753,6 @@ export default function Customers() {
 
                     </td>
 
-                    <td style={{ ...S.td, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                      {parseFloat(c.debt || 0) > 0 ? (
-                        <div>
-                          <div style={{ fontWeight: 900, color: '#dc2626', fontSize: 14 }}>
-                            {Number(c.debt || 0).toFixed(2)} {CUR}
-                          </div>
-                          <button
-                            style={{ ...S.btnSm, background: '#dcfce7', color: '#16a34a', marginTop: 4, fontSize: 11 }}
-                            onClick={() => setShowDebtModal({ customer: c, orderTotal: 0 })}>
-                            💵 تسديد
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 12 }}>✅ لا دين</span>
-                      )}
-                    </td>
-
                     <td style={S.td} onClick={(e) => e.stopPropagation()}>
 
                       <div style={{ display: "flex", gap: 4 }}>
@@ -881,7 +795,7 @@ export default function Customers() {
 
                 <tr>
 
-                  <td colSpan={9} style={{ textAlign: "center", padding: 36, color: CLR.textSm }}>
+                  <td colSpan={8} style={{ textAlign: "center", padding: 36, color: CLR.textSm }}>
 
                     <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
 
@@ -903,54 +817,7 @@ export default function Customers() {
 
     </div>
 
-      {/* ── مودال تسديد الدين ── */}
-      {showDebtModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: 20, padding: 28, width: 400, maxWidth: '95vw', direction: 'rtl' }}>
-            <h3 style={{ fontWeight: 800, fontSize: 18, marginBottom: 6, color: '#dc2626' }}>💰 تسديد الدين</h3>
-            <div style={{ background: '#fff1f2', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>👤 {showDebtModal.customer.name}</div>
-              <div style={{ fontSize: 13, color: '#dc2626', marginTop: 4 }}>
-                الدين الحالي: <strong>{Number(showDebtModal.customer.debt || 0).toFixed(2)} {CUR}</strong>
-              </div>
-            </div>
-            <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#16a34a' }}>
-              <strong>💡 كيف يعمل الحساب:</strong><br />
-              • إذا دفع أكثر من الطلبية → الفارق ينقص من الدين<br />
-              • إذا دفع أقل → الفارق يضاف للدين<br />
-              • إذا لا توجد طلبية → المبلغ ينقص مباشرة من الدين
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={S.label}>المبلغ المدفوع (دج) *</label>
-              <input type="number" style={{ ...S.input, fontSize: 18, fontWeight: 700 }}
-                value={debtPayment} onChange={e => setDebtPayment(e.target.value)}
-                placeholder="أدخل المبلغ..." autoFocus />
-            </div>
-            {debtPayment && (
-              <div style={{ background: '#fef9c3', borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
-                {(() => {
-                  const payment = parseFloat(debtPayment) || 0
-                  const currentDebt = parseFloat(showDebtModal.customer.debt || 0)
-                  const newDebt = Math.max(0, currentDebt - payment)
-                  return <>
-                    <div>الدين الحالي: <strong>{currentDebt.toFixed(2)} {CUR}</strong></div>
-                    <div>المبلغ المدفوع: <strong style={{ color: '#16a34a' }}>- {payment.toFixed(2)} {CUR}</strong></div>
-                    <div style={{ borderTop: '1px solid #fcd34d', marginTop: 6, paddingTop: 6, fontWeight: 900, color: newDebt > 0 ? '#dc2626' : '#16a34a' }}>
-                      الدين المتبقي: {newDebt.toFixed(2)} {CUR} {newDebt === 0 ? '✅' : ''}
-                    </div>
-                  </>
-                })()}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button style={S.btn} onClick={payDebt} disabled={!debtPayment}>✅ تأكيد الدفع</button>
-              <button style={S.btnGray} onClick={() => { setShowDebtModal(null); setDebtPayment('') }}>إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-  
+  );
 
 }
 
