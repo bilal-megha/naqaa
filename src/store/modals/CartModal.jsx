@@ -1,23 +1,22 @@
-import React, { useState } from 'react'
+import React from 'react'
 
-export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, customer, settings, onPointsUpdate }) {
-  const [usePoints, setUsePoints] = useState(false)
-
+export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip, currency, customer, settings }) {
   const cartTotal    = cart.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 1), 0)
   const changeQty    = (id, d) => setCart(p => p.map(i => i.id === id ? { ...i, qty: Math.max(1, i.qty + d) } : i))
   const remove       = id     => setCart(p => p.filter(i => i.id !== id))
 
-  // نظام النقاط — من إعدادات المتجر
-  const pointsPerOrder = parseFloat(settings?.points_per_order || '100')  // كل 100 دج = نقطة
-  const pointsToDzd    = parseFloat(settings?.points_to_dzd   || '1')     // نقطة = 1 دج خصم
-  const currentPoints  = customer?.points || 0
-  const maxPointsDisc  = Math.floor(currentPoints * pointsToDzd)
-  const pointsDisc     = usePoints ? Math.min(maxPointsDisc, cartTotal) : 0
-  const finalTotal     = Math.max(0, cartTotal - pointsDisc)
-  const pointsEarned   = Math.floor(finalTotal / pointsPerOrder)
-  const freeShipVal    = parseFloat(freeShip || settings?.free_shipping_threshold || 5000)
-  const pct            = Math.min(100, (cartTotal / freeShipVal) * 100)
-  const remaining      = freeShipVal - cartTotal
+  // نقاط الزبون (من إعدادات المتجر)
+  const pointsPer100  = parseFloat(settings?.points_per_100 || '1')
+  const pointsToDzd   = parseFloat(settings?.points_to_dzd  || '1')
+  const currentPoints = customer?.points || 0
+  const maxDiscount   = Math.floor(currentPoints * pointsToDzd)
+  const pointsDisc    = Math.min(maxDiscount, cartTotal * 0.5) // أقصى خصم 50% بالنقاط
+  const finalTotal    = Math.max(0, cartTotal - pointsDisc)
+  const pointsEarned  = Math.floor(finalTotal / 100 * pointsPer100)
+  const freeShipVal   = parseFloat(freeShip || settings?.free_shipping_threshold || 5000)
+
+  const pct = Math.min(100, (cartTotal / freeShipVal) * 100)
+  const remaining = freeShipVal - cartTotal
 
   return (
     <div className="moverlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -42,7 +41,7 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                       {i.name}
                     </div>
-                    <div style={{ color: 'var(--clr-primary,#1565C0)', fontWeight: 900, fontSize: 15, marginTop: 3 }}>
+                    <div style={{ color: '#1565C0', fontWeight: 900, fontSize: 15, marginTop: 3 }}>
                       {(i.price * i.qty).toFixed(0)} {currency}
                       <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginRight: 5 }}>
                         ({i.price} × {i.qty})
@@ -71,11 +70,11 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                   borderRadius:14, padding:'12px 14px', margin:'12px 0',
                   border:'1.5px solid #C7D9F5' }}>
                   <div style={{ fontSize:13, fontWeight:800, color:'#0D47A1', marginBottom:7 }}>
-                    🚚 أضف <strong style={{ color:'var(--clr-accent,#FF6D00)' }}>{remaining.toFixed(0)} {currency}</strong> للتوصيل المجاني!
+                    🚚 أضف <strong style={{ color:'#FF6D00' }}>{remaining.toFixed(0)} {currency}</strong> للتوصيل المجاني!
                   </div>
                   <div style={{ background:'#C7D9F5', borderRadius:30, height:8, overflow:'hidden' }}>
                     <div style={{ width:`${pct}%`, height:'100%',
-                      background:'linear-gradient(90deg,var(--clr-primary,#1565C0),#42A5F5)',
+                      background:'linear-gradient(90deg,#1565C0,#42A5F5)',
                       borderRadius:30, transition:'width .4s' }} />
                   </div>
                   <div style={{ display:'flex', justifyContent:'space-between',
@@ -94,56 +93,24 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                 </div>
               )}
 
-              {/* ── النقاط — اختياري ── */}
+              {/* ── النقاط ── */}
               {customer && currentPoints > 0 && (
-                <div style={{ background: usePoints
-                    ? 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'
-                    : 'linear-gradient(135deg,#FFF7ED,#FFEDD5)',
-                  borderRadius:14, padding:'14px', margin:'12px 0',
-                  border: usePoints ? '1.5px solid #6EE7B7' : '1.5px solid #FED7AA',
-                  transition:'.3s' }}>
-                  <div style={{ fontWeight:900, fontSize:14, color:'#92400E', marginBottom:10 }}>
-                    ⭐ رصيد نقاطك: <span style={{ color:'var(--clr-accent,#FF6D00)' }}>{currentPoints} نقطة</span>
-                    <span style={{ fontSize:12, color:'#B45309', marginRight:6 }}>
-                      = {maxPointsDisc} {currency} خصم
-                    </span>
-                  </div>
-
-                  {/* زر التبديل */}
-                  <div style={{ display:'flex', gap:10 }}>
-                    <button onClick={() => setUsePoints(false)}
-                      style={{ flex:1, padding:'10px', borderRadius:12, border:'2px solid',
-                        borderColor: !usePoints ? '#92400E' : '#E2E8F0',
-                        background: !usePoints ? '#FEF3C7' : 'white',
-                        fontWeight:800, fontSize:12, cursor:'pointer',
-                        color: !usePoints ? '#92400E' : '#94a3b8',
-                        fontFamily:'inherit', transition:'.2s' }}>
-                      💰 جمع النقاط
-                      <div style={{ fontSize:10, marginTop:3, fontWeight:600 }}>
-                        +{Math.floor(finalTotal / pointsPerOrder)} نقطة جديدة
+                <div style={{ background:'linear-gradient(135deg,#FFF7ED,#FFEDD5)',
+                  borderRadius:14, padding:'12px 14px', margin:'12px 0',
+                  border:'1.5px solid #FED7AA' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontWeight:900, fontSize:13, color:'#92400E' }}>
+                        ⭐ رصيد نقاطك: {currentPoints} نقطة
                       </div>
-                    </button>
-                    <button onClick={() => setUsePoints(true)}
-                      style={{ flex:1, padding:'10px', borderRadius:12, border:'2px solid',
-                        borderColor: usePoints ? '#059669' : '#E2E8F0',
-                        background: usePoints ? '#D1FAE5' : 'white',
-                        fontWeight:800, fontSize:12, cursor:'pointer',
-                        color: usePoints ? '#065F46' : '#94a3b8',
-                        fontFamily:'inherit', transition:'.2s' }}>
-                      🎁 استخدام النقاط
-                      <div style={{ fontSize:10, marginTop:3, fontWeight:600 }}>
-                        خصم {maxPointsDisc} {currency}
+                      <div style={{ fontSize:11, color:'#B45309', fontWeight:700, marginTop:3 }}>
+                        = خصم {maxDiscount} {currency} (سيُطبَّق تلقائياً)
                       </div>
-                    </button>
-                  </div>
-
-                  {usePoints && (
-                    <div style={{ marginTop:10, fontSize:12, fontWeight:700,
-                      color:'#065F46', textAlign:'center', background:'#A7F3D0',
-                      borderRadius:8, padding:'6px' }}>
-                      ✅ سيُخصم {pointsDisc.toFixed(0)} {currency} من نقاطك
                     </div>
-                  )}
+                    <div style={{ fontSize:22, fontWeight:900, color:'#FF6D00' }}>
+                      -{pointsDisc.toFixed(0)} {currency}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -173,18 +140,18 @@ export default function CartModal({ cart, setCart, onClose, onCheckout, freeShip
                 <div style={{ display:'flex', justifyContent:'space-between',
                   fontSize:18, fontWeight:900 }}>
                   <span style={{ color:'#0D1B2A' }}>الإجمالي</span>
-                  <span style={{ color:'var(--clr-primary,#1565C0)' }}>{finalTotal.toFixed(0)} {currency}</span>
+                  <span style={{ color:'#1565C0' }}>{finalTotal.toFixed(0)} {currency}</span>
                 </div>
-                {!usePoints && pointsEarned > 0 && (
+                {pointsEarned > 0 && (
                   <div style={{ marginTop:8, fontSize:12, fontWeight:800,
-                    color:'var(--clr-primary,#1565C0)', textAlign:'center',
-                    background:'#EEF4FF', borderRadius:8, padding:'6px' }}>
+                    color:'#1565C0', textAlign:'center', background:'#EEF4FF',
+                    borderRadius:8, padding:'6px' }}>
                     ⭐ ستكسب {pointsEarned} نقطة من هذا الطلب
                   </div>
                 )}
               </div>
 
-              <button className="abtn" onClick={() => onCheckout(finalTotal, usePoints ? pointsDisc : 0)}>
+              <button className="abtn" onClick={() => onCheckout(finalTotal)}>
                 <i className="fas fa-shopping-bag" /> إتمام الشراء — {finalTotal.toFixed(0)} {currency}
               </button>
             </>

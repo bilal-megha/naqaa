@@ -3,8 +3,8 @@ import { supabase } from '../../lib/supabase.js'
 import { CLR, S }   from '../styles/constants.js'
 import CryptoJS     from 'crypto-js'
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL    || ''
-const ADMIN_PASS  = import.meta.env.VITE_ADMIN_PASS_HASH || import.meta.env.VITE_ADMIN_PASS_RAW || ''
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL    || 'meghamel2012@gmail.com'
+const ADMIN_PASS  = import.meta.env.VITE_ADMIN_PASS_RAW || 'afbilalaf06'
 const TWO_FA_CODE = import.meta.env.VITE_TWO_FA_CODE    || '6789'
 const sha256 = p  => CryptoJS.SHA256(p || '').toString()
 
@@ -29,7 +29,7 @@ export default function LoginScreen({ onLogin }) {
     setErr(''); setLoad(true)
     try {
       // ── مدير رئيسي ──
-      if (ADMIN_EMAIL && email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         if (checkPwd(pass, ADMIN_PASS)) {
           setUser({ name:'المدير', email:ADMIN_EMAIL, role:'admin', permissions:{} })
           setStep(2); setLoad(false); return
@@ -101,7 +101,7 @@ export default function LoginScreen({ onLogin }) {
           <label style={S.label}>البريد الإلكتروني</label>
           <input style={S.input} type="email" value={email} autoComplete="email"
             onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==='Enter'&&step1()}
-            placeholder="أدخل بريدك الإلكتروني" />
+            placeholder={ADMIN_EMAIL} />
         </div>
         <div style={{marginBottom:20}}>
           <label style={S.label}>كلمة المرور</label>

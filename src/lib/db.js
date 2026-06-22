@@ -48,6 +48,7 @@ function toSnake(obj) {
     minOrder: 'min_order',
     createdAt: 'created_at',
     minStock: 'min_stock',
+    createdAt: 'created_at',
   }
   const result = {}
   for (const [k, v] of Object.entries(obj)) {
