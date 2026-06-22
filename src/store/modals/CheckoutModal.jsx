@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase.js'
 import { showToast } from '../utils.js'
 
 // ========== CheckoutModal ==========
-export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName, customer, onPointsUpdate }) {
+export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, currency, waNum, storeName, customer, onPointsUpdate, settings }) {
   const [form, setForm] = useState({ name: '', phone: '', address: '' })
   const [step, setStep] = useState(1)
   const [otp, setOtp] = useState('')
@@ -11,7 +11,17 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
   const [digits, setDigits] = useState(['', '', '', ''])
   const refs = [useRef(null), useRef(null), useRef(null), useRef(null)]
   const [loading, setLoading] = useState(false)
+  const [usePoints, setUsePoints] = useState(false)
   const F = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  // حساب النقاط
+  const pointsPerOrder = Number(settings?.points_per_order || settings?.points_per_100 || 100)
+  const pointsToDzd    = Number(settings?.points_to_dzd || 1)
+  const availPoints    = customer?.points || 0
+  const maxDiscount    = Math.floor(availPoints * pointsToDzd)
+  const pointsDiscount = usePoints ? Math.min(maxDiscount, finalTotal * 0.5) : 0  // max 50% خصم
+  const totalAfterPoints = Math.max(0, finalTotal - pointsDiscount)
+  const pointsToUse    = usePoints ? Math.floor(pointsDiscount / pointsToDzd) : 0
 
   const sendCodeViaWhatsApp = (phone, name, code) => {
     let waNumber = phone.replace(/^0/, '213')
@@ -61,7 +71,7 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
       customer_address: form.address,
       date: new Date().toLocaleString('ar-DZ'),
       items: JSON.stringify(cart.map(i => ({ id: i.id, name: i.name, quantity: i.qty, price: i.price }))),
-      total: finalTotal,
+      total: totalAfterPoints,
       status: 'processing'
     }
     const { error } = await supabase.from('orders').insert(order)
@@ -71,17 +81,17 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
       if (p) { await supabase.from('products').update({ stock: Math.max(0, (p.stock || 0) - item.qty) }).eq('id', item.id) }
     }
     // ✅ تحديث نقاط العميل في قاعدة البيانات
-    const pointsEarned = Math.floor(finalTotal / 100)
-    if (customer?.id && pointsEarned > 0) {
-      const newPoints = (customer.points || 0) + pointsEarned
+    const pointsEarned = Math.floor(totalAfterPoints / pointsPerOrder)
+    if (customer?.id) {
+      const newPoints = Math.max(0, (customer.points || 0) - pointsToUse) + pointsEarned
       await supabase.from('customers').update({ points: newPoints }).eq('id', customer.id).catch(() => {})
       if (onPointsUpdate) onPointsUpdate(newPoints)
     }
 
     let waNumber = form.phone.replace(/^0/, '213')
     waNumber = waNumber.replace(/[^0-9]/g, '')
-    const earnedMsg = pointsEarned > 0 ? `\n⭐ كسبت ${pointsEarned} نقطة! رصيدك الجديد: ${(customer?.points || 0) + pointsEarned} نقطة` : ''
-    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${finalTotal.toFixed(0)} ${currency}${earnedMsg}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
+    const earnedMsg = `${pointsDiscount > 0 ? `\n💎 خصم النقاط: -${pointsDiscount.toFixed(0)} ${currency}` : ''}${pointsEarned > 0 ? `\n⭐ كسبت ${pointsEarned} نقطة جديدة!` : ''}`
+    const confirmMsg = `✅ تم تأكيد طلبك رقم ${order.id} بنجاح!\n\nالإجمالي: ${totalAfterPoints.toFixed(0)} ${currency}${earnedMsg}\nشكراً لتسوقكم مع ${storeName || 'نقاء'} 🛍️`
     window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(confirmMsg)}`, '_blank')
     onSuccess(order.id)
     setLoading(false)
@@ -126,9 +136,39 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
           <p style={{ fontSize: 11, color: '#94a3b8', marginTop: -8, marginBottom: 12 }}>📱 سيُرسل كود التأكيد إلى هذا الرقم عبر واتساب</p>
           <label className="fi-label">العنوان</label>
           <textarea className="fi" rows="2" value={form.address} onChange={F('address')} style={{ resize: 'none' }} autoComplete="street-address" placeholder="أدخل عنوان التوصيل" />
-          <div style={{ background: '#EEF4FF', borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 700 }}>إجمالي الطلب</span>
-            <span style={{ fontWeight: 900, color: '#1565C0', fontSize: 18 }}>{finalTotal.toFixed(0)} {currency}</span>
+          {/* ── نظام النقاط ── */}
+          {customer && availPoints > 0 && (
+            <div style={{ background: '#FFFBEB', border: '2px solid #FDE68A', borderRadius: 14, padding: '12px 16px', marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 800, fontSize: 13, color: '#92400E' }}>⭐ رصيد نقاطك: {availPoints} نقطة</span>
+                <span style={{ fontSize: 12, color: '#B45309', fontWeight: 700 }}>= {maxDiscount} {currency} خصم</span>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={usePoints} onChange={e => setUsePoints(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: '#F59E0B', cursor: 'pointer' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>
+                  استخدم النقاط — خصم {Math.min(maxDiscount, Math.round(finalTotal * 0.5)).toFixed(0)} {currency}
+                </span>
+              </label>
+            </div>
+          )}
+
+          {/* ── ملخص السعر ── */}
+          <div style={{ background: '#EEF4FF', borderRadius: 14, padding: '12px 16px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pointsDiscount > 0 ? 6 : 0 }}>
+              <span style={{ fontWeight: 600, color: '#64748B', fontSize: 13 }}>إجمالي المنتجات</span>
+              <span style={{ fontWeight: 700, color: '#64748B', fontSize: 13 }}>{finalTotal.toFixed(0)} {currency}</span>
+            </div>
+            {pointsDiscount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontWeight: 600, color: '#D97706', fontSize: 13 }}>⭐ خصم النقاط ({pointsToUse} نقطة)</span>
+                <span style={{ fontWeight: 700, color: '#D97706', fontSize: 13 }}>- {pointsDiscount.toFixed(0)} {currency}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #BFDBFE', paddingTop: 8, marginTop: 4 }}>
+              <span style={{ fontWeight: 800 }}>المبلغ النهائي</span>
+              <span style={{ fontWeight: 900, color: '#1565C0', fontSize: 18 }}>{totalAfterPoints.toFixed(0)} {currency}</span>
+            </div>
           </div>
           <button className="abtn" onClick={goToOtp}><i className="fas fa-shield-alt"></i> التالي — تأكيد بكود</button>
           <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>🔒 سيتم إرسال كود تأكيد عبر واتساب للتحقق من هويتك</p>
