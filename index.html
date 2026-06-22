@@ -2,21 +2,142 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0EA5E9" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1565C0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="نقاء" />
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72.png" />
+
+  <!-- SEO -->
   <title>نقاء | متجر الجملة الجزائري</title>
   <meta name="description" content="نقاء — متجر الجملة الجزائري. أفضل المنتجات بأفضل الأسعار. اطلب بالكارتون ووفّر أكثر!" />
-  <meta name="keywords" content="متجر جملة, جزائر, منتجات منزلية, تنظيف, بالكارتون, نقاء" />
-  <meta property="og:title" content="نقاء | متجر الجملة الجزائري" />
-  <meta property="og:description" content="أفضل المنتجات بأفضل الأسعار — اطلب بالكارتون ووفّر أكثر!" />
-  <meta property="og:type" content="website" />
+  <meta name="keywords" content="متجر جملة, جزائر, منتجات منزلية, تنظيف, بالكارتون, نقاء, wholesale algeria" />
   <meta name="robots" content="index, follow" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+  <link rel="canonical" href="https://naqaa.dz" />
+
+  <!-- Open Graph (واتساب وفيسبوك) -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://naqaa.dz" />
+  <meta property="og:title"       content="نقاء | متجر الجملة الجزائري" />
+  <meta property="og:description" content="أفضل المنتجات بأفضل الأسعار — اطلب بالكارتون ووفّر أكثر!" />
+  <meta property="og:image"       content="https://naqaa.dz/og-image.jpg" />
+  <meta property="og:locale"      content="ar_DZ" />
+  <meta property="og:site_name"   content="نقاء" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content="نقاء | متجر الجملة الجزائري" />
+  <meta name="twitter:description" content="اطلب بالكارتون ووفّر أكثر!" />
+  <meta name="twitter:image"       content="https://naqaa.dz/og-image.jpg" />
+
+  <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+
+  <!-- PWA Install prompt style -->
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Tajawal', sans-serif;
+      background: #F8FAFC;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+    #root { min-height: 100vh; }
+
+    /* PWA Install Banner */
+    #pwa-banner {
+      display: none;
+      position: fixed; bottom: 80px; left: 12px; right: 12px; z-index: 9999;
+      background: linear-gradient(135deg, #1565C0, #0D47A1);
+      color: white; border-radius: 16px; padding: 14px 16px;
+      box-shadow: 0 8px 30px rgba(21,101,192,.4);
+      animation: slideUp .3s ease;
+    }
+    #pwa-banner.show { display: flex; align-items: center; gap: 12px; }
+    @keyframes slideUp { from { transform:translateY(30px); opacity:0 } to { transform:translateY(0); opacity:1 } }
+    #pwa-banner .pwa-text { flex:1 }
+    #pwa-banner .pwa-text strong { display:block; font-size:14px; font-weight:900; }
+    #pwa-banner .pwa-text span { font-size:12px; opacity:.85; }
+    #pwa-banner button {
+      border:none; border-radius:20px; padding:8px 16px;
+      font-family:inherit; font-weight:800; cursor:pointer; font-size:13px;
+    }
+    #pwa-install-btn { background:white; color:#1565C0; }
+    #pwa-dismiss-btn { background:rgba(255,255,255,.2); color:white; margin-right:6px; }
+  </style>
 </head>
 <body>
   <div id="root"></div>
+
+  <!-- PWA Install Banner -->
+  <div id="pwa-banner">
+    <span style="font-size:28px">📲</span>
+    <div class="pwa-text">
+      <strong>ثبّت تطبيق نقاء</strong>
+      <span>تجربة أسرع وإشعارات فورية</span>
+    </div>
+    <button id="pwa-dismiss-btn">لاحقاً</button>
+    <button id="pwa-install-btn">تثبيت</button>
+  </div>
+
   <script type="module" src="/src/main.jsx"></script>
+
+  <script>
+    // ── PWA Service Worker ────────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(r => console.log('✅ SW registered'))
+          .catch(e => console.error('❌ SW error:', e))
+      })
+    }
+
+    // ── PWA Install Prompt ────────────────────────
+    let deferredPrompt = null
+    const banner      = document.getElementById('pwa-banner')
+    const installBtn  = document.getElementById('pwa-install-btn')
+    const dismissBtn  = document.getElementById('pwa-dismiss-btn')
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault()
+      deferredPrompt = e
+      // أظهر البانر بعد 5 ثواني
+      setTimeout(() => {
+        if (!localStorage.getItem('pwa-dismissed')) banner.classList.add('show')
+      }, 5000)
+    })
+
+    installBtn?.addEventListener('click', async () => {
+      if (!deferredPrompt) return
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') banner.classList.remove('show')
+      deferredPrompt = null
+    })
+
+    dismissBtn?.addEventListener('click', () => {
+      banner.classList.remove('show')
+      localStorage.setItem('pwa-dismissed', '1')
+    })
+
+    window.addEventListener('appinstalled', () => {
+      banner.classList.remove('show')
+      console.log('✅ PWA installed')
+    })
+  </script>
 </body>
 </html>
