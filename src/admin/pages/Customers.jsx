@@ -901,8 +901,6 @@ export default function Customers() {
 
       </div>
 
-    </div>
-
       {/* ── مودال تسديد الدين ── */}
       {showDebtModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -950,7 +948,8 @@ export default function Customers() {
         </div>
       )}
 
-  
+    </div>
+  )
 
 }
 
