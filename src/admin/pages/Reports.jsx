@@ -1,810 +1,330 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+/**
+ * @file Reports.jsx — التقارير الشاملة
+ */
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase.js'
-import { CLR, S, CUR, WA_DEFAULT } from '../styles/constants.js'
-import { softDelete, logActivity, printThermal, printA4 } from '../styles/helpers.js'
-import { NumInput, PhoneInput } from '../styles/FormInputs.jsx'
+import { CLR, S, CUR } from '../styles/constants.js'
+import { printA4 } from '../styles/helpers.js'
 import useToast from '../hooks/useToast.jsx'
-import useConfirm from '../hooks/useConfirm.jsx'
+
+const TODAY  = new Date().toISOString().split('T')[0]
+const M_START = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
 
 export default function Reports() {
-
-  const [showToast, ToastUI] = useToast();
-
-  const [data, setData] = useState({ orders: [], purchases: [], expenses: [], customers: [] });
-
-  const [repTab, setRepTab] = useState("overview");
-
-
-
-  useEffect(() => {
-
-    const load = async () => {
-
-      try {
-
-        const [{ data: o }, { data: p }, { data: e }, { data: cu }] = await Promise.all([
-
-          supabase.from("orders").select("*").order("id", { ascending: false }),
-
-          supabase.from("purchases").select("*"),
-
-          supabase.from("expenses").select("*"),
-
-          supabase.from("customers").select("id,name,total_purchases,tier,address"),
-
-        ]);
-
-        setData({ orders: o || [], purchases: p || [], expenses: e || [], customers: cu || [] });
-
-      } catch (err) {
-
-        console.error("❌ خطأ في تحميل التقارير:", err);
-
-        showToast("❌ خطأ في تحميل التقارير", "error");
-
-      }
-
-    };
-
-    load();
-
-  }, []);
-
-
-
-  const exportPDF = () => {
-
-    const content = `
-
-      <div class="header"><div><h1>🛍️ نقاء</h1><p>تقرير شامل</p></div><div>${new Date().toLocaleDateString("ar-DZ")}</div></div>
-
-      <h2>إحصائيات</h2>
-
-      <table>
-
-        <thead><tr><th>المؤشر</th><th>القيمة</th></tr></thead>
-
-        <tbody>
-
-          <tr><td>إجمالي المبيعات</td><td>${data.orders.reduce((s, o) => s + Number(o.total), 0).toFixed(0)} ${CUR}</td></tr>
-
-          <tr><td>عدد الطلبيات</td><td>${data.orders.length}</td></tr>
-
-          <tr><td>عدد العملاء</td><td>${data.customers.length}</td></tr>
-
-          <tr><td>إجمالي المشتريات</td><td>${data.purchases.reduce((s, p) => s + Number(p.total), 0).toFixed(0)} ${CUR}</td></tr>
-
-          <tr><td>إجمالي المصاريف</td><td>${data.expenses.reduce((s, e) => s + Number(e.amount), 0).toFixed(0)} ${CUR}</td></tr>
-
-        </tbody>
-
-      </table>
-
-      <div class="footer">نقاء — تقرير شهري</div>
-
-    `;
-
-    printA4(content);
-
-  };
-
-
-
-  const now = new Date();
-
-  const thisM = now.getMonth();
-
-  const thisY = now.getFullYear();
-
-  const lastM = thisM === 0 ? 11 : thisM - 1;
-
-  const lastY = thisM === 0 ? thisY - 1 : thisY;
-
-  const salesThisM = data.orders
-
-    .filter((o) => {
-
-      const d = new Date(o.created_at || o.date);
-
-      return d.getMonth() === thisM && d.getFullYear() === thisY;
-
-    })
-
-    .reduce((s, o) => s + Number(o.total), 0);
-
-  const salesLastM = data.orders
-
-    .filter((o) => {
-
-      const d = new Date(o.created_at || o.date);
-
-      return d.getMonth() === lastM && d.getFullYear() === lastY;
-
-    })
-
-    .reduce((s, o) => s + Number(o.total), 0);
-
-  const chg = salesLastM > 0 ? Math.round(((salesThisM - salesLastM) / salesLastM) * 100) : 0;
-
-  const totalSales = data.orders.reduce((s, o) => s + Number(o.total), 0);
-
-  const totalPurch = data.purchases.reduce((s, p) => s + Number(p.total), 0);
-
-  const totalExp = data.expenses.reduce((s, e) => s + Number(e.amount), 0);
-
-  const profit = totalSales - totalPurch - totalExp;
-
-
-
-  const prodSales = {};
-
-  data.orders.forEach((o) => {
-
-    const its = typeof o.items === "string" ? JSON.parse(o.items || "[]") : (o.items || []);
-
-    its.forEach((i) => {
-
-      prodSales[i.name] = (prodSales[i.name] || 0) + ((i.qty || 1) * (i.price || 0));
-
-    });
-
-  });
-
-  const topProds = Object.entries(prodSales).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-  const topCusts = [...data.customers]
-
-    .sort((a, b) => Number(b.total_purchases || 0) - Number(a.total_purchases || 0))
-
-    .slice(0, 8);
-
-  const geoData = {};
-
-  data.orders.forEach((o) => {
-
-    const w = (o.address || o.customer_address || "غير محدد").split(/[,،]/)[0].trim() || "غير محدد";
-
-    geoData[w] = (geoData[w] || 0) + Number(o.total);
-
-  });
-
-  const topGeo = Object.entries(geoData).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-  const maxP = topProds[0]?.[1] || 1;
-
-  const maxC = Number(topCusts[0]?.total_purchases || 1);
-
-  const maxG = topGeo[0]?.[1] || 1;
-
-
-
-  const sSt = (s) => ({
-
-    padding: "3px 9px",
-
-    borderRadius: 20,
-
-    fontSize: 11,
-
-    fontWeight: 700,
-
-    background:
-
-      {
-
-        pending: "#FEF9C3",
-
-        confirmed: "#DBEAFE",
-
-        shipping: "#E0E7FF",
-
-        delivered: "#D1FAE5",
-
-        cancelled: "#FEE2E2",
-
-      }[s] || "#F1F5F9",
-
-    color:
-
-      {
-
-        pending: "#92400E",
-
-        confirmed: "#1D4ED8",
-
-        shipping: "#5B21B6",
-
-        delivered: "#059669",
-
-        cancelled: "#DC2626",
-
-      }[s] || "#475569",
-
-  });
-
-
+  const [showToast, ToastUI] = useToast()
+  const [tab, setTab]           = useState('daily')
+  const [dateFrom, setDateFrom] = useState(M_START)
+  const [dateTo, setDateTo]     = useState(TODAY)
+  const [data, setData]         = useState(null)
+  const [loading, setLoading]   = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [{ data: orders }, { data: products }, { data: customers }, { data: purchases }, { data: expenses }] = await Promise.all([
+        supabase.from('orders').select('*').gte('created_at', dateFrom+'T00:00:00').lte('created_at', dateTo+'T23:59:59').order('created_at', { ascending: false }),
+        supabase.from('products').select('id,name,stock,price,units').eq('disabled', false),
+        supabase.from('customers').select('id,name,phone,debt,total_purchases,tier').order('total_purchases', { ascending: false }),
+        supabase.from('purchases').select('*').gte('date', dateFrom).lte('date', dateTo),
+        supabase.from('expenses').select('*').gte('date', dateFrom).lte('date', dateTo),
+      ])
+
+      const ords = orders || []
+      const prods = products || []
+
+      // إجمالي المبيعات
+      const totalSales = ords.reduce((s, o) => s + Number(o.total), 0)
+      const totalPurch = (purchases || []).reduce((s, p) => s + Number(p.total), 0)
+      const totalExp   = (expenses || []).reduce((s, e) => s + Number(e.amount), 0)
+      const profit     = totalSales - totalPurch - totalExp
+
+      // أكثر المنتجات مبيعاً
+      const prodSales = {}
+      ords.forEach(o => {
+        const items = typeof o.items === 'string' ? JSON.parse(o.items || '[]') : (o.items || [])
+        items.forEach(i => {
+          if (!prodSales[i.product_id]) prodSales[i.product_id] = { name: i.product_name, qty: 0, revenue: 0 }
+          prodSales[i.product_id].qty += i.qty
+          prodSales[i.product_id].revenue += i.total
+        })
+      })
+      const topProducts = Object.values(prodSales).sort((a, b) => b.revenue - a.revenue).slice(0, 10)
+
+      // أكثر العملاء شراءً في الفترة
+      const custSales = {}
+      ords.forEach(o => {
+        const key = o.customer_name || 'زبون عابر'
+        if (!custSales[key]) custSales[key] = { name: key, phone: o.phone || '', orders: 0, total: 0 }
+        custSales[key].orders++
+        custSales[key].total += Number(o.total)
+      })
+      const topCustomers = Object.values(custSales).sort((a, b) => b.total - a.total).slice(0, 10)
+
+      // المنتجات منخفضة المخزون
+      const lowStock = prods.filter(p => (p.stock || 0) <= 5).sort((a, b) => a.stock - b.stock)
+
+      // المنتجات الراكدة (لم تُباع في الفترة)
+      const soldIds = new Set(Object.keys(prodSales).map(Number))
+      const stagnant = prods.filter(p => !soldIds.has(p.id) && p.stock > 0)
+
+      // ديون العملاء
+      const debtors = (customers || []).filter(c => parseFloat(c.debt || 0) > 0).sort((a, b) => b.debt - a.debt)
+      const totalDebt = debtors.reduce((s, c) => s + parseFloat(c.debt || 0), 0)
+
+      // مبيعات يومية (آخر 7 أيام للرسم البياني)
+      const daily = {}
+      ords.forEach(o => {
+        const d = o.created_at?.split('T')[0] || ''
+        if (!daily[d]) daily[d] = 0
+        daily[d] += Number(o.total)
+      })
+
+      setData({ totalSales, totalPurch, totalExp, profit, topProducts, topCustomers, lowStock, stagnant, debtors, totalDebt, ordersCount: ords.length, daily })
+    } catch (err) {
+      showToast('❌ خطأ: ' + err.message, 'error')
+    } finally { setLoading(false) }
+  }, [dateFrom, dateTo])
+
+  useEffect(() => { load() }, [load])
+
+  const TABS = [
+    { id: 'daily',    label: '📊 الملخص' },
+    { id: 'products', label: '📦 المنتجات' },
+    { id: 'customers',label: '👥 العملاء' },
+    { id: 'debt',     label: '💰 الديون' },
+    { id: 'stock',    label: '🏭 المخزون' },
+  ]
+
+  const printReport = () => {
+    if (!data) return
+    printA4(`
+      <style>body{font-family:Arial,sans-serif;direction:rtl;font-size:12px} table{width:100%;border-collapse:collapse;margin-bottom:16px} th{background:#1E293B;color:white;padding:7px;border:1px solid #000} td{padding:6px 8px;border:1px solid #ccc} h2{color:#1565C0;margin:16px 0 8px} .stat{display:inline-block;border:1px solid #ccc;padding:10px 20px;border-radius:8px;margin:4px;text-align:center} .stat b{display:block;font-size:18px;margin-bottom:4px}</style>
+      <h1 style="text-align:center;margin-bottom:16px">تقرير المبيعات — ${dateFrom} إلى ${dateTo}</h1>
+      <div>
+        <span class="stat"><b style="color:#16a34a">${data.totalSales.toFixed(0)} ${CUR}</b>إجمالي المبيعات</span>
+        <span class="stat"><b style="color:#dc2626">${data.totalPurch.toFixed(0)} ${CUR}</b>إجمالي المشتريات</span>
+        <span class="stat"><b style="color:#7c3aed">${data.totalExp.toFixed(0)} ${CUR}</b>المصاريف</span>
+        <span class="stat"><b style="color:${data.profit>=0?'#16a34a':'#dc2626'}">${data.profit.toFixed(0)} ${CUR}</b>الربح الصافي</span>
+        <span class="stat"><b>${data.ordersCount}</b>عدد الطلبيات</span>
+      </div>
+      <h2>أكثر المنتجات مبيعاً</h2>
+      <table><thead><tr><th>#</th><th>المنتج</th><th>الكمية</th><th>الإيراد</th></tr></thead><tbody>
+        ${data.topProducts.map((p,i)=>`<tr><td>${i+1}</td><td>${p.name}</td><td>${p.qty}</td><td>${p.revenue.toFixed(0)} ${CUR}</td></tr>`).join('')}
+      </tbody></table>
+      <h2>أفضل العملاء</h2>
+      <table><thead><tr><th>#</th><th>العميل</th><th>الطلبيات</th><th>الإجمالي</th></tr></thead><tbody>
+        ${data.topCustomers.map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.orders}</td><td>${c.total.toFixed(0)} ${CUR}</td></tr>`).join('')}
+      </tbody></table>
+      ${data.debtors.length>0?`<h2>الديون المتراكمة</h2><table><thead><tr><th>العميل</th><th>الهاتف</th><th>الدين</th></tr></thead><tbody>${data.debtors.map(c=>`<tr><td>${c.name}</td><td>${c.phone||'—'}</td><td style="color:#dc2626;font-weight:700">${Number(c.debt).toFixed(2)} ${CUR}</td></tr>`).join('')}</tbody></table>`:''}
+    `)
+  }
+
+  const StatCard = ({ icon, label, value, sub, color = CLR.text, bg = 'white' }) => (
+    <div style={{ background: bg, borderRadius: 14, padding: '18px 20px', border: '1px solid #e2e8f0', boxShadow: '0 1px 6px rgba(0,0,0,.05)' }}>
+      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 900, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{sub}</div>}
+    </div>
+  )
 
   return (
-
-    <div>
-
-      {ToastUI}
-
-      <h1 style={{ fontSize: 20, fontWeight: 900, marginBottom: 20, color: CLR.text }}>
-
-        📈 التقارير
-
-      </h1>
-
-      <button
-
-        style={{ ...S.btn, background: "#7c3aed", marginBottom: 16 }}
-
-        onClick={exportPDF}
-
-      >
-
-        📄 تصدير تقرير PDF
-
-      </button>
-
-
-
-      <div
-
-        style={{
-
-          display: "grid",
-
-          gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))",
-
-          gap: 12,
-
-          marginBottom: 20,
-
-        }}
-
-      >
-
-        {[
-
-          { l: "هذا الشهر", v: salesThisM, c: CLR.accent, i: "📅", ch: chg },
-
-          { l: "الشهر الماضي", v: salesLastM, c: "#94A3B8", i: "🗓️" },
-
-          { l: "إجمالي المبيعات", v: totalSales, c: CLR.success, i: "💰" },
-
-          { l: "صافي الربح", v: profit, c: profit >= 0 ? CLR.success : CLR.danger, i: "📊" },
-
-        ].map((s, i) => (
-
-          <div key={i} style={{ ...S.card, marginBottom: 0, borderTop: `3px solid ${s.c}` }}>
-
-            <div
-
-              style={{
-
-                display: "flex",
-
-                justifyContent: "space-between",
-
-                alignItems: "flex-start",
-
-              }}
-
-            >
-
-              <div
-
-                style={{
-
-                  width: 36,
-
-                  height: 36,
-
-                  borderRadius: 8,
-
-                  background: s.c + "18",
-
-                  display: "flex",
-
-                  alignItems: "center",
-
-                  justifyContent: "center",
-
-                  fontSize: 18,
-
-                }}
-
-              >
-
-                {s.i}
-
-              </div>
-
-              {s.ch !== undefined && (
-
-                <span
-
-                  style={{
-
-                    fontSize: 11,
-
-                    fontWeight: 700,
-
-                    padding: "2px 7px",
-
-                    borderRadius: 20,
-
-                    background: s.ch >= 0 ? "#D1FAE5" : "#FEE2E2",
-
-                    color: s.ch >= 0 ? "#059669" : "#DC2626",
-
-                  }}
-
-                >
-
-                  {s.ch >= 0 ? "↑" : "↓"}
-
-                  {Math.abs(s.ch)}%
-
-                </span>
-
-              )}
-
-            </div>
-
-            <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginTop: 8 }}>
-
-              {s.v.toFixed(0)} {CUR}
-
-            </div>
-
-            <div style={{ fontSize: 12, color: CLR.textSm }}>{s.l}</div>
-
-          </div>
-
-        ))}
-
+    <div dir="rtl">{ToastUI}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 900, color: CLR.text, margin: 0 }}>📊 التقارير</h1>
+        <button style={S.btn} onClick={printReport} disabled={!data}>🖨️ طباعة التقرير</button>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      {/* فلاتر الفترة */}
+      <div style={{ ...S.card, padding: 14 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'end', flexWrap: 'wrap' }}>
+          <div><label style={S.label}>من</label><input type="date" style={{ ...S.input, width: 160 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
+          <div><label style={S.label}>إلى</label><input type="date" style={{ ...S.input, width: 160 }} value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
+          <button style={S.btn} onClick={load} disabled={loading}>{loading ? '⏳...' : '🔍 تحديث'}</button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { l: 'اليوم', f: TODAY, t: TODAY },
+              { l: 'هذا الأسبوع', f: new Date(Date.now()-7*864e5).toISOString().split('T')[0], t: TODAY },
+              { l: 'هذا الشهر', f: M_START, t: TODAY },
+              { l: '3 أشهر', f: new Date(Date.now()-90*864e5).toISOString().split('T')[0], t: TODAY },
+              { l: 'هذه السنة', f: new Date().getFullYear()+'-01-01', t: TODAY },
+            ].map(r => (
+              <button key={r.l} onClick={() => { setDateFrom(r.f); setDateTo(r.t) }}
+                style={{ ...S.btnSm, background: dateFrom===r.f&&dateTo===r.t?'#1565C0':'#f1f5f9', color: dateFrom===r.f&&dateTo===r.t?'white':'#475569', padding: '6px 12px' }}>
+                {r.l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-        {[
-
-          ["overview", "نظرة عامة"],
-
-          ["products", "المنتجات"],
-
-          ["customers", "العملاء"],
-
-          ["geo", "جغرافي"],
-
-        ].map(([v, l]) => (
-
-          <button
-
-            key={v}
-
-            onClick={() => setRepTab(v)}
-
-            style={{
-
-              ...S.btnSm,
-
-              background: repTab === v ? CLR.accent : "white",
-
-              color: repTab === v ? "white" : CLR.textSm,
-
-              border: `1px solid ${repTab === v ? CLR.accent : CLR.border}`,
-
-              padding: "7px 16px",
-
-              fontSize: 13,
-
-            }}
-
-          >
-
-            {l}
-
+      {/* تابات */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ ...S.btnSm, padding: '9px 18px', whiteSpace: 'nowrap', background: tab===t.id ? '#1565C0' : '#f1f5f9', color: tab===t.id ? 'white' : '#475569', fontSize: 13, fontWeight: tab===t.id ? 800 : 600 }}>
+            {t.label}
           </button>
-
         ))}
-
       </div>
 
-      {repTab === "overview" && (
+      {loading && <div style={{ textAlign: 'center', padding: 40, color: CLR.textSm }}>⏳ جاري التحميل...</div>}
 
-        <div style={S.card}>
+      {data && !loading && (
+        <>
+          {/* ── الملخص ── */}
+          {tab === 'daily' && (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12, marginBottom: 16 }}>
+                <StatCard icon="💰" label="إجمالي المبيعات" value={`${data.totalSales.toFixed(0)} ${CUR}`} color="#16a34a" bg="#f0fdf4" sub={`${data.ordersCount} طلبية`} />
+                <StatCard icon="🛒" label="تكلفة المشتريات" value={`${data.totalPurch.toFixed(0)} ${CUR}`} color="#dc2626" bg="#fff1f2" />
+                <StatCard icon="📋" label="المصاريف" value={`${data.totalExp.toFixed(0)} ${CUR}`} color="#7c3aed" bg="#faf5ff" />
+                <StatCard icon="📈" label="الربح الصافي" value={`${data.profit.toFixed(0)} ${CUR}`} color={data.profit >= 0 ? '#16a34a' : '#dc2626'} bg={data.profit >= 0 ? '#f0fdf4' : '#fff1f2'} />
+                <StatCard icon="⚠️" label="إجمالي الديون" value={`${data.totalDebt.toFixed(0)} ${CUR}`} color="#dc2626" bg="#fff1f2" sub={`${data.debtors.length} عميل`} />
+                <StatCard icon="📦" label="منتجات منخفضة" value={data.lowStock.length} color={data.lowStock.length > 0 ? '#dc2626' : '#16a34a'} sub="أقل من 5 كرتون" />
+              </div>
 
-          <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>
-
-            📋 آخر الطلبيات
-
-          </h3>
-
-          <div style={{ overflowX: "auto" }}>
-
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-
-              <thead>
-
-                <tr style={{ background: CLR.bg }}>
-
-                  <th style={S.th}>#</th>
-
-                  <th style={S.th}>العميل</th>
-
-                  <th style={S.th}>الولاية</th>
-
-                  <th style={S.th}>الإجمالي</th>
-
-                  <th style={S.th}>الحالة</th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {data.orders.slice(0, 15).map((o, i) => (
-
-                  <tr key={o.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
-
-                    <td style={{ ...S.td, fontSize: 11, color: CLR.textSm }}>
-
-                      #{String(o.id).slice(-5)}
-
-                    </td>
-
-                    <td style={{ ...S.td, fontWeight: 700 }}>{o.customer_name}</td>
-
-                    <td style={{ ...S.td, color: CLR.textSm }}>
-
-                      {(o.address || o.customer_address || "—").split(/[,،]/)[0]}
-
-                    </td>
-
-                    <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>
-
-                      {Number(o.total).toFixed(0)} {CUR}
-
-                    </td>
-
-                    <td style={S.td}>
-
-                      <span style={sSt(o.status)}>{o.status || "انتظار"}</span>
-
-                    </td>
-
-                  </tr>
-
+              {/* أكثر المنتجات مبيعاً */}
+              <div style={S.card}>
+                <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>🏆 أكثر المنتجات مبيعاً</h3>
+                {data.topProducts.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: i<3?['#ffd700','#c0c0c0','#cd7f32'][i]:'#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, flexShrink: 0, color: i<3?'white':'#475569' }}>{i+1}</div>
+                    <div style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                    <div style={{ fontSize: 13, color: '#64748b' }}>{p.qty} وحدة</div>
+                    <div style={{ fontWeight: 900, color: '#16a34a', fontSize: 14 }}>{p.revenue.toFixed(0)} {CUR}</div>
+                    <div style={{ width: 100, background: '#f1f5f9', borderRadius: 20, height: 8, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#1565C0', borderRadius: 20, width: `${Math.min(100, (p.revenue/data.topProducts[0].revenue)*100)}%` }} />
+                    </div>
+                  </div>
                 ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {repTab === "products" && (
-
-        <div style={S.card}>
-
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
-
-            📦 أكثر المنتجات مبيعاً
-
-          </h3>
-
-          {topProds.length === 0 ? (
-
-            <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p>
-
-          ) : (
-
-            topProds.map(([name, val], i) => (
-
-              <div key={i} style={{ marginBottom: 14 }}>
-
-                <div
-
-                  style={{
-
-                    display: "flex",
-
-                    justifyContent: "space-between",
-
-                    marginBottom: 5,
-
-                    fontSize: 13,
-
-                  }}
-
-                >
-
-                  <span style={{ fontWeight: 700 }}>
-
-                    {i + 1}. {name}
-
-                  </span>
-
-                  <span style={{ color: CLR.accent, fontWeight: 700 }}>
-
-                    {val.toFixed(0)} {CUR}
-
-                  </span>
-
-                </div>
-
-                <div style={{ background: CLR.bg, borderRadius: 30, height: 8, overflow: "hidden" }}>
-
-                  <div
-
-                    style={{
-
-                      width: `${(val / maxP) * 100}%`,
-
-                      height: "100%",
-
-                      background: `linear-gradient(90deg,${CLR.accent},${CLR.accentDk})`,
-
-                      borderRadius: 30,
-
-                    }}
-
-                  />
-
-                </div>
-
               </div>
-
-            ))
-
+            </>
           )}
 
-        </div>
-
-      )}
-
-      {repTab === "customers" && (
-
-        <div style={S.card}>
-
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
-
-            👥 أكثر العملاء شراءً
-
-          </h3>
-
-          <div style={{ overflowX: "auto" }}>
-
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-
-              <thead>
-
-                <tr style={{ background: CLR.bg }}>
-
-                  <th style={S.th}>#</th>
-
-                  <th style={S.th}>الاسم</th>
-
-                  <th style={S.th}>الرتبة</th>
-
-                  <th style={S.th}>المشتريات</th>
-
-                  <th style={S.th}>التقدم</th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {topCusts.map((c, i) => {
-
-                  const ts = {
-
-                    M1: { bg: "#F1F5F9", color: CLR.textSm },
-
-                    M2: { bg: "#DBEAFE", color: "#1D4ED8" },
-
-                    M3: { bg: "#FEF9C3", color: "#92400E" },
-
-                  }[c.tier || "M1"];
-
-                  return (
-
-                    <tr key={c.id} className="nq-tr" style={{ background: i % 2 === 0 ? "white" : CLR.bg }}>
-
-                      <td style={{ ...S.td, fontWeight: 900, color: CLR.textSm }}>{i + 1}</td>
-
-                      <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
-
-                      <td style={S.td}>
-
-                        <span
-
-                          style={{
-
-                            ...ts,
-
-                            padding: "2px 9px",
-
-                            borderRadius: 20,
-
-                            fontSize: 11,
-
-                            fontWeight: 700,
-
-                          }}
-
-                        >
-
-                          {c.tier || "M1"}
-
-                        </span>
-
-                      </td>
-
-                      <td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>
-
-                        {Number(c.total_purchases || 0).toFixed(0)} {CUR}
-
-                      </td>
-
-                      <td style={{ ...S.td, minWidth: 100 }}>
-
-                        <div
-
-                          style={{
-
-                            background: CLR.bg,
-
-                            borderRadius: 30,
-
-                            height: 6,
-
-                            overflow: "hidden",
-
-                          }}
-
-                        >
-
-                          <div
-
-                            style={{
-
-                              width: `${Math.min(
-
-                                100,
-
-                                (Number(c.total_purchases || 0) / maxC) * 100
-
-                              )}%`,
-
-                              height: "100%",
-
-                              background: `linear-gradient(90deg,${CLR.accent},#FB923C)`,
-
-                              borderRadius: 30,
-
-                            }}
-
-                          />
-
-                        </div>
-
-                      </td>
-
+          {/* ── المنتجات ── */}
+          {tab === 'products' && (
+            <div style={S.card}>
+              <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>📦 تفاصيل مبيعات المنتجات</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead><tr>{['#','المنتج','الكمية المباعة','الإيراد','متوسط السعر'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {data.topProducts.map((p,i) => (
+                    <tr key={i} style={{ background: i%2===0?'white':'#fafafa' }}>
+                      <td style={{ ...S.td, textAlign: 'center' }}>{i+1}</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
+                      <td style={{ ...S.td, textAlign: 'center', fontWeight: 700 }}>{p.qty}</td>
+                      <td style={{ ...S.td, fontWeight: 900, color: '#16a34a' }}>{p.revenue.toFixed(0)} {CUR}</td>
+                      <td style={{ ...S.td, textAlign: 'center' }}>{p.qty > 0 ? (p.revenue/p.qty).toFixed(0) : '—'} {CUR}</td>
                     </tr>
-
-                  );
-
-                })}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {repTab === "geo" && (
-
-        <div style={S.card}>
-
-          <h3 style={{ fontWeight: 800, marginBottom: 16, fontSize: 15 }}>
-
-            🗺️ المبيعات حسب الولاية
-
-          </h3>
-
-          {topGeo.length === 0 ? (
-
-            <p style={{ color: CLR.textSm, textAlign: "center", padding: 24 }}>لا بيانات</p>
-
-          ) : (
-
-            topGeo.map(([wil, val], i) => (
-
-              <div key={i} style={{ marginBottom: 14 }}>
-
-                <div
-
-                  style={{
-
-                    display: "flex",
-
-                    justifyContent: "space-between",
-
-                    marginBottom: 5,
-
-                    fontSize: 13,
-
-                  }}
-
-                >
-
-                  <span style={{ fontWeight: 700 }}>📍 {wil}</span>
-
-                  <span style={{ color: CLR.info, fontWeight: 700 }}>
-
-                    {val.toFixed(0)} {CUR}
-
-                  </span>
-
-                </div>
-
-                <div style={{ background: CLR.bg, borderRadius: 30, height: 8, overflow: "hidden" }}>
-
-                  <div
-
-                    style={{
-
-                      width: `${(val / maxG) * 100}%`,
-
-                      height: "100%",
-
-                      background: `linear-gradient(90deg,${CLR.info},#60A5FA)`,
-
-                      borderRadius: 30,
-
-                    }}
-
-                  />
-
-                </div>
-
-              </div>
-
-            ))
-
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
-        </div>
+          {/* ── العملاء ── */}
+          {tab === 'customers' && (
+            <div style={S.card}>
+              <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15 }}>👥 أفضل العملاء في الفترة</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead><tr>{['#','العميل','الهاتف','الطلبيات','الإجمالي','المتوسط'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {data.topCustomers.map((c,i) => (
+                    <tr key={i} style={{ background: i%2===0?'white':'#fafafa' }}>
+                      <td style={{ ...S.td, textAlign: 'center' }}>{i+1}</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
+                      <td style={S.td}>{c.phone || '—'}</td>
+                      <td style={{ ...S.td, textAlign: 'center', fontWeight: 700 }}>{c.orders}</td>
+                      <td style={{ ...S.td, fontWeight: 900, color: '#16a34a' }}>{c.total.toFixed(0)} {CUR}</td>
+                      <td style={{ ...S.td, textAlign: 'center' }}>{c.orders > 0 ? (c.total/c.orders).toFixed(0) : '—'} {CUR}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
+          {/* ── الديون ── */}
+          {tab === 'debt' && (
+            <div style={S.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h3 style={{ fontWeight: 800, fontSize: 15, margin: 0, color: '#dc2626' }}>💰 قائمة الديون — الإجمالي: {data.totalDebt.toFixed(0)} {CUR}</h3>
+              </div>
+              {data.debtors.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: '#16a34a', fontWeight: 700 }}>✅ لا توجد ديون مستحقة</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead><tr>{['العميل','الهاتف','الرتبة','الدين','إجمالي مشترياته'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {data.debtors.map((c,i) => (
+                      <tr key={i} style={{ background: i%2===0?'white':'#fafafa' }}>
+                        <td style={{ ...S.td, fontWeight: 700 }}>{c.name}</td>
+                        <td style={S.td}>{c.phone || '—'}</td>
+                        <td style={{ ...S.td, textAlign: 'center' }}>{c.tier || 'M1'}</td>
+                        <td style={{ ...S.td, fontWeight: 900, color: '#dc2626', fontSize: 15 }}>{Number(c.debt).toFixed(2)} {CUR}</td>
+                        <td style={{ ...S.td, textAlign: 'center' }}>{Number(c.total_purchases || 0).toFixed(0)} {CUR}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: '#fff1f2', fontWeight: 900 }}>
+                      <td colSpan={3} style={{ ...S.td, fontSize: 14 }}>إجمالي الديون</td>
+                      <td style={{ ...S.td, color: '#dc2626', fontSize: 16, fontWeight: 900 }}>{data.totalDebt.toFixed(2)} {CUR}</td>
+                      <td style={S.td}></td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {/* ── المخزون ── */}
+          {tab === 'stock' && (
+            <>
+              <div style={S.card}>
+                <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15, color: '#dc2626' }}>⚠️ منتجات منخفضة المخزون ({data.lowStock.length})</h3>
+                {data.lowStock.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 24, color: '#16a34a', fontWeight: 700 }}>✅ المخزون بخير</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead><tr>{['المنتج','المخزون الحالي (كرتون)','الحالة'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {data.lowStock.map((p,i) => (
+                        <tr key={i} style={{ background: p.stock===0?'#fff1f2':i%2===0?'white':'#fafafa' }}>
+                          <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
+                          <td style={{ ...S.td, textAlign: 'center', fontWeight: 900, color: p.stock===0?'#dc2626':'#f59e0b', fontSize: 16 }}>{p.stock}</td>
+                          <td style={{ ...S.td, textAlign: 'center' }}>
+                            <span style={{ background: p.stock===0?'#fee2e2':'#fef9c3', color: p.stock===0?'#dc2626':'#854d0e', borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>
+                              {p.stock===0?'🔴 نفد المخزون':'🟡 منخفض'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div style={S.card}>
+                <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15, color: '#64748b' }}>😴 منتجات راكدة لم تُباع في الفترة ({data.stagnant.length})</h3>
+                {data.stagnant.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: 24, color: '#16a34a', fontWeight: 700 }}>✅ كل المنتجات تُباع</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead><tr>{['المنتج','المخزون'].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {data.stagnant.map((p,i) => (
+                        <tr key={i} style={{ background: i%2===0?'white':'#fafafa' }}>
+                          <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
+                          <td style={{ ...S.td, textAlign: 'center' }}>{p.stock} كرتون</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </>
+          )}
+        </>
       )}
-
     </div>
-
-  );
-
+  )
 }
-
-
-
-/* ══════════════════════════════════════════
-
-   💸 المصاريف
-
-══════════════════════════════════════════ */
-
