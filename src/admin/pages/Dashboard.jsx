@@ -787,4 +787,3 @@ export default function Dashboard({ user, showToast }) {
   )
 }
 
-export default Dashboard
