@@ -686,43 +686,7 @@ export default function Dashboard({ user, showToast }) {
 
       
 
-      {/* ✅ تنبيه المخزون المنخفض */}
 
-      {lowStock.length>0&&(
-
-        <div style={{ background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
-
-          padding:'12px 16px', marginBottom:18, display:'flex', gap:12, alignItems:'flex-start' }}>
-
-          <span style={{ fontSize:20 }}>⚠️</span>
-
-          <div style={{ flex:1 }}>
-
-            <strong style={{ color:'#C2410C', fontSize:13 }}>مخزون منخفض — {lowStock.length} منتج</strong>
-
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6 }}>
-
-              {lowStock.slice(0,10).map(p=>(
-
-                <span key={p.id} style={{ background:'white', border:'1px solid #FED7AA', color:'#C2410C',
-
-                  padding:'2px 10px', borderRadius:20, fontSize:11, fontWeight:600 }}>
-
-                  {p.name} ({p.stock||0} كرتون)
-
-                </span>
-
-              ))}
-
-              {lowStock.length>10&&<span style={{fontSize:11,color:CLR.textSm}}>+{lowStock.length-10} أخرى</span>}
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
 
 
 
@@ -768,179 +732,56 @@ export default function Dashboard({ user, showToast }) {
 
           </div>}
 
-      </div>
-
-
+            </div>
 
       {/* ✅ المنتجات الموشكة على النفاد */}
-
       <div style={S.card}>
-
         <h3 style={{ fontWeight: 800, marginBottom: 14, fontSize: 15, color: '#dc2626' }}>
-
           ⚠️ المنتجات الموشكة على النفاد
-
         </h3>
-
         {lowStock.length === 0 ? (
-
-          <p style={{ textAlign: 'center', color: CLR.textSm, padding: 20 }}>
-
-            ✅ جميع المنتجات متوفرة بالمخزون الكافي
-
-          </p>
-
+          <p style={{ textAlign: 'center', color: CLR.textSm, padding: 20 }}>✅ جميع المنتجات متوفرة بالمخزون الكافي</p>
         ) : (
-
           <div style={{ overflowX: 'auto' }}>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-
-              <thead>
-
-                <tr style={{ background: '#FEF2F2' }}>
-
-                  <th style={S.th}>#</th>
-
-                  <th style={S.th}>المنتج</th>
-
-                  <th style={S.th}>المخزون الحالي</th>
-
-                  <th style={S.th}>الحد الأدنى</th>
-
-                  <th style={S.th}>الحالة</th>
-
-                </tr>
-
-              </thead>
-
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>#</th>
+                <th style={S.th}>المنتج</th>
+                <th style={S.th}>المخزون الحالي</th>
+                <th style={S.th}>الحد الأدنى</th>
+                <th style={S.th}>الحالة</th>
+              </tr></thead>
               <tbody>
-
-                {lowStock
-
-                  .sort((a, b) => (a.stock || 0) - (b.stock || 0))
-
-                  .map((p, i) => {
-
-                    const stock = p.stock || 0
-
-                    const minStock = 5
-
-                    const percentage = Math.min(100, (stock / minStock) * 100)
-
-                    const status = stock === 0 ? 'نفذ' : stock < minStock / 2 ? 'حرج' : 'منخفض'
-
-                    const statusColor = stock === 0 ? '#DC2626' : stock < minStock / 2 ? '#F59E0B' : '#F97316'
-
-                    
-
-                    return (
-
-                      <tr key={p.id} style={{ background: i % 2 === 0 ? 'white' : '#FEF2F2' }}>
-
-                        <td style={S.td}>{i + 1}</td>
-
-                        <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
-
-                        <td style={S.td}>
-
-                          <span style={{
-
-                            padding: '3px 10px',
-
-                            borderRadius: 20,
-
-                            fontSize: 12,
-
-                            fontWeight: 700,
-
-                            background: stock === 0 ? '#FEE2E2' : '#FEF3C7',
-
-                            color: stock === 0 ? '#DC2626' : '#92400E'
-
-                          }}>
-
-                            {stock} كرتون
-
-                          </span>
-
-                        </td>
-
-                        <td style={S.td}>{minStock} كرتون</td>
-
-                        <td style={S.td}>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-
-                            <div style={{
-
-                              width: 60,
-
-                              height: 6,
-
-                              background: '#E5E7EB',
-
-                              borderRadius: 10,
-
-                              overflow: 'hidden'
-
-                            }}>
-
-                              <div style={{
-
-                                width: `${percentage}%`,
-
-                                height: '100%',
-
-                                background: statusColor,
-
-                                borderRadius: 10,
-
-                                transition: 'width .5s ease'
-
-                              }} />
-
-                            </div>
-
-                            <span style={{
-
-                              fontSize: 11,
-
-                              fontWeight: 700,
-
-                              color: statusColor
-
-                            }}>
-
-                              {status}
-
-                            </span>
-
+                {lowStock.map((p, idx) => {
+                  const ratio = (p.stock || 0) / (p.min_stock || 5)
+                  const statusColor = p.stock === 0 ? '#dc2626' : ratio < 0.5 ? '#b45309' : '#d97706'
+                  const status = p.stock === 0 ? '❌ نفد' : ratio < 0.5 ? '⚠️ حرج' : '⚡ منخفض'
+                  return (
+                    <tr key={p.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,.02)' }}>
+                      <td style={{ ...S.td, color: CLR.textSm, fontSize: 11 }}>{idx + 1}</td>
+                      <td style={{ ...S.td, fontWeight: 700 }}>{p.name}</td>
+                      <td style={S.td}>
+                        <span style={{ background: statusColor + '20', color: statusColor, padding: '2px 10px', borderRadius: 20, fontWeight: 700, fontSize: 12 }}>
+                          {p.stock || 0} كرتون
+                        </span>
+                      </td>
+                      <td style={{ ...S.td, color: CLR.textSm }}>{p.min_stock || 5} كرتون</td>
+                      <td style={S.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ flex: 1, height: 6, background: '#e5e7eb', borderRadius: 3, minWidth: 60 }}>
+                            <div style={{ width: `${Math.min(100, ratio * 100)}%`, height: '100%', background: statusColor, borderRadius: 3 }} />
                           </div>
-
-                        </td>
-
-                      </tr>
-
-                    )
-
-                  })}
-
+                          <span style={{ fontSize: 11, color: statusColor, fontWeight: 700 }}>{status}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
-
             </table>
-
           </div>
-
         )}
-
       </div>
-
-    </div>
-
-  )
-
-}
 
 /* ══════════════════════════════════════════
 

@@ -317,9 +317,7 @@ export default function Products() {
 
             }))
 
-          )
-
-          .catch(() => {});
+          );
 
       }
 

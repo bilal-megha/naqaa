@@ -56,6 +56,7 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
     setLoading(true)
     const order = {
       id: Date.now(),
+      customer_id: customer?.id || null,
       customer_name: form.name,
       customer_phone: form.phone,
       customer_address: form.address,
@@ -70,6 +71,19 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
       const { data: p } = await supabase.from('products').select('stock').eq('id', item.id).maybeSingle()
       if (p) { await supabase.from('products').update({ stock: Math.max(0, (p.stock || 0) - item.qty) }).eq('id', item.id) }
     }
+    // ✅ تحديث إجمالي مشتريات العميل
+    if (customer?.id) {
+      const { data: cu } = await supabase.from('customers').select('total_purchases').eq('id', customer.id).maybeSingle()
+      await supabase.from('customers').update({ total_purchases: (parseFloat(cu?.total_purchases || 0) + finalTotal) }).eq('id', customer.id)
+    }
+    // ✅ إرسال إشعار للإدارة
+    await supabase.from('notifications').insert({
+      id: Date.now() + 1,
+      title: `🛒 طلبية جديدة من ${form.name}`,
+      body: `المبلغ: ${finalTotal} دج — ${cart.length} منتج`,
+      date: new Date().toLocaleString('ar-DZ'),
+      is_read: false,
+    })
     // ✅ تحديث نقاط العميل في قاعدة البيانات
     // حساب النقاط المكتسبة
     const pointsPerOrder = parseFloat(settings?.points_per_order || '100')

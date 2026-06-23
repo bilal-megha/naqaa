@@ -738,7 +738,7 @@ export default function Store() {
       <div className={`drawer${drawerOpen ? ' open' : ''}`}>
         <div className="drawer-head">
           <div style={{ fontSize: 20, fontWeight: 900, color: 'white', marginBottom: 4 }}>🛍️ {SNAME}</div>
-          {customer ? <div style={{ fontSize: 13, color: 'rgba(255,255,255,.85)', fontWeight: 700 }}>مرحباً، {customer.name} 👋</div> : <div style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>اطلب بالكارتون ووفّر أكثر</div>}
+          {customer ? <div style={{ fontSize: 13, color: '#FFF3E0', fontWeight: 700, background: 'rgba(0,0,0,.25)', padding: '3px 10px', borderRadius: 20, display: 'inline-block' }}>مرحباً، {customer.name} 👋</div> : <div style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>اطلب بالكارتون ووفّر أكثر</div>}
           <button onClick={() => setDrawerOpen(false)} style={{ position: 'absolute', top: 14, left: 14, background: 'rgba(255,255,255,.2)', border: 'none', color: 'white', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 15 }}>✕</button>
         </div>
         <div className="drawer-nav">

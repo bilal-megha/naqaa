@@ -9,7 +9,7 @@ export const logActivity = async (action, details = '') => {
       id: Date.now(),
       action,
       details,
-      username: 'admin',
+      employee: 'admin',
       created_at: new Date().toISOString(),
     })
   } catch (err) { console.error('logActivity error:', err) }

@@ -40,13 +40,23 @@ export default function Orders() {
 
       await logActivity('تحديث حالة طلب', `تم تحديث حالة الطلب #${id} إلى ${status}`)
 
+      // ✅ إشعار في جدول notifications
+      const statusLabels = { processing:'قيد المعالجة', confirmed:'مؤكدة', shipped:'في الطريق', delivered:'تم التسليم', cancelled:'ملغاة' }
+      await supabase.from('notifications').insert({
+        id: Date.now(),
+        title: `📦 تحديث طلبية #${String(id).slice(-5)}`,
+        body: `تم تغيير حالة الطلبية إلى: ${statusLabels[status] || status}`,
+        date: new Date().toLocaleString('ar-DZ'),
+        is_read: false,
+      })
+
       
 
       if(status==='shipped'||status==='delivered'){
 
         const {data:ord}=await supabase.from('orders').select('*').eq('id',id).maybeSingle()
 
-        if(ord?.phone){
+        if(ord?.customer_phone){
 
           const msgs={
 
@@ -56,7 +66,7 @@ export default function Orders() {
 
           }
 
-          const wa=(ord.phone||'').replace(/\D/g,'')
+          const wa=(ord.customer_phone||'').replace(/\D/g,'')
 
           if(wa.length>=9) window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msgs[status])}`,'_blank')
 
@@ -280,7 +290,7 @@ export default function Orders() {
 
               for(const o of old){
 
-                await supabase.from('orders_archive').upsert(o).catch(()=>{})
+                await supabase.from('orders_archive').upsert(o)
 
                 await supabase.from('orders').delete().eq('id',o.id)
 

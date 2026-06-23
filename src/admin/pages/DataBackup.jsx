@@ -72,7 +72,8 @@ export default function DataBackup({ showToast }) {
 
       for (const t of tables) {
 
-        const { data } = await supabase.from(t).select("*").catch(() => ({ data: [] }));
+        let data = [];
+        try { const res = await supabase.from(t).select('*'); data = res.data || []; } catch(e) {}
 
         backup[t] = data || [];
 
