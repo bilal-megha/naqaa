@@ -157,6 +157,8 @@ export default function Customers() {
 
   };
 
+  const tierLabel = (t) => ({ M1: '🥉 M1', M2: '🥈 M2', M3: '🥇 M3' }[t] || t);
+
 
 
   const save = async () => {
