@@ -60,6 +60,8 @@ export default function Customers() {
   const [groupFilter, setGroupFilter] = useState("all");
 
   const [groups, setGroups] = useState([]);
+  const [showDebtModal, setShowDebtModal] = useState(null)
+  const [debtPayment, setDebtPayment] = useState('')
 
 
 
@@ -282,9 +284,6 @@ export default function Customers() {
   };
 
 
-
-  const [showDebtModal, setShowDebtModal] = useState(null) // { customer, amount }
-  const [debtPayment, setDebtPayment] = useState('')
 
   const payDebt = async () => {
     if (!showDebtModal || !debtPayment) return

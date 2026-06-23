@@ -276,7 +276,7 @@ export default function Dashboard({ user, showToast }) {
 
     try {
 
-      const [{ data: prods }, { data: ords }, { data: purcs }, { data: exps }, { data: revs }] = await Promise.all([
+      const results = await Promise.allSettled([
 
         supabase.from('products').select('id,name,stock,price,disabled').order('name'),
 
@@ -286,9 +286,17 @@ export default function Dashboard({ user, showToast }) {
 
         supabase.from('expenses').select('amount'),
 
-        supabase.from('reviews').select('rating').catch(() => ({ data: [] })),
+        supabase.from('reviews').select('rating'),
 
       ])
+
+      const prods = results[0].status === 'fulfilled' ? (results[0].value.data || []) : []
+      const ords  = results[1].status === 'fulfilled' ? (results[1].value.data || []) : []
+      const purcs = results[2].status === 'fulfilled' ? (results[2].value.data || []) : []
+      const exps  = results[3].status === 'fulfilled' ? (results[3].value.data || []) : []
+      const revs  = results[4].status === 'fulfilled' ? (results[4].value.data || []) : []
+
+
 
       
 
