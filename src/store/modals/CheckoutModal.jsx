@@ -94,7 +94,7 @@ export default function CheckoutModal({ cart, finalTotal, onClose, onSuccess, cu
       const usedPoints = pointsUsed > 0 ? Math.ceil(pointsUsed / pointsToDzd) : 0
       const currentPoints = customer.points || 0
       const newPoints = Math.max(0, currentPoints - usedPoints) + pointsEarned
-      await supabase.from('customers').update({ points: newPoints }).eq('id', customer.id).catch(() => {})
+      try { await supabase.from('customers').update({ points: newPoints }).eq('id', customer.id) } catch {}
       if (onPointsUpdate) onPointsUpdate(newPoints)
     }
 

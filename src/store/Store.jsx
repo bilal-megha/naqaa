@@ -125,14 +125,15 @@ export default function Store() {
   useEffect(() => {
     if (!customer || wishSynced) return
     const syncWish = async () => {
-      const { data } = await supabase.from('wishlist').select('product_id').eq('customer_id', customer.id).catch(() => ({ data: [] }))
+      let data = []
+      try { const res = await supabase.from('wishlist').select('product_id').eq('customer_id', customer.id); data = res.data || [] } catch { data = [] }
       if (data && data.length > 0) {
         const dbIds = data.map(r => r.product_id)
         const merged = [...new Set([...wishlist, ...dbIds])]
         setWishlist(merged)
       } else if (wishlist.length > 0) {
         await Promise.all(wishlist.map(pid =>
-          supabase.from('wishlist').upsert({ id: Date.now() + Math.random() * 1000 | 0, customer_id: customer.id, product_id: pid }).catch(() => {})
+          supabase.from('wishlist').upsert({ id: Date.now() + Math.random() * 1000 | 0, customer_id: customer.id, product_id: pid }).then(() => {}).catch(() => {})
         ))
       }
       setWishSynced(true)
@@ -159,11 +160,11 @@ export default function Store() {
       const removing = prev.includes(id)
       if (removing) {
         showToast('تم الإزالة من المفضلة')
-        if (customer) supabase.from('wishlist').delete().eq('customer_id', customer.id).eq('product_id', id).catch(() => {})
+        if (customer) supabase.from('wishlist').delete().eq('customer_id', customer.id).eq('product_id', id).then(() => {}).catch(() => {})
         return prev.filter(x => x !== id)
       }
       showToast('❤️ تمت الإضافة للمفضلة')
-      if (customer) supabase.from('wishlist').upsert({ id: Date.now(), customer_id: customer.id, product_id: id }).catch(() => {})
+      if (customer) supabase.from('wishlist').upsert({ id: Date.now(), customer_id: customer.id, product_id: id }).then(() => {}).catch(() => {})
       return [...prev, id]
     })
   }, [customer])
@@ -695,15 +696,16 @@ export default function Store() {
     )
   }
 
-  // ========== تعريف tabsMap بـ useMemo لمنع الوميض الأبيض ==========
-  const tabsMap = React.useMemo(() => ({
-    home: <HomeTab />,
-    search: <SearchTab />,
-    cats: <CatsTab />,
-    wish: <WishTab />,
-    promos: <PromosTab />,
-    quick: <QuickOrderTab />
-  }), [tab, wishlist, cart, brandSel, catSel, sortSel, debouncedSearch, page, products, bannerIdx])
+  // ========== عرض التاب الحالي مباشرة (بدون useMemo لتجنب خطأ Hooks #310) ==========
+  const renderTab = () => {
+    if (tab === 'home')   return <HomeTab />
+    if (tab === 'search') return <SearchTab />
+    if (tab === 'cats')   return <CatsTab />
+    if (tab === 'wish')   return <WishTab />
+    if (tab === 'promos') return <PromosTab />
+    if (tab === 'quick')  return <QuickOrderTab />
+    return <HomeTab />
+  }
 
   // ========== المكون الرئيسي ==========
   return (
@@ -770,7 +772,7 @@ export default function Store() {
         </div>
       </div>
 
-      <div className="page">{tabsMap[tab] || <HomeTab />}</div>
+      <div className="page">{renderTab()}</div>
 
       {/* BOTTOM NAV */}
       <div className="bnav">

@@ -93,9 +93,14 @@ function ReviewsSection({ productId, currency }) {
 
   useEffect(() => {
     if (!productId) return
-    supabase.from('reviews').select('*').eq('product_id', productId).order('id', { ascending: false }).limit(20)
-      .then(({ data }) => { setReviews(data || []); setLoaded(true) })
-      .catch(() => setLoaded(true))
+    const load = async () => {
+      try {
+        const { data } = await supabase.from('reviews').select('*').eq('product_id', productId).order('id', { ascending: false }).limit(20)
+        setReviews(data || [])
+      } catch {}
+      setLoaded(true)
+    }
+    load()
   }, [productId])
 
   const avgR = reviews.length ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1) : 0
@@ -106,12 +111,12 @@ function ReviewsSection({ productId, currency }) {
     if (!cust) { showToast('سجّل دخولك لإضافة تقييم', true); return }
     if (!rating) { showToast('اختر عدد النجوم أولاً', true); return }
     setSaving(true)
-    await supabase.from('reviews').insert({
+    try { await supabase.from('reviews').insert({
       id: Date.now(), product_id: productId,
       customer_id: cust.id, customer_name: cust.name,
       rating, comment: comment.trim(),
       created_at: new Date().toISOString()
-    }).catch(() => {})
+    }) } catch {}
     const { data } = await supabase.from('reviews').select('*').eq('product_id', productId).order('id', { ascending: false }).limit(20)
     setReviews(data || []); setRating(0); setComment(''); setSaving(false)
     showToast('✅ تم إضافة تقييمك')
