@@ -21,7 +21,7 @@ import DetailModal    from './modals/DetailModal.jsx'
 import TrackingModal  from './modals/TrackingModal.jsx'
 import ThankyouModal  from './modals/ThankyouModal.jsx'
 import ContactModal   from './modals/ContactModal.jsx'
-import PromoCountdown from './modals/PromoCountdown.jsx'
+import NotificationBell from './components/NotificationBell.jsx'
 
 const WA_NUM = '213696668065'
 
@@ -39,6 +39,7 @@ export default function Store() {
   const [detailProd, setDetailProd] = useState(null)
   const [thankId, setThankId] = useState(null)
   const [checkoutTotal, setCheckoutTotal] = useState(0)
+  const [pointsUsed, setPointsUsed] = useState(0)
   const [tab, setTab] = useState('home')
   const [search, setSearch] = useState('')
   const [brandSel, setBrandSel] = useState('all')
@@ -174,6 +175,20 @@ export default function Store() {
     showToast(`مرحباً ${data.name} 👋`)
   }
 
+  // التنقل من الإشعارات
+  const handleNotifNavigate = (type, id) => {
+    if (type === 'product' && id) {
+      const p = products.find(x => String(x.id) === String(id))
+      if (p) { setDetailProd(p); setModal('detail') }
+    } else if (type === 'category' && id) {
+      setCatSel(id); setTab('search')
+    } else if (type === 'brand' && id) {
+      setBrandSel(id); setTab('search')
+    } else if (type === 'promos') {
+      setTab('promos')
+    }
+  }
+
   const handleLogout = () => {
     setCustomer(null)
     localStorage.removeItem('nq_customer')
@@ -218,7 +233,7 @@ export default function Store() {
           {p.image ? <img src={p.image} alt={p.name} loading="lazy" /> : <div className="pc-noimg">🛍️</div>}
           {isN && !hasPromo && (p.stock || 0) > 0 && <span className="badge b-new">جديد</span>}
           <button className="fav-b" onClick={e => { e.stopPropagation(); toggleWish(p.id) }}>
-            <i className="fas fa-heart" style={{ color: isW ? '#1565C0' : '#CBD5E1' }}></i>
+            <i className="fas fa-heart" style={{ color: isW ? 'var(--clr-primary,#1565C0)' : '#CBD5E1' }}></i>
           </button>
         </div>
         <div className="pc-name">{p.name}</div>
@@ -228,12 +243,22 @@ export default function Store() {
               <span style={{ background: '#888', color: 'white', fontSize: 11, fontWeight: 900, padding: '2px 7px', borderRadius: 20 }}>{pct}%</span>
               <span style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through', fontWeight: 600 }}>{p.price}{CUR}</span>
             </div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#0D1B2A' }}>{fp}{CUR}</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--clr-primary,#1565C0)' }}>{fp}{CUR}</div>
           </div>
         ) : (
-          <div style={{ fontSize: 16, fontWeight: 900, color: '#1565C0' }}>{fp} {CUR}</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--clr-primary,#1565C0)' }}>{fp} {CUR}</div>
         )}
-        {p.units && <div className="pc-carton">📦 {p.units} قطعة/كرتون</div>}
+        {(p.units || p.carton_price) && (
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            background:'#F8FAFC', borderRadius:8, padding:'4px 8px', marginBottom:4,
+            fontSize:11, border:'1px solid #E2E8F0' }}>
+            <span style={{ fontWeight:700, color:'var(--clr-primary,#1565C0)' }}>
+              {p.carton_price ? `${Number(p.carton_price).toFixed(0)} ${CUR}` : `${(Number(fp) * (p.units||12)).toFixed(0)} ${CUR}`}
+              <span style={{ color:'#94a3b8', fontWeight:600 }}> (carton)</span>
+            </span>
+            {p.units && <span style={{ color:'#64748B', fontWeight:700 }}>{p.units}</span>}
+          </div>
+        )}
         <button className="add-b" style={{ marginTop: 8 }} disabled={(p.stock || 0) === 0} onClick={e => { e.stopPropagation(); addToCart(p) }}>
           <i className="fas fa-cart-plus"></i>
           {(p.stock || 0) === 0 ? 'نفذ المخزون' : 'أضف للسلة'}
@@ -243,7 +268,7 @@ export default function Store() {
   }
 
   // الفلاتر
-  const allP = products.filter(p => p.disabled !== true)
+  const allP = products.filter(p => !p.disabled && p.disabled !== 'true')
   const newP = allP.filter(p => new Date(p.created_at) >= sevenAgo)
   const flashP = allP.filter(p => Number(p.discount) > 0).slice(0, 10)
   const dayDeal = allP.find(p => Number(p.discount) >= 20) || null
@@ -302,7 +327,9 @@ export default function Store() {
               <div className="anim-all" onClick={() => { setBrandSel('all'); setTab('search') }}><i className="fas fa-th"></i><span>عرض الكل</span></div>
               {brands.slice(0, 5).map(b => (
                 <div key={b.id} className={`anim-card${brandSel == b.id ? ' sel' : ''}`} onClick={() => { setBrandSel(b.id); setTab('search') }}>
-                  {b.image ? <><img src={b.image} alt={b.name} /><div className="overlay"><span>{b.name}</span></div></> : <div className="no-img">{b.name}</div>}
+                  {b.image
+                    ? <><img src={b.image} alt={b.name} style={{ width:'100%', height:'100%', objectFit:'contain', padding:6 }} /><div className="overlay"><span>{b.name}</span></div></>
+                    : <div className="no-img" style={{ padding:8, textAlign:'center' }}>{b.name}</div>}
                 </div>
               ))}
             </div>
@@ -318,6 +345,44 @@ export default function Store() {
                   <div className="cat-label">{c.name}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+        {/* ── الأكثر طلباً ── */}
+        {bestSellerProducts.length > 0 && (
+          <div className="sec">
+            <div className="sec-head">
+              <span className="sec-title">🔥 الأكثر طلباً</span>
+              <button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button>
+            </div>
+            <div className="prod-grid">
+              {bestSellerProducts.slice(0, 6).map(p => <ProductCard key={p.id} p={p} />)}
+            </div>
+          </div>
+        )}
+
+        {/* ── منتجات جديدة ── */}
+        {newP.length > 0 && (
+          <div className="sec">
+            <div className="sec-head">
+              <span className="sec-title">✨ منتجات جديدة</span>
+              <button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button>
+            </div>
+            <div className="prod-grid">
+              {newP.slice(0, 6).map(p => <ProductCard key={p.id} p={p} />)}
+            </div>
+          </div>
+        )}
+
+        {/* ── كل المنتجات إذا لا يوجد شيء آخر ── */}
+        {bestSellerProducts.length === 0 && newP.length === 0 && allP.length > 0 && (
+          <div className="sec">
+            <div className="sec-head">
+              <span className="sec-title">🛍️ المنتجات</span>
+              <button className="sec-more" onClick={() => setTab('search')}>عرض الكل</button>
+            </div>
+            <div className="prod-grid">
+              {allP.slice(0, 6).map(p => <ProductCard key={p.id} p={p} />)}
             </div>
           </div>
         )}
@@ -342,7 +407,7 @@ export default function Store() {
       <div className="sec" style={{ marginTop: 14, paddingBottom: 80 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h2 className="sec-title">⚡ الطلب السريع</h2>
-          <button onClick={addAll} style={{ background: '#1565C0', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
+          <button onClick={addAll} style={{ background: 'var(--clr-primary,#1565C0)', color: 'white', border: 'none', borderRadius: 30, padding: '10px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }}><i className="fas fa-cart-plus"></i> إضافة الكل للسلة</button>
         </div>
         <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -491,7 +556,7 @@ export default function Store() {
         </div>
         {/* رأس النتائج */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{filtered.length} منتج</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{filtered.length} منتج {debouncedSearch || brandSel !== 'all' || catSel !== 'all' ? '(مفلتر)' : ''}</span>
           {(brandSel !== 'all' || catSel !== 'all' || debouncedSearch) && (
             <button onClick={() => { setBrandSel('all'); setCatSel('all'); setSearch(''); setPage(1) }}
               style={{ fontSize: 12, color: '#1565C0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
@@ -647,6 +712,10 @@ export default function Store() {
           <button className="sh-icon" onClick={() => setDrawerOpen(true)}><i className="fas fa-bars"></i></button>
           <span className="sh-logo">{SNAME}</span>
           <div className="sh-right">
+            <NotificationBell
+              onNavigate={handleNotifNavigate}
+              primaryColor={settings?.primary_color || '#1565C0'}
+            />
             <button className="sh-contact" onClick={() => setModal('contact')}><i className="fas fa-phone"></i> اتصل</button>
             {customer ? (
               <button className="sh-login" onClick={() => setModal('account')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -782,13 +851,13 @@ export default function Store() {
       {modal === 'login' && <LoginModal onClose={() => setModal(null)} onLogin={handleLogin} onRegister={() => setModal('register')} />}
       {modal === 'register' && <RegisterModal onClose={() => setModal(null)} onSuccess={() => { setModal('login'); showToast('✅ سجّل الآن للدخول') }} />}
       {modal === 'cart' && <CartModal cart={cart} setCart={setCart} settings={settings} onClose={() => setModal(null)}
-        onCheckout={(total, disc) => { setCheckoutTotal(total); setModal('checkout') }}
+        onCheckout={(total, pUsed) => { setCheckoutTotal(total); setPointsUsed(pUsed || 0); setModal('checkout') }}
         freeShip={FREESHIP} currency={CUR} promos={promos} customer={customer} />}
       {modal === 'checkout' && <CheckoutModal cart={cart} finalTotal={checkoutTotal || cartTotal}
         onClose={() => setModal('cart')}
         onSuccess={(id, cartSnap) => { decreaseStock(cartSnap || cart); setCart([]); setThankId(id); setModal('thankyou') }}
-        currency={CUR} waNum={WA} storeName={SNAME}
-        customer={customer} onPointsUpdate={handlePointsUpdate} />}
+        currency={CUR} waNum={WA} storeName={SNAME} settings={settings}
+        customer={customer} onPointsUpdate={handlePointsUpdate} pointsUsed={pointsUsed} />}
       {modal === 'detail' && <DetailModal product={detailProd} wishlist={wishlist}
         onClose={() => setModal(null)} onAddCart={addToCart} onToggleWish={toggleWish}
         currency={CUR} products={products} sevenAgo={sevenAgo}
