@@ -51,7 +51,7 @@ export const S = {
   th:      { padding: '10px 12px', textAlign: 'right', background: '#F1F5F9',
              fontWeight: 700, fontSize: 12, color: '#475569',
              border: '1px solid #CBD5E1', whiteSpace: 'nowrap', userSelect: 'none' },
-  td:      { padding: '10px 12px', textAlign: 'right', fontSize: 13,
+  td:      { padding: '10px 12px', textAlign: 'right', fontSize: 13, color: '#0D1B2A',
              border: '1px solid #E2E8F0', verticalAlign: 'middle', background: 'white' },
   grid2:   { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))', gap: 14 },
 }
