@@ -783,8 +783,9 @@ export default function Dashboard({ user, showToast }) {
         )}
       </div>
 
-    </div>
-  )
-}
+/* ══════════════════════════════════════════
 
-export default Dashboard
+   📦 المنتجات (مع سلة المهملات)
+
+══════════════════════════════════════════ */
+
