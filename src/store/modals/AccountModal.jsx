@@ -11,13 +11,26 @@ export default function AccountModal({ customer, onClose, onLogout, onUpdatePoin
   useEffect(() => {
     const fetch = async () => {
       if (!customer?.phone) { setLoading(false); return }
-      const { data } = await supabase.from('orders')
-        .select('id,date,total,status,items')
-        .eq('customer_phone', customer.phone)
-        .order('id', { ascending: false })
-        .limit(10)
-        .catch(() => ({ data: [] }))
-      setOrders(data || [])
+      // Try fetching by phone first, then by customer_id as fallback
+      let ordersData = []
+      try {
+        const { data: byPhone } = await supabase.from('orders')
+          .select('id,date,total,status,items,created_at')
+          .eq('customer_phone', customer.phone)
+          .order('id', { ascending: false })
+          .limit(20)
+        if (byPhone && byPhone.length > 0) {
+          ordersData = byPhone
+        } else if (customer.id) {
+          const { data: byId } = await supabase.from('orders')
+            .select('id,date,total,status,items,created_at')
+            .eq('customer_id', customer.id)
+            .order('id', { ascending: false })
+            .limit(20)
+          ordersData = byId || []
+        }
+      } catch(e) { ordersData = [] }
+      setOrders(ordersData)
       setLoading(false)
     }
     fetch()
@@ -117,12 +130,12 @@ export default function AccountModal({ customer, onClose, onLogout, onUpdatePoin
                               {statusLabel[ord.status] || ord.status}
                             </span>
                           </div>
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>📅 {ord.date}</div>
-                          {items.slice(0, 2).map((it, i) => (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>📅 {ord.date || (ord.created_at ? new Date(ord.created_at).toLocaleDateString('ar-DZ') : '—')}</div>
+                          {items.slice(0, 3).map((it, i) => (
                             <div key={i} style={{ fontSize: 12, color: '#1565C0', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                               <span>📦</span>
-                              <span style={{ flex: 1 }}>{it.name}</span>
-                              <span style={{ fontWeight: 700 }}>×{it.quantity}</span>
+                              <span style={{ flex: 1, fontWeight: 700, color: '#0D1B2A' }}>{it.name}</span>
+                              <span style={{ fontWeight: 800, color: '#1565C0' }}>×{it.qty || it.quantity} كرتون</span>
                             </div>
                           ))}
                           {items.length > 2 && <div style={{ fontSize: 11, color: '#94a3b8' }}>+{items.length - 2} منتجات أخرى</div>}

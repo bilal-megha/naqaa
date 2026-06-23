@@ -254,7 +254,7 @@ export default function Admin() {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;900&display=swap');
-        body,*{font-family:'Tajawal',sans-serif!important}
+        body,*{font-family:'Times New Roman',serif,sans-serif!important}
         .sitem{display:flex;align-items:center;gap:9px;padding:9px 10px;
           color:rgba(255,255,255,.55);cursor:pointer;border-radius:8px;margin:1px 6px;
           transition:.15s;font-size:13px;font-weight:600;white-space:nowrap;

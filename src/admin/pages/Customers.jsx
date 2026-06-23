@@ -921,7 +921,7 @@ export default function Customers() {
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={S.label}>المبلغ المدفوع (دج) *</label>
-              <input type="number" style={{ ...S.input, fontSize: 18, fontWeight: 700 }}
+              <input type="number" inputMode="numeric" onKeyPress={e => { if (!/[0-9.\-]/.test(e.key)) e.preventDefault() }} style={{ ...S.input, fontSize: 18, fontWeight: 700 }}
                 value={debtPayment} onChange={e => setDebtPayment(e.target.value)}
                 placeholder="أدخل المبلغ..." autoFocus />
             </div>

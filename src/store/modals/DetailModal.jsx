@@ -33,7 +33,7 @@ export default function DetailModal({ product, wishlist, onClose, onAddCart, onT
             </button>
           </div>
           {p.carton_price && <p style={{ color: '#1565C0', fontSize: 13, marginBottom: 8 }}>الكرتون ({p.units || 12} قطعة): {p.carton_price} {currency}</p>}
-          {(p.stock || 0) > 0 && (p.stock || 0) < 10 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>⚠️ متبقي {p.stock} قطعة فقط!</p>}
+          }>⚠️ متبقي {p.stock} قطعة فقط!</p>}
           {(p.stock || 0) === 0 && <p style={{ color: '#ef4444', fontWeight: 700, fontSize: 13, marginBottom: 8 }}>❌ نفذ من المخزون</p>}
 
           <div style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', borderRadius: 12, padding: 12, marginBottom: 12, border: '1px solid #059669' }}>

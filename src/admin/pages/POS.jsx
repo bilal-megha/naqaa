@@ -425,7 +425,7 @@ export default function POS() {
             {payMode === 'نقداً' && (
               <div style={{ marginBottom: 10 }}>
                 <label style={S.label}>المبلغ المدفوع (دج)</label>
-                <input type="number" style={{ ...S.input, fontSize: 16, fontWeight: 700 }}
+                <input type="number" inputMode="numeric" onKeyPress={e => { if (!/[0-9.\-]/.test(e.key)) e.preventDefault() }} style={{ ...S.input, fontSize: 16, fontWeight: 700 }}
                   value={paidAmount} onChange={e => setPaidAmount(e.target.value)}
                   placeholder={total.toFixed(0)} />
                 {paid > 0 && (

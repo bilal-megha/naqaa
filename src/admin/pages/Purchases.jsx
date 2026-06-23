@@ -439,7 +439,7 @@ export default function Purchases() {
                   <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ ...S.td, fontWeight: 700 }}>{item.productName}</td>
                     <td style={S.td}>
-                      <input type="number" style={{ ...S.input, width: 70, padding: '4px 8px', textAlign: 'center' }}
+                      <input type="number" inputMode="numeric" onKeyPress={e => { if (!/[0-9.\-]/.test(e.key)) e.preventDefault() }} style={{ ...S.input, width: 70, padding: '4px 8px', textAlign: 'center' }}
                         value={item.cartons} onChange={e => {
                           const cartons = parseInt(e.target.value) || 0
                           const cp = autoCarton(item.purchasePrice, item.unitsPerCarton)
@@ -447,7 +447,7 @@ export default function Purchases() {
                         }} />
                     </td>
                     <td style={S.td}>
-                      <input type="number" style={{ ...S.input, width: 70, padding: '4px 8px', textAlign: 'center' }}
+                      <input type="number" inputMode="numeric" onKeyPress={e => { if (!/[0-9.\-]/.test(e.key)) e.preventDefault() }} style={{ ...S.input, width: 70, padding: '4px 8px', textAlign: 'center' }}
                         value={item.unitsPerCarton} onChange={e => {
                           const u = parseInt(e.target.value) || 12
                           const cp = autoCarton(item.purchasePrice, u)
@@ -455,7 +455,7 @@ export default function Purchases() {
                         }} />
                     </td>
                     <td style={S.td}>
-                      <input type="number" style={{ ...S.input, width: 90, padding: '4px 8px', textAlign: 'center' }}
+                      <input type="number" inputMode="numeric" onKeyPress={e => { if (!/[0-9.\-]/.test(e.key)) e.preventDefault() }} style={{ ...S.input, width: 90, padding: '4px 8px', textAlign: 'center' }}
                         value={item.purchasePrice} onChange={e => {
                           const pp = parseFloat(e.target.value) || 0
                           const cp = autoCarton(pp, item.unitsPerCarton)

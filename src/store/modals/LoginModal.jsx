@@ -197,7 +197,7 @@ export default function LoginModal({ onClose, onLogin, onRegister, primaryColor 
                   🇩🇿 +213
                 </div>
                 <input className="fi" style={{ margin:0, flex:1 }}
-                  type="tel" inputMode="numeric" value={phone}
+                  type="tel" inputMode="numeric" onKeyPress={e => { if (!/[0-9+]/.test(e.key)) e.preventDefault() }} inputMode="numeric" value={phone}
                   onChange={e => setPhone(e.target.value.replace(/[^\d+\s]/g,''))}
                   onKeyDown={e => e.key==='Enter' && loginByPhone()}
                   placeholder="0555 123 456" autoComplete="tel" autoFocus />

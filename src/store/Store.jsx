@@ -250,13 +250,13 @@ export default function Store() {
         )}
         {(p.units || p.carton_price) && (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
-            background:'#F8FAFC', borderRadius:8, padding:'4px 8px', marginBottom:4,
-            fontSize:11, border:'1px solid #E2E8F0' }}>
-            <span style={{ fontWeight:700, color:'var(--clr-primary,#1565C0)' }}>
+            background:'#EEF4FF', borderRadius:8, padding:'5px 10px', marginBottom:4,
+            fontSize:11, border:'1px solid #C7D9F5' }}>
+            <span style={{ fontWeight:800, color:'var(--clr-primary,#1565C0)', fontSize:12 }}>
               {p.carton_price ? `${Number(p.carton_price).toFixed(0)} ${CUR}` : `${(Number(fp) * (p.units||12)).toFixed(0)} ${CUR}`}
-              <span style={{ color:'#94a3b8', fontWeight:600 }}> (carton)</span>
+              <span style={{ color:'#64748B', fontWeight:600, fontSize:10 }}> / carton</span>
             </span>
-            {p.units && <span style={{ color:'#64748B', fontWeight:700 }}>{p.units}</span>}
+            {p.units && <span style={{ color:'#64748B', fontWeight:700, fontSize:10 }}>{p.units} قطعة</span>}
           </div>
         )}
         <button className="add-b" style={{ marginTop: 8 }} disabled={(p.stock || 0) === 0} onClick={e => { e.stopPropagation(); addToCart(p) }}>
@@ -413,7 +413,7 @@ export default function Store() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#1565C0' }}>
-                <th style={{ padding: '11px 12px', textAlign: 'right', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>المنتج</th>
+                <th style={{ padding: '11px 12px', textAlign: 'right', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)', fontFamily: "'Times New Roman',serif" }}>المنتج</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>سعر/كرتون</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الكمية (كرتون)</th>
                 <th style={{ padding: '11px 12px', textAlign: 'center', color: 'white', fontWeight: 700, fontSize: 13, border: '1px solid rgba(255,255,255,.2)' }}>الإجمالي</th>
@@ -435,7 +435,9 @@ export default function Store() {
                     <td style={{ padding: '10px 12px', textAlign: 'center', border: '1px solid #EEF4FF' }}>
                       <input type="number" min="0" value={qtyMap[p.id] || ''} onChange={e => setQtyMap(m => ({ ...m, [p.id]: e.target.value }))} placeholder="0"
                         style={{ width: 70, textAlign: 'center', border: '2px solid #EEF4FF', borderRadius: 8, padding: '5px 8px', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', outline: 'none' }}
-                        onFocus={e => e.target.style.borderColor = '#1565C0'} onBlur={e => e.target.style.borderColor = '#EEF4FF'} />
+                        onFocus={e => e.target.style.borderColor = '#1565C0'} onBlur={e => e.target.style.borderColor = '#EEF4FF'}
+                        onKeyPress={e => { if (!/[0-9]/.test(e.key)) e.preventDefault() }}
+                        inputMode="numeric" />
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0D1B2A', border: '1px solid #EEF4FF' }}>{qty > 0 ? `${(qty * unitPrice).toFixed(0)} ${CUR}` : '—'}</td>
                   </tr>
@@ -649,7 +651,7 @@ export default function Store() {
             <div style={{ fontSize: 13, marginTop: 6 }}>أضف منتجات بالضغط على ❤️</div>
           </div>
         ) : (
-          <div className="pg">{wishProds.map(p => <ProductCard key={p.id} p={p} />)}</div>
+          <div className="prod-grid">{wishProds.map(p => <ProductCard key={p.id} p={p} />)}</div>
         )}
       </div>
     )
@@ -693,15 +695,15 @@ export default function Store() {
     )
   }
 
-  // ========== تعريف tabsMap (المهم جداً) ==========
-  const tabsMap = {
+  // ========== تعريف tabsMap بـ useMemo لمنع الوميض الأبيض ==========
+  const tabsMap = React.useMemo(() => ({
     home: <HomeTab />,
     search: <SearchTab />,
     cats: <CatsTab />,
     wish: <WishTab />,
     promos: <PromosTab />,
     quick: <QuickOrderTab />
-  }
+  }), [tab, wishlist, cart, brandSel, catSel, sortSel, debouncedSearch, page, products, bannerIdx])
 
   // ========== المكون الرئيسي ==========
   return (

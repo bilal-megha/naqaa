@@ -1,5 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Tajawal', 'Segoe UI', sans-serif; background: #f8f9fa; direction: rtl; }
+body { font-family: 'Times New Roman', 'Amiri', serif; background: #f8f9fa; direction: rtl; }
 body.dark { background: #0f172a; color: #e2e8f0; }
 #root { min-height: 100vh; }
 

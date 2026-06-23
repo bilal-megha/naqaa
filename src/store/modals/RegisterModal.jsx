@@ -194,7 +194,7 @@ export default function RegisterModal({ onClose, onSuccess, primaryColor = '#156
                 🇩🇿 +213
               </div>
               <input className="fi" style={{ margin:0, flex:1 }}
-                type="tel" inputMode="numeric" value={form.phone}
+                type="tel" inputMode="numeric" onKeyPress={e => { if (!/[0-9+]/.test(e.key)) e.preventDefault() }} inputMode="numeric" value={form.phone}
                 onChange={F('phone')} placeholder="0555 123 456" autoComplete="tel" />
             </div>
             <label className="fi-label">البريد الإلكتروني (اختياري)</label>
@@ -205,7 +205,7 @@ export default function RegisterModal({ onClose, onSuccess, primaryColor = '#156
             <input className="fi" type="email" value={form.email}
               onChange={F('email')} placeholder="example@email.com" autoComplete="email" />
             <label className="fi-label">رقم الهاتف (اختياري)</label>
-            <input className="fi" type="tel" value={form.phone}
+            <input className="fi" type="tel" inputMode="numeric" onKeyPress={e => { if (!/[0-9+]/.test(e.key)) e.preventDefault() }} value={form.phone}
               onChange={F('phone')} placeholder="0555 123 456" autoComplete="tel" />
           </>)}
 
